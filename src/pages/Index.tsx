@@ -1,12 +1,14 @@
 import { useState, useMemo, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import WelcomeScreen, { GameMode } from "@/components/WelcomeScreen";
+import CompetitionIntro from "@/components/CompetitionIntro";
 import RiddleCard from "@/components/RiddleCard";
 import ResultScreen from "@/components/ResultScreen";
 import { riddles } from "@/data/riddles";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
+import { supabase } from "@/integrations/supabase/client";
 
-type GameState = "welcome" | "playing" | "result";
+type GameState = "welcome" | "competition-intro" | "playing" | "result";
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>("welcome");
