@@ -29,18 +29,50 @@ const Index = () => {
     [gameMode, funRiddles, competitionRiddles]
   );
 
+  // Check for existing session on mount (for OAuth redirect return)
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && gameState === "welcome") {
+        // User returned from OAuth, go to competition
+        setGameMode("competition");
+        setGameState("playing");
+      }
+    };
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") {
+        setGameMode("competition");
+        setGameState("playing");
+      }
+    });
+
+    checkSession();
+    return () => subscription.unsubscribe();
+  }, []);
+
   const handleStart = (mode: GameMode) => {
+    if (mode === "competition") {
+      // Show competition intro screen instead of going directly to game
+      setGameState("competition-intro");
+      return;
+    }
     setGameMode(mode);
     setGameState("playing");
     setCurrentRiddleIndex(0);
     setScore(0);
     setTotalPoints(0);
     setTimeBonus(0);
-    
-    // Start horror background music for fun mode only
-    if (mode === "fun") {
-      startMusic();
-    }
+    startMusic();
+  };
+
+  const handleCompetitionAuthenticated = () => {
+    setGameMode("competition");
+    setGameState("playing");
+    setCurrentRiddleIndex(0);
+    setScore(0);
+    setTotalPoints(0);
+    setTimeBonus(0);
   };
 
   // Stop music when leaving fun riddles
