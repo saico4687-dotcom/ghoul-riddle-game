@@ -143,6 +143,17 @@ const Index = () => {
           </motion.div>
         )}
 
+        {gameState === "competition-intro" && (
+          <motion.div
+            key="competition-intro"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <CompetitionIntro onAuthenticated={handleCompetitionAuthenticated} />
+          </motion.div>
+        )}
+
         {gameState === "playing" && (
           <motion.div
             key="playing"
