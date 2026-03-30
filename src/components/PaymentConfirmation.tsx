@@ -35,7 +35,16 @@ const PaymentConfirmation = ({ onConfirm }: PaymentConfirmationProps) => {
           <p className="text-primary text-lg font-horror">50 جنيه مصري</p>
         </div>
 
-        <HorrorButton onClick={onConfirm} className="w-full text-xl">
+        <HorrorButton
+          onClick={() => {
+            window.open(
+              "https://accept.paymob.com/standalone/?ref=i_LRR2TTRHcjc0c0tBM0VuNUJhcThRNWJCUT09X0tWTUt0d3RVQXI4MENKRVVDZmJqdVE9PQ",
+              "_blank"
+            );
+            onConfirm();
+          }}
+          className="w-full text-xl"
+        >
           ✅ موافق
         </HorrorButton>
       </motion.div>
