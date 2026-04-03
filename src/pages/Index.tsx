@@ -10,7 +10,6 @@ import ResultScreen from "@/components/ResultScreen";
 import BackButton from "@/components/BackButton";
 import { riddles } from "@/data/riddles";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
-import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
 import { supabase } from "@/integrations/supabase/client";
 import { updateCompetitionScore } from "@/hooks/useCompetitionScore";
 
