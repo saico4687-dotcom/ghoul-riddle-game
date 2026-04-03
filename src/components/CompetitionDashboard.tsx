@@ -126,14 +126,9 @@ const CompetitionDashboard = ({ onStartPuzzles, onEnterDraw }: CompetitionDashbo
           </div>
         </div>
 
-        <div className="mt-6">
-          <HorrorButton onClick={onStartPuzzles} className="w-full">
-            🎮 ابدأ الألغاز
-          </HorrorButton>
-        </div>
       </motion.div>
 
-      {/* Draw Card */}
+      {/* Draw & Start Card */}
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -148,7 +143,7 @@ const CompetitionDashboard = ({ onStartPuzzles, onEnterDraw }: CompetitionDashbo
           ادخل السحب للفوز بجوائز مذهلة!
         </p>
         <HorrorButton onClick={onEnterDraw} className="w-full">
-          🎟️ ادخل في السحب
+          🎮 ابدأ الألغاز وادخل في السحب
         </HorrorButton>
       </motion.div>
     </div>

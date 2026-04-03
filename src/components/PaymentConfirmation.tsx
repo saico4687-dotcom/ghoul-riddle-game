@@ -29,9 +29,7 @@ const PaymentConfirmation = ({ onConfirm }: PaymentConfirmationProps) => {
         </p>
 
         <div className="card-horror p-4 mb-6 text-sm font-typewriter">
-          <p className="text-muted-foreground mb-1">رقم الهاتف</p>
-          <p className="text-primary text-lg font-horror" dir="ltr">01062612970</p>
-          <p className="text-muted-foreground mt-2 mb-1">المبلغ</p>
+          <p className="text-muted-foreground mb-1">المبلغ</p>
           <p className="text-primary text-lg font-horror">50 جنيه مصري</p>
         </div>
 
