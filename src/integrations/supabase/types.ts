@@ -53,30 +53,6 @@ export type Database = {
         }
         Relationships: []
       }
-      quiz_results: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          phone: string
-          score: number
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          phone: string
-          score?: number
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          phone?: string
-          score?: number
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
