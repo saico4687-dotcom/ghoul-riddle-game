@@ -246,14 +246,10 @@ const Index = () => {
 
         {gameState === "result" && (
           <motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <ResultScreen
+            <QuizResultSubmission
               score={score}
               totalQuestions={currentRiddles.length}
               totalPoints={totalPoints}
-              maxPoints={maxPoints}
-              timeBonus={timeBonus}
-              rank={rank}
-              gameMode={gameMode}
               onRestart={handleRestart}
             />
           </motion.div>
