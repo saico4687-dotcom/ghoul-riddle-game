@@ -7,6 +7,7 @@ import PaymentConfirmation from "@/components/PaymentConfirmation";
 import CompetitionWelcome from "@/components/CompetitionWelcome";
 import RiddleCard from "@/components/RiddleCard";
 import ResultScreen from "@/components/ResultScreen";
+import QuizResultSubmission from "@/components/QuizResultSubmission";
 import BackButton from "@/components/BackButton";
 import { riddles } from "@/data/riddles";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
