@@ -92,15 +92,15 @@ const CompetitionIntro = ({ onAuthenticated }: CompetitionIntroProps) => {
       {/* Fog effect */}
       <div className="absolute inset-0 pointer-events-none fog-overlay" />
 
-      {/* "ابدأ الآن" button - centered */}
+      {/* "ابدأ الآن" button - bottom center above hint text */}
       <motion.button
         onClick={openModal}
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5, duration: 0.8, type: "spring" }}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 px-10 py-4 font-horror text-2xl
+        className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 px-10 py-4 font-horror text-2xl
           bg-gradient-to-l from-primary to-accent text-primary-foreground
           rounded-lg border-2 border-primary shadow-lg shadow-primary/50
           cursor-pointer transition-all duration-300"
