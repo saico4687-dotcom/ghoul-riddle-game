@@ -185,12 +185,14 @@ const Index = () => {
 
         {gameState === "competition-intro" && (
           <motion.div key="competition-intro" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <BackButton onClick={() => setGameState("welcome")} />
             <CompetitionIntro onAuthenticated={handleCompetitionAuthenticated} />
           </motion.div>
         )}
 
         {gameState === "competition-dashboard" && (
           <motion.div key="competition-dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <BackButton onClick={() => setGameState("welcome")} />
             <CompetitionDashboard
               onStartPuzzles={handleStartCompetitionPuzzles}
               onEnterDraw={handleEnterDraw}
@@ -200,12 +202,14 @@ const Index = () => {
 
         {gameState === "payment-confirmation" && (
           <motion.div key="payment-confirmation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <BackButton onClick={() => setGameState("competition-dashboard")} />
             <PaymentConfirmation onConfirm={handlePaymentConfirm} />
           </motion.div>
         )}
 
         {gameState === "competition-welcome" && (
           <motion.div key="competition-welcome" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <BackButton onClick={() => setGameState("competition-dashboard")} />
             <CompetitionWelcome onComplete={handleWelcomeComplete} />
           </motion.div>
         )}
