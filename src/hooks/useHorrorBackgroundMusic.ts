@@ -9,7 +9,7 @@ export const useHorrorBackgroundMusic = () => {
     drones: OscillatorNode[];
     lfo: OscillatorNode | null;
     heartbeat: OscillatorNode | null;
-    intervals: NodeJS.Timeout[];
+    intervals: ReturnType<typeof setInterval>[];
   }>({
     drones: [],
     lfo: null,
@@ -272,7 +272,7 @@ export const useHorrorBackgroundMusic = () => {
     nodesRef.current.drones.push(...organOscs);
 
     // Schedule random effects
-    const intervals: NodeJS.Timeout[] = [];
+    const intervals: ReturnType<typeof setInterval>[] = [];
 
     // Death drums every 4-6 seconds
     const drumInterval = setInterval(() => {
