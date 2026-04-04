@@ -3,11 +3,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import WelcomeScreen, { GameMode } from "@/components/WelcomeScreen";
 import RiddleCard from "@/components/RiddleCard";
 import ResultScreen from "@/components/ResultScreen";
-import GoogleSignIn from "@/components/GoogleSignIn";
-import UserProfileBar from "@/components/UserProfileBar";
 import { riddles } from "@/data/riddles";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
-import { useAuth } from "@/hooks/useAuth";
 
 type GameState = "welcome" | "playing" | "result";
 
@@ -18,9 +15,7 @@ const Index = () => {
   const [totalPoints, setTotalPoints] = useState(0);
   const [gameMode, setGameMode] = useState<GameMode>("fun");
   const [timeBonus, setTimeBonus] = useState(0);
-  const [pendingCompetition, setPendingCompetition] = useState(false);
   const { startMusic, stopMusic, isPlaying: isMusicPlaying } = useHorrorBackgroundMusic();
-  const { user, profile, loading, signInWithGoogle, signOut, updateLastPuzzleIndex } = useAuth();
 
   // Split riddles into two categories
   const funRiddles = useMemo(() => riddles.slice(0, 200), []);
@@ -32,41 +27,18 @@ const Index = () => {
     [gameMode, funRiddles, competitionRiddles]
   );
 
-  // When user logs in and competition is pending, start the game
-  useEffect(() => {
-    if (pendingCompetition && user && profile) {
-      setPendingCompetition(false);
-      startCompetition();
-    }
-  }, [user, profile, pendingCompetition]);
-
-  const startCompetition = () => {
-    const startIndex = profile?.last_puzzle_index || 0;
-    setGameMode("competition");
-    setGameState("playing");
-    setCurrentRiddleIndex(startIndex);
-    setScore(0);
-    setTotalPoints(0);
-    setTimeBonus(0);
-  };
-
   const handleStart = (mode: GameMode) => {
-    if (mode === "competition") {
-      if (user && profile) {
-        startCompetition();
-      } else {
-        setPendingCompetition(true);
-      }
-      return;
-    }
-
-    setGameMode("fun");
+    setGameMode(mode);
     setGameState("playing");
     setCurrentRiddleIndex(0);
     setScore(0);
     setTotalPoints(0);
     setTimeBonus(0);
-    startMusic();
+    
+    // Start horror background music for fun mode only
+    if (mode === "fun") {
+      startMusic();
+    }
   };
 
   // Stop music when leaving fun riddles
@@ -81,9 +53,11 @@ const Index = () => {
   const handleAnswer = (isCorrect: boolean, remainingTime?: number) => {
     if (isCorrect) {
       setScore((prev) => prev + 1);
+      
+      // Calculate points: 10 base + up to 5 bonus for speed
       let points = 10;
       if (remainingTime !== undefined && remainingTime > 0) {
-        const bonus = Math.min(5, Math.floor(remainingTime / 12));
+        const bonus = Math.min(5, Math.floor(remainingTime / 12)); // Max 5 bonus points
         points += bonus;
         setTimeBonus((prev) => prev + bonus);
       }
@@ -93,19 +67,9 @@ const Index = () => {
 
   const handleNext = () => {
     if (currentRiddleIndex < currentRiddles.length - 1) {
-      const nextIndex = currentRiddleIndex + 1;
-      setCurrentRiddleIndex(nextIndex);
-      
-      // Save progress for competition mode
-      if (gameMode === "competition" && user) {
-        updateLastPuzzleIndex(nextIndex);
-      }
+      setCurrentRiddleIndex((prev) => prev + 1);
     } else {
       setGameState("result");
-      // Mark completion
-      if (gameMode === "competition" && user) {
-        updateLastPuzzleIndex(currentRiddles.length);
-      }
     }
   };
 
@@ -115,9 +79,9 @@ const Index = () => {
     setScore(0);
     setTotalPoints(0);
     setTimeBonus(0);
-    setPendingCompetition(false);
   };
 
+  // Calculate rank based on points
   const getRank = (points: number, totalPossible: number) => {
     const percentage = (points / totalPossible) * 100;
     if (percentage >= 90) return { title: "أسطورة الرعب 👑", color: "text-yellow-400" };
@@ -128,17 +92,8 @@ const Index = () => {
     return { title: "مرعوب 😱", color: "text-red-400" };
   };
 
-  const maxPoints = currentRiddles.length * 15;
+  const maxPoints = currentRiddles.length * 15; // 10 base + 5 max bonus
   const rank = getRank(totalPoints, maxPoints);
-
-  // Show Google Sign-In if competition is pending and user not logged in
-  if (pendingCompetition && !user && !loading) {
-    return (
-      <div dir="rtl">
-        <GoogleSignIn onSignIn={signInWithGoogle} loading={loading} />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
@@ -162,6 +117,7 @@ const Index = () => {
             exit={{ opacity: 0 }}
             className="min-h-screen bg-horror-gradient py-8"
           >
+            {/* Vignette */}
             <div className="vignette" />
             
             {/* Score Display */}
@@ -183,28 +139,20 @@ const Index = () => {
               </div>
             </motion.div>
 
-            {/* User Profile Bar for Competition */}
-            {gameMode === "competition" && profile && (
-              <UserProfileBar
-                name={profile.name}
-                email={profile.email}
-                profileImage={profile.profile_image}
-                onSignOut={signOut}
-              />
-            )}
-
-            {/* Game Mode Badge - adjust position when profile bar is shown */}
-            {gameMode === "fun" && (
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="fixed top-4 right-4 z-50"
-              >
-                <div className="px-4 py-2 rounded-lg font-horror text-sm bg-green-900/80 text-green-300 border border-green-500">
-                  🎮 ألغاز المتعة
-                </div>
-              </motion.div>
-            )}
+            {/* Game Mode Badge */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="fixed top-4 right-4 z-50"
+            >
+              <div className={`px-4 py-2 rounded-lg font-horror text-sm ${
+                gameMode === "fun" 
+                  ? "bg-green-900/80 text-green-300 border border-green-500" 
+                  : "bg-red-900/80 text-red-300 border border-red-500"
+              }`}>
+                {gameMode === "fun" ? "🎮 ألغاز المتعة" : "🏆 ألغاز المسابقة"}
+              </div>
+            </motion.div>
             
             <div className="pt-16">
               <RiddleCard
