@@ -53,6 +53,39 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          last_puzzle_index: number
+          name: string | null
+          profile_image: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_puzzle_index?: number
+          name?: string | null
+          profile_image?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_puzzle_index?: number
+          name?: string | null
+          profile_image?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       quiz_results: {
         Row: {
           created_at: string
