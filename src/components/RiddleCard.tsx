@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Riddle } from "@/data/riddles";
 import TypewriterText from "./TypewriterText";
@@ -7,6 +7,7 @@ import HorrorButton from "./HorrorButton";
 import HorrorClock from "./HorrorClock";
 import { Skull, Mic, MicOff } from "lucide-react";
 import { useHorrorSounds } from "@/hooks/useHorrorSounds";
+import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
 
 interface RiddleCardProps {
   riddle: Riddle;
@@ -15,7 +16,6 @@ interface RiddleCardProps {
   onAnswer: (isCorrect: boolean) => void;
   onNext: () => void;
   gameMode: "fun" | "competition";
-  onMuteToggle?: (muted: boolean) => void;
 }
 
 const RiddleCard = ({
@@ -25,7 +25,6 @@ const RiddleCard = ({
   onAnswer,
   onNext,
   gameMode,
-  onMuteToggle,
 }: RiddleCardProps) => {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
@@ -33,37 +32,39 @@ const RiddleCard = ({
   const [clockKey, setClockKey] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const { playSound, setMuted } = useHorrorSounds();
-  
-  // Throttle typewriter sound - play only every 3rd character
-  const charCountRef = useRef(0);
-  const handleCharacterTyped = useCallback(() => {
-    charCountRef.current++;
-    if (charCountRef.current % 3 === 0) {
-      playSound("typewriter");
-    }
-  }, [playSound]);
+  const { setVolume: setMusicVolume } = useHorrorBackgroundMusic();
 
+  // Sync mute state with sound effects and background music
   const handleMuteToggle = () => {
     const newMutedState = !isMuted;
     setIsMuted(newMutedState);
     setMuted(newMutedState);
-    onMuteToggle?.(newMutedState);
+    
+    // Toggle background music mute
+    if (newMutedState) {
+      setMusicVolume(0);
+    } else {
+      setMusicVolume(0.5);
+    }
   };
 
   useEffect(() => {
     setSelectedOption(null);
     setShowResult(false);
     setIsTypingComplete(false);
-    setClockKey((prev) => prev + 1);
-    charCountRef.current = 0;
-  }, [riddle]);
+    setClockKey((prev) => prev + 1); // Reset clock for new riddle
+    // Play ambient sound when new riddle loads
+    playSound("ambient");
+  }, [riddle, playSound]);
 
   const handleTimeUp = () => {
     if (!showResult && selectedOption === null) {
+      // Auto-submit as wrong when time is up
       setShowResult(true);
       playSound("wrong");
       onAnswer(false);
       
+      // In competition mode, auto-advance after time up
       if (gameMode === "competition") {
         setTimeout(() => {
           onNext();
@@ -74,6 +75,7 @@ const RiddleCard = ({
 
   const handleOptionClick = (index: number) => {
     if (showResult || !isTypingComplete) return;
+    
     setSelectedOption(index);
   };
 
@@ -85,17 +87,23 @@ const RiddleCard = ({
     playSound(isCorrect ? "correct" : "wrong");
     onAnswer(isCorrect);
     
+    // In competition mode, auto-advance after wrong answer
     if (gameMode === "competition" && !isCorrect) {
       setTimeout(() => {
         onNext();
-      }, 1500);
+      }, 1500); // Short delay to show "خطأ!" message
     }
   };
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4">
       {/* Header with Clock */}
-      <div className="flex flex-col items-center gap-4 mb-8">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col items-center gap-4 mb-8"
+      >
+        {/* Clock Timer */}
         <HorrorClock
           key={clockKey}
           duration={60}
@@ -104,9 +112,10 @@ const RiddleCard = ({
           isMuted={isMuted}
         />
         
+        {/* Riddle Counter and Mute */}
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3">
-            <Skull className="w-8 h-8 text-primary" />
+            <Skull className="w-8 h-8 text-primary flicker" />
             <span className="font-horror text-2xl text-blood">
               اللغز {riddleNumber} / {totalRiddles}
             </span>
@@ -124,18 +133,27 @@ const RiddleCard = ({
             )}
           </button>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Image - simplified, no vortex spin */}
-      <div className={`mb-8 relative aspect-video rounded-lg overflow-hidden ${gameMode === "fun" ? "" : "image-horror"}`}>
+      {/* Image */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className={`mb-8 relative aspect-video ${gameMode === "fun" ? "vortex-container" : "image-horror"}`}
+      >
         <img
           src={riddle.image}
           alt="صورة اللغز"
-          className="w-full h-full object-cover"
-          loading="lazy"
+          className={`w-full h-full object-cover ${gameMode === "fun" ? "vortex-image" : ""}`}
         />
+        {gameMode === "fun" && (
+          <>
+            <div className="vortex-overlay" />
+            <div className="vortex-glow" />
+          </>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
-      </div>
+      </motion.div>
 
       {/* Question */}
       <div className="card-horror p-6 mb-8 min-h-[120px]">
@@ -144,7 +162,7 @@ const RiddleCard = ({
           speed={40}
           className="text-xl md:text-2xl leading-relaxed text-right"
           onComplete={() => setIsTypingComplete(true)}
-          onCharacterTyped={handleCharacterTyped}
+          onCharacterTyped={() => playSound("typewriter")}
         />
       </div>
 
@@ -177,13 +195,14 @@ const RiddleCard = ({
       <AnimatePresence>
         {showResult && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className="card-horror p-6 mb-8 text-right"
           >
             <h3 className="font-horror text-2xl mb-3 text-primary">
               {selectedOption === riddle.correctIndex ? "🎃 أحسنت!" : "💀 خطأ!"}
             </h3>
+            {/* In competition mode, hide explanation for wrong answers */}
             {(gameMode === "fun" || selectedOption === riddle.correctIndex) && (
               <p className="font-typewriter text-foreground text-lg leading-relaxed">
                 {riddle.explanation}

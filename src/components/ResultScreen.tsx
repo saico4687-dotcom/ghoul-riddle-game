@@ -43,7 +43,34 @@ const ResultScreen = ({
 
   return (
     <div className="min-h-screen bg-horror-gradient relative overflow-hidden flex items-center justify-center">
+      {/* Vignette */}
       <div className="vignette" />
+      
+      {/* Fog Overlay */}
+      <div className="fog-overlay" />
+
+      {/* Floating Skulls */}
+      {[...Array(5)].map((_, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, y: 100 }}
+          animate={{
+            opacity: [0, 0.3, 0],
+            y: [-100, -500],
+            x: Math.sin(i) * 100,
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            delay: i * 0.8,
+            ease: "easeOut",
+          }}
+          className="absolute bottom-0 text-primary/20"
+          style={{ left: `${20 + i * 15}%` }}
+        >
+          <Skull className="w-12 h-12" />
+        </motion.div>
+      ))}
 
       <div className="relative z-10 text-center px-4 max-w-2xl">
         {/* Game Mode Badge */}
@@ -67,9 +94,9 @@ const ResultScreen = ({
           transition={{ type: "spring", duration: 0.8 }}
         >
           {percentage >= 70 ? (
-            <Trophy className="w-24 h-24 mx-auto text-primary mb-8" />
+            <Trophy className="w-24 h-24 mx-auto text-primary mb-8 flicker" />
           ) : (
-            <Ghost className="w-24 h-24 mx-auto text-primary mb-8" />
+            <Ghost className="w-24 h-24 mx-auto text-primary mb-8 flicker" />
           )}
         </motion.div>
 
@@ -77,7 +104,7 @@ const ResultScreen = ({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="font-horror text-5xl md:text-7xl text-blood mb-4"
+          className="font-horror text-5xl md:text-7xl text-blood pulse-blood mb-4"
         >
           {title}
         </motion.h1>
@@ -93,8 +120,8 @@ const ResultScreen = ({
 
         {/* Rank Display */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.6 }}
           className="mb-6"
         >
@@ -104,8 +131,8 @@ const ResultScreen = ({
 
         {/* Stats Cards */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.7 }}
           className="grid grid-cols-2 gap-4 mb-8"
         >
@@ -124,33 +151,46 @@ const ResultScreen = ({
 
         {/* Time Bonus */}
         {timeBonus > 0 && (
-          <div className="card-horror p-3 mb-6 inline-flex items-center gap-2">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+            className="card-horror p-3 mb-6 inline-flex items-center gap-2"
+          >
             <Zap className="w-5 h-5 text-yellow-400" />
             <span className="font-typewriter text-sm text-yellow-400">
               +{timeBonus} نقاط إضافية للسرعة!
             </span>
-          </div>
+          </motion.div>
         )}
 
         {/* Score Bar */}
-        <div className="w-full max-w-md mx-auto mb-8">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.9 }}
+          className="w-full max-w-md mx-auto mb-8"
+        >
           <div className="h-4 bg-secondary rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${pointsPercentage}%` }}
-              transition={{ delay: 0.8, duration: 1, ease: "easeOut" }}
-              className="h-full bg-gradient-to-r from-destructive to-primary"
+              transition={{ delay: 1, duration: 1.5, ease: "easeOut" }}
+              className="h-full bg-gradient-to-r from-horror-blood to-primary"
+              style={{
+                boxShadow: "0 0 15px hsl(var(--horror-glow) / 0.5)",
+              }}
             />
           </div>
           <p className="font-typewriter text-muted-foreground mt-2">
             {totalPoints} / {maxPoints} نقطة ممكنة
           </p>
-        </div>
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1 }}
+          transition={{ delay: 1.2 }}
         >
           <HorrorButton onClick={onRestart}>
             <span className="flex items-center gap-3">
