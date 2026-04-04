@@ -14,7 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      competition_scores: {
+        Row: {
+          created_at: string
+          entered_draw: boolean
+          id: string
+          paid: boolean
+          time_bonus: number
+          total_correct: number
+          total_points: number
+          total_questions: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entered_draw?: boolean
+          id?: string
+          paid?: boolean
+          time_bonus?: number
+          total_correct?: number
+          total_points?: number
+          total_questions?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entered_draw?: boolean
+          id?: string
+          paid?: boolean
+          time_bonus?: number
+          total_correct?: number
+          total_points?: number
+          total_questions?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quiz_results: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          phone: string
+          score: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          phone: string
+          score?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string
+          score?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
