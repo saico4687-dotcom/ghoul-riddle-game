@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import WelcomeScreen, { GameMode } from "@/components/WelcomeScreen";
 import RiddleCard from "@/components/RiddleCard";
@@ -7,6 +7,7 @@ import GoogleLoginScreen from "@/components/GoogleLoginScreen";
 import { riddles } from "@/data/riddles";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 type GameState = "welcome" | "login" | "playing" | "result";
 
@@ -17,41 +18,98 @@ const Index = () => {
   const [totalPoints, setTotalPoints] = useState(0);
   const [gameMode, setGameMode] = useState<GameMode>("fun");
   const [timeBonus, setTimeBonus] = useState(0);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const { startMusic, stopMusic, isPlaying: isMusicPlaying } = useHorrorBackgroundMusic();
   const { user, loading } = useAuth();
 
-  // Split riddles into two categories
   const funRiddles = useMemo(() => riddles.slice(0, 200), []);
   const competitionRiddles = useMemo(() => riddles.slice(200, 400), []);
 
-  // Get current riddles based on game mode
   const currentRiddles = useMemo(() => 
     gameMode === "fun" ? funRiddles : competitionRiddles,
     [gameMode, funRiddles, competitionRiddles]
   );
 
-  // If user logs in while on login screen, start competition
+  // Load profile progress for competition mode
+  const loadProgress = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("last_puzzle_index")
+      .eq("user_id", user.id)
+      .single();
+    
+    if (data) {
+      setCurrentRiddleIndex(data.last_puzzle_index);
+      setProfileLoaded(true);
+    }
+  }, [user]);
+
+  // Save progress after each riddle in competition mode
+  const saveProgress = useCallback(async (newIndex: number) => {
+    if (!user || gameMode !== "competition") return;
+    await supabase
+      .from("profiles")
+      .update({ last_puzzle_index: newIndex, updated_at: new Date().toISOString() })
+      .eq("user_id", user.id);
+  }, [user, gameMode]);
+
+  // When user logs in while on login screen, load progress then start
   useEffect(() => {
     if (gameState === "login" && user) {
-      setGameMode("competition");
-      setGameState("playing");
-      setCurrentRiddleIndex(0);
-      setScore(0);
-      setTotalPoints(0);
-      setTimeBonus(0);
+      (async () => {
+        const { data } = await supabase
+          .from("profiles")
+          .select("last_puzzle_index")
+          .eq("user_id", user.id)
+          .single();
+
+        const startIndex = data?.last_puzzle_index ?? 0;
+        
+        setGameMode("competition");
+        setCurrentRiddleIndex(startIndex);
+        setScore(0);
+        setTotalPoints(0);
+        setTimeBonus(0);
+        setProfileLoaded(true);
+        setGameState("playing");
+      })();
     }
   }, [user, gameState]);
 
-  const handleStart = (mode: GameMode) => {
+  const handleStart = async (mode: GameMode) => {
     if (mode === "competition" && !user) {
       setGameMode("competition");
       setGameState("login");
       return;
     }
 
+    if (mode === "competition" && user) {
+      // Load saved progress
+      const { data } = await supabase
+        .from("profiles")
+        .select("last_puzzle_index")
+        .eq("user_id", user.id)
+        .single();
+
+      const startIndex = data?.last_puzzle_index ?? 0;
+
+      // If all riddles completed, reset
+      if (startIndex >= competitionRiddles.length) {
+        await supabase
+          .from("profiles")
+          .update({ last_puzzle_index: 0, updated_at: new Date().toISOString() })
+          .eq("user_id", user.id);
+        setCurrentRiddleIndex(0);
+      } else {
+        setCurrentRiddleIndex(startIndex);
+      }
+    } else {
+      setCurrentRiddleIndex(0);
+    }
+
     setGameMode(mode);
     setGameState("playing");
-    setCurrentRiddleIndex(0);
     setScore(0);
     setTotalPoints(0);
     setTimeBonus(0);
@@ -61,7 +119,6 @@ const Index = () => {
     }
   };
 
-  // Stop music when leaving fun riddles
   useEffect(() => {
     if (gameState !== "playing" || gameMode !== "fun") {
       if (isMusicPlaying) {
@@ -85,8 +142,15 @@ const Index = () => {
 
   const handleNext = () => {
     if (currentRiddleIndex < currentRiddles.length - 1) {
-      setCurrentRiddleIndex((prev) => prev + 1);
+      const newIndex = currentRiddleIndex + 1;
+      setCurrentRiddleIndex(newIndex);
+      // Save progress for competition mode
+      saveProgress(newIndex);
     } else {
+      // Completed all riddles - reset progress
+      if (gameMode === "competition" && user) {
+        saveProgress(0);
+      }
       setGameState("result");
     }
   };
@@ -147,6 +211,7 @@ const Index = () => {
           >
             <div className="vignette" />
             
+            {/* Score Display */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -165,6 +230,7 @@ const Index = () => {
               </div>
             </motion.div>
 
+            {/* Game Mode Badge */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
