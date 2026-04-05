@@ -3,10 +3,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import WelcomeScreen, { GameMode } from "@/components/WelcomeScreen";
 import RiddleCard from "@/components/RiddleCard";
 import ResultScreen from "@/components/ResultScreen";
+import GoogleLoginScreen from "@/components/GoogleLoginScreen";
 import { riddles } from "@/data/riddles";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
+import { useAuth } from "@/hooks/useAuth";
 
-type GameState = "welcome" | "playing" | "result";
+type GameState = "welcome" | "login" | "playing" | "result";
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>("welcome");
@@ -16,6 +18,7 @@ const Index = () => {
   const [gameMode, setGameMode] = useState<GameMode>("fun");
   const [timeBonus, setTimeBonus] = useState(0);
   const { startMusic, stopMusic, isPlaying: isMusicPlaying } = useHorrorBackgroundMusic();
+  const { user, loading } = useAuth();
 
   // Split riddles into two categories
   const funRiddles = useMemo(() => riddles.slice(0, 200), []);
@@ -27,7 +30,25 @@ const Index = () => {
     [gameMode, funRiddles, competitionRiddles]
   );
 
+  // If user logs in while on login screen, start competition
+  useEffect(() => {
+    if (gameState === "login" && user) {
+      setGameMode("competition");
+      setGameState("playing");
+      setCurrentRiddleIndex(0);
+      setScore(0);
+      setTotalPoints(0);
+      setTimeBonus(0);
+    }
+  }, [user, gameState]);
+
   const handleStart = (mode: GameMode) => {
+    if (mode === "competition" && !user) {
+      setGameMode("competition");
+      setGameState("login");
+      return;
+    }
+
     setGameMode(mode);
     setGameState("playing");
     setCurrentRiddleIndex(0);
@@ -35,7 +56,6 @@ const Index = () => {
     setTotalPoints(0);
     setTimeBonus(0);
     
-    // Start horror background music for fun mode only
     if (mode === "fun") {
       startMusic();
     }
@@ -53,11 +73,9 @@ const Index = () => {
   const handleAnswer = (isCorrect: boolean, remainingTime?: number) => {
     if (isCorrect) {
       setScore((prev) => prev + 1);
-      
-      // Calculate points: 10 base + up to 5 bonus for speed
       let points = 10;
       if (remainingTime !== undefined && remainingTime > 0) {
-        const bonus = Math.min(5, Math.floor(remainingTime / 12)); // Max 5 bonus points
+        const bonus = Math.min(5, Math.floor(remainingTime / 12));
         points += bonus;
         setTimeBonus((prev) => prev + bonus);
       }
@@ -81,7 +99,6 @@ const Index = () => {
     setTimeBonus(0);
   };
 
-  // Calculate rank based on points
   const getRank = (points: number, totalPossible: number) => {
     const percentage = (points / totalPossible) * 100;
     if (percentage >= 90) return { title: "أسطورة الرعب 👑", color: "text-yellow-400" };
@@ -92,7 +109,7 @@ const Index = () => {
     return { title: "مرعوب 😱", color: "text-red-400" };
   };
 
-  const maxPoints = currentRiddles.length * 15; // 10 base + 5 max bonus
+  const maxPoints = currentRiddles.length * 15;
   const rank = getRank(totalPoints, maxPoints);
 
   return (
@@ -109,6 +126,17 @@ const Index = () => {
           </motion.div>
         )}
 
+        {gameState === "login" && (
+          <motion.div
+            key="login"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <GoogleLoginScreen onBack={() => setGameState("welcome")} />
+          </motion.div>
+        )}
+
         {gameState === "playing" && (
           <motion.div
             key="playing"
@@ -117,10 +145,8 @@ const Index = () => {
             exit={{ opacity: 0 }}
             className="min-h-screen bg-horror-gradient py-8"
           >
-            {/* Vignette */}
             <div className="vignette" />
             
-            {/* Score Display */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -139,7 +165,6 @@ const Index = () => {
               </div>
             </motion.div>
 
-            {/* Game Mode Badge */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
