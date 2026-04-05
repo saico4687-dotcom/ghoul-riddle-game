@@ -9,7 +9,7 @@ export const useHorrorBackgroundMusic = () => {
     drones: OscillatorNode[];
     lfo: OscillatorNode | null;
     heartbeat: OscillatorNode | null;
-    intervals: NodeJS.Timeout[];
+    intervals: ReturnType<typeof setInterval>[];
   }>({
     drones: [],
     lfo: null,
