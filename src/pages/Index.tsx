@@ -230,12 +230,30 @@ const Index = () => {
               </div>
             </motion.div>
 
-            {/* Game Mode Badge */}
+            {/* Game Mode Badge + User Info */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="fixed top-4 right-4 z-50"
+              className="fixed top-4 right-4 z-50 flex items-center gap-3"
             >
+              {gameMode === "competition" && user && (
+                <div className="card-horror px-3 py-2 flex items-center gap-2">
+                  {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
+                    <img
+                      src={user.user_metadata.avatar_url || user.user_metadata.picture}
+                      alt="avatar"
+                      className="w-8 h-8 rounded-full border border-primary/50"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center font-horror text-sm text-primary-foreground">
+                      {(user.user_metadata?.full_name || user.user_metadata?.name || user.email || "?")[0]}
+                    </div>
+                  )}
+                  <span className="font-typewriter text-xs text-foreground max-w-[100px] truncate">
+                    {user.user_metadata?.full_name || user.user_metadata?.name || user.email}
+                  </span>
+                </div>
+              )}
               <div className={`px-4 py-2 rounded-lg font-horror text-sm ${
                 gameMode === "fun" 
                   ? "bg-green-900/80 text-green-300 border border-green-500" 
