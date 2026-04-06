@@ -70,7 +70,7 @@ const Index = () => {
       (async () => {
         const { data } = await supabase
           .from("profiles")
-          .select("last_puzzle_index")
+          .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
           .eq("user_id", user.id)
           .single();
 
@@ -78,9 +78,9 @@ const Index = () => {
         
         setGameMode("competition");
         setCurrentRiddleIndex(startIndex);
-        setScore(0);
-        setTotalPoints(0);
-        setTimeBonus(0);
+        setScore(data?.saved_score ?? 0);
+        setTotalPoints(data?.saved_total_points ?? 0);
+        setTimeBonus(data?.saved_time_bonus ?? 0);
         setProfileLoaded(true);
         setGameState("playing");
       })();
