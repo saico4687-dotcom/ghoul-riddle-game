@@ -95,34 +95,39 @@ const Index = () => {
     }
 
     if (mode === "competition" && user) {
-      // Load saved progress
+      // Load saved progress and score
       const { data } = await supabase
         .from("profiles")
-        .select("last_puzzle_index")
+        .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
         .eq("user_id", user.id)
         .single();
 
       const startIndex = data?.last_puzzle_index ?? 0;
 
-      // If all riddles completed, reset
+      // If all riddles completed, don't auto-reset - show result
       if (startIndex >= competitionRiddles.length) {
-        await supabase
-          .from("profiles")
-          .update({ last_puzzle_index: 0, updated_at: new Date().toISOString() })
-          .eq("user_id", user.id);
         setCurrentRiddleIndex(0);
+        setScore(data?.saved_score ?? 0);
+        setTotalPoints(data?.saved_total_points ?? 0);
+        setTimeBonus(data?.saved_time_bonus ?? 0);
+        setGameMode(mode);
+        setGameState("result");
+        return;
       } else {
         setCurrentRiddleIndex(startIndex);
+        setScore(data?.saved_score ?? 0);
+        setTotalPoints(data?.saved_total_points ?? 0);
+        setTimeBonus(data?.saved_time_bonus ?? 0);
       }
     } else {
       setCurrentRiddleIndex(0);
+      setScore(0);
+      setTotalPoints(0);
+      setTimeBonus(0);
     }
 
     setGameMode(mode);
     setGameState("playing");
-    setScore(0);
-    setTotalPoints(0);
-    setTimeBonus(0);
     
     if (mode === "fun") {
       startMusic();
@@ -138,15 +143,28 @@ const Index = () => {
   }, [gameState, gameMode, isMusicPlaying, stopMusic]);
 
   const handleAnswer = (isCorrect: boolean, remainingTime?: number) => {
+    let newScore = score;
+    let newTotalPoints = totalPoints;
+    let newTimeBonus = timeBonus;
+    
     if (isCorrect) {
-      setScore((prev) => prev + 1);
+      newScore = score + 1;
+      setScore(newScore);
       let points = 10;
       if (remainingTime !== undefined && remainingTime > 0) {
         const bonus = Math.min(5, Math.floor(remainingTime / 12));
         points += bonus;
-        setTimeBonus((prev) => prev + bonus);
+        newTimeBonus = timeBonus + bonus;
+        setTimeBonus(newTimeBonus);
       }
-      setTotalPoints((prev) => prev + points);
+      newTotalPoints = totalPoints + points;
+      setTotalPoints(newTotalPoints);
+    }
+
+    // Save after every answer in competition mode
+    if (gameMode === "competition" && user) {
+      const nextIndex = currentRiddleIndex + 1;
+      saveProgress(nextIndex, newScore, newTotalPoints, newTimeBonus);
     }
   };
 
@@ -154,25 +172,31 @@ const Index = () => {
     if (currentRiddleIndex < currentRiddles.length - 1) {
       const newIndex = currentRiddleIndex + 1;
       setCurrentRiddleIndex(newIndex);
-      // Save progress for competition mode
-      saveProgress(newIndex);
     } else {
-      // Completed all riddles - reset progress
-      if (gameMode === "competition" && user) {
-        saveProgress(0);
-      }
       setGameState("result");
     }
   };
 
-  const handleRestart = () => {
+  const handleRestart = async () => {
+    // Reset everything including database progress
+    if (gameMode === "competition" && user) {
+      await supabase
+        .from("profiles")
+        .update({ 
+          last_puzzle_index: 0, 
+          saved_score: 0, 
+          saved_total_points: 0, 
+          saved_time_bonus: 0,
+          updated_at: new Date().toISOString() 
+        })
+        .eq("user_id", user.id);
+    }
     setGameState("welcome");
     setCurrentRiddleIndex(0);
     setScore(0);
     setTotalPoints(0);
     setTimeBonus(0);
   };
-
   const getRank = (points: number, totalPossible: number) => {
     const percentage = (points / totalPossible) * 100;
     if (percentage >= 90) return { title: "أسطورة الرعب 👑", color: "text-yellow-400" };
