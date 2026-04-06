@@ -50,11 +50,17 @@ const Index = () => {
   }, [user]);
 
   // Save progress after each riddle in competition mode
-  const saveProgress = useCallback(async (newIndex: number) => {
+  const saveProgress = useCallback(async (newIndex: number, newScore: number, newTotalPoints: number, newTimeBonus: number) => {
     if (!user || gameMode !== "competition") return;
     await supabase
       .from("profiles")
-      .update({ last_puzzle_index: newIndex, updated_at: new Date().toISOString() })
+      .update({ 
+        last_puzzle_index: newIndex, 
+        saved_score: newScore,
+        saved_total_points: newTotalPoints,
+        saved_time_bonus: newTimeBonus,
+        updated_at: new Date().toISOString() 
+      })
       .eq("user_id", user.id);
   }, [user, gameMode]);
 
