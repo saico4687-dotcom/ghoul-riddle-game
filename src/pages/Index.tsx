@@ -97,16 +97,9 @@ const Index = () => {
     }
 
     if (mode === "competition" && user) {
-      // Load saved progress and score
-      const { data } = await supabase
-        .from("profiles")
-        .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
-        .eq("user_id", user.id)
-        .single();
-
+      const data = await ensureProfile();
       const startIndex = data?.last_puzzle_index ?? 0;
 
-      // If all riddles completed, don't auto-reset - show result
       if (startIndex >= competitionRiddles.length) {
         setCurrentRiddleIndex(0);
         setScore(data?.saved_score ?? 0);
