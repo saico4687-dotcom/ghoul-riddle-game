@@ -30,8 +30,8 @@ const Index = () => {
     [gameMode, funRiddles, competitionRiddles]
   );
 
-  // Load profile progress for competition mode
-  const loadProgress = useCallback(async () => {
+  // Ensure profile exists, create if missing
+  const ensureProfile = useCallback(async () => {
     if (!user) return null;
     const { data } = await supabase
       .from("profiles")
@@ -39,14 +39,21 @@ const Index = () => {
       .eq("user_id", user.id)
       .single();
     
-    if (data) {
-      setCurrentRiddleIndex(data.last_puzzle_index);
-      setScore(data.saved_score ?? 0);
-      setTotalPoints(data.saved_total_points ?? 0);
-      setTimeBonus(data.saved_time_bonus ?? 0);
-      setProfileLoaded(true);
-    }
-    return data;
+    if (data) return data;
+
+    // Profile missing - create it
+    const { data: newProfile } = await supabase
+      .from("profiles")
+      .insert({
+        user_id: user.id,
+        email: user.email,
+        name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+        profile_image: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+      })
+      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
+      .single();
+    
+    return newProfile;
   }, [user]);
 
   // Save progress after each riddle in competition mode
@@ -68,12 +75,7 @@ const Index = () => {
   useEffect(() => {
     if (gameState === "login" && user) {
       (async () => {
-        const { data } = await supabase
-          .from("profiles")
-          .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
-          .eq("user_id", user.id)
-          .single();
-
+        const data = await ensureProfile();
         const startIndex = data?.last_puzzle_index ?? 0;
         
         setGameMode("competition");
@@ -85,7 +87,7 @@ const Index = () => {
         setGameState("playing");
       })();
     }
-  }, [user, gameState]);
+  }, [user, gameState, ensureProfile]);
 
   const handleStart = async (mode: GameMode) => {
     if (mode === "competition" && !user) {
@@ -95,16 +97,9 @@ const Index = () => {
     }
 
     if (mode === "competition" && user) {
-      // Load saved progress and score
-      const { data } = await supabase
-        .from("profiles")
-        .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
-        .eq("user_id", user.id)
-        .single();
-
+      const data = await ensureProfile();
       const startIndex = data?.last_puzzle_index ?? 0;
 
-      // If all riddles completed, don't auto-reset - show result
       if (startIndex >= competitionRiddles.length) {
         setCurrentRiddleIndex(0);
         setScore(data?.saved_score ?? 0);
