@@ -32,17 +32,21 @@ const Index = () => {
 
   // Load profile progress for competition mode
   const loadProgress = useCallback(async () => {
-    if (!user) return;
+    if (!user) return null;
     const { data } = await supabase
       .from("profiles")
-      .select("last_puzzle_index")
+      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
       .eq("user_id", user.id)
       .single();
     
     if (data) {
       setCurrentRiddleIndex(data.last_puzzle_index);
+      setScore(data.saved_score ?? 0);
+      setTotalPoints(data.saved_total_points ?? 0);
+      setTimeBonus(data.saved_time_bonus ?? 0);
       setProfileLoaded(true);
     }
+    return data;
   }, [user]);
 
   // Save progress after each riddle in competition mode
