@@ -61,6 +61,9 @@ export type Database = {
           last_puzzle_index: number
           name: string | null
           profile_image: string | null
+          saved_score: number
+          saved_time_bonus: number
+          saved_total_points: number
           updated_at: string
           user_id: string
         }
@@ -71,6 +74,9 @@ export type Database = {
           last_puzzle_index?: number
           name?: string | null
           profile_image?: string | null
+          saved_score?: number
+          saved_time_bonus?: number
+          saved_total_points?: number
           updated_at?: string
           user_id: string
         }
@@ -81,6 +87,9 @@ export type Database = {
           last_puzzle_index?: number
           name?: string | null
           profile_image?: string | null
+          saved_score?: number
+          saved_time_bonus?: number
+          saved_total_points?: number
           updated_at?: string
           user_id?: string
         }
