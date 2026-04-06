@@ -75,12 +75,7 @@ const Index = () => {
   useEffect(() => {
     if (gameState === "login" && user) {
       (async () => {
-        const { data } = await supabase
-          .from("profiles")
-          .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
-          .eq("user_id", user.id)
-          .single();
-
+        const data = await ensureProfile();
         const startIndex = data?.last_puzzle_index ?? 0;
         
         setGameMode("competition");
@@ -92,7 +87,7 @@ const Index = () => {
         setGameState("playing");
       })();
     }
-  }, [user, gameState]);
+  }, [user, gameState, ensureProfile]);
 
   const handleStart = async (mode: GameMode) => {
     if (mode === "competition" && !user) {
