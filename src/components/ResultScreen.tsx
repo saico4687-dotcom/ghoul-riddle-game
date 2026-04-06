@@ -1,7 +1,10 @@
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import HorrorButton from "./HorrorButton";
-import { Skull, Trophy, RotateCcw, Ghost, Star, Zap } from "lucide-react";
+import { Skull, Trophy, RotateCcw, Ghost, Star, Zap, CheckCircle } from "lucide-react";
 import { GameMode } from "./WelcomeScreen";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ResultScreenProps {
   score: number;
@@ -14,6 +17,8 @@ interface ResultScreenProps {
   onRestart: () => void;
 }
 
+type DrawStep = "result" | "form" | "confirmed" | null;
+
 const ResultScreen = ({ 
   score, 
   totalQuestions, 
@@ -24,8 +29,16 @@ const ResultScreen = ({
   gameMode,
   onRestart 
 }: ResultScreenProps) => {
+  const { user } = useAuth();
   const percentage = (score / totalQuestions) * 100;
   const pointsPercentage = (totalPoints / maxPoints) * 100;
+
+  const [drawStep, setDrawStep] = useState<DrawStep>(null);
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [paymentPhone, setPaymentPhone] = useState("");
+  const [saving, setSaving] = useState(false);
   
   const getMessage = () => {
     if (percentage === 100) {
@@ -40,6 +53,140 @@ const ResultScreen = ({
   };
 
   const { title, subtitle } = getMessage();
+
+  const handleSaveData = async () => {
+    if (!fullName.trim() || !phone.trim() || !address.trim() || !paymentPhone.trim()) return;
+    if (!user) return;
+    setSaving(true);
+
+    // Upsert into competition_scores
+    const { data: existing } = await supabase
+      .from("competition_scores")
+      .select("id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (existing) {
+      await supabase
+        .from("competition_scores")
+        .update({
+          total_points: totalPoints,
+          total_correct: score,
+          total_questions: totalQuestions,
+          time_bonus: timeBonus,
+          full_name: fullName.trim(),
+          phone: phone.trim(),
+          address: address.trim(),
+          payment_phone: paymentPhone.trim(),
+          email: user.email || "",
+          entered_draw: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", user.id);
+    } else {
+      await supabase
+        .from("competition_scores")
+        .insert({
+          user_id: user.id,
+          total_points: totalPoints,
+          total_correct: score,
+          total_questions: totalQuestions,
+          time_bonus: timeBonus,
+          full_name: fullName.trim(),
+          phone: phone.trim(),
+          address: address.trim(),
+          payment_phone: paymentPhone.trim(),
+          email: user.email || "",
+          entered_draw: true,
+        });
+    }
+
+    setSaving(false);
+    setDrawStep("confirmed");
+  };
+
+  const handlePayNow = () => {
+    window.location.href = "tel:*9*7*01062612970*50%23";
+  };
+
+  // Competition draw entry flow
+  if (gameMode === "competition" && drawStep === "form") {
+    return (
+      <div className="min-h-screen bg-horror-gradient relative overflow-hidden flex items-center justify-center" dir="rtl">
+        <div className="vignette" />
+        <div className="fog-overlay" />
+        <div className="relative z-10 w-full max-w-md px-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-horror p-6 space-y-4">
+            <h2 className="font-horror text-2xl text-primary text-center mb-4">بيانات الاشتراك في السحب</h2>
+            
+            <div>
+              <label className="font-typewriter text-sm text-muted-foreground block mb-1">النتيجة</label>
+              <input readOnly value={`${score} / ${totalQuestions} — ${totalPoints} نقطة`} className="w-full bg-secondary/50 border border-primary/30 rounded-lg px-3 py-2 font-typewriter text-sm text-foreground/70 cursor-not-allowed" />
+            </div>
+
+            <div>
+              <label className="font-typewriter text-sm text-muted-foreground block mb-1">البريد الإلكتروني</label>
+              <input readOnly value={user?.email || ""} className="w-full bg-secondary/50 border border-primary/30 rounded-lg px-3 py-2 font-typewriter text-sm text-foreground/70 cursor-not-allowed" />
+            </div>
+
+            <div>
+              <label className="font-typewriter text-sm text-muted-foreground block mb-1">الاسم الكامل *</label>
+              <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="أدخل اسمك الكامل" className="w-full bg-background border border-primary/30 rounded-lg px-3 py-2 font-typewriter text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary" />
+            </div>
+
+            <div>
+              <label className="font-typewriter text-sm text-muted-foreground block mb-1">رقم الهاتف *</label>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="أدخل رقم هاتفك" type="tel" className="w-full bg-background border border-primary/30 rounded-lg px-3 py-2 font-typewriter text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary" />
+            </div>
+
+            <div>
+              <label className="font-typewriter text-sm text-muted-foreground block mb-1">العنوان *</label>
+              <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="أدخل عنوانك" className="w-full bg-background border border-primary/30 rounded-lg px-3 py-2 font-typewriter text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary" />
+            </div>
+
+            <div>
+              <label className="font-typewriter text-sm text-muted-foreground block mb-1">رقم هاتف الدفع *</label>
+              <input value={paymentPhone} onChange={(e) => setPaymentPhone(e.target.value)} placeholder="رقم المحفظة للدفع" type="tel" className="w-full bg-background border border-primary/30 rounded-lg px-3 py-2 font-typewriter text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary" />
+            </div>
+
+            <HorrorButton 
+              onClick={handleSaveData} 
+              disabled={saving || !fullName.trim() || !phone.trim() || !address.trim() || !paymentPhone.trim()}
+            >
+              {saving ? "جاري الحفظ..." : "تأكيد البيانات"}
+            </HorrorButton>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  if (gameMode === "competition" && drawStep === "confirmed") {
+    return (
+      <div className="min-h-screen bg-horror-gradient relative overflow-hidden flex items-center justify-center" dir="rtl">
+        <div className="vignette" />
+        <div className="fog-overlay" />
+        <div className="relative z-10 text-center px-4 max-w-md">
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring" }}>
+            <CheckCircle className="w-20 h-20 mx-auto text-green-400 mb-6" />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card-horror p-6 space-y-4">
+            <p className="font-typewriter text-lg text-foreground leading-relaxed">
+              الخطوة الأخيرة: لإكمال تسجيلك في السحب، يرجى سداد رسوم الاشتراك (50 جنيه).
+            </p>
+            <HorrorButton onClick={handlePayNow}>
+              💳 الدفع الآن
+            </HorrorButton>
+            <div className="pt-2">
+              <button onClick={onRestart} className="font-typewriter text-sm text-muted-foreground hover:text-foreground transition-colors">
+                العودة للقائمة الرئيسية
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-horror-gradient relative overflow-hidden flex items-center justify-center">
@@ -187,11 +334,36 @@ const ResultScreen = ({
           </p>
         </motion.div>
 
+        {/* Competition draw entry message */}
+        {gameMode === "competition" && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.1 }}
+            className="card-horror p-5 mb-6 text-right"
+            dir="rtl"
+          >
+            <p className="font-typewriter text-base text-foreground leading-relaxed">
+              أحسنت! لقد أنهيت المسابقة 🎉
+              <br />
+              نتيجتك تؤهلك لدخول السحب على الجائزة.
+              <br /><br />
+              للدخول في السحب، يرجى تسجيل بياناتك واستكمال رسوم الاشتراك (50 جنيه) لإتمام المشاركة.
+            </p>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.2 }}
+          className="space-y-3"
         >
+          {gameMode === "competition" && (
+            <HorrorButton onClick={() => setDrawStep("form")}>
+              🎯 الدخول في السحب
+            </HorrorButton>
+          )}
           <HorrorButton onClick={onRestart}>
             <span className="flex items-center gap-3">
               <RotateCcw className="w-5 h-5" />
