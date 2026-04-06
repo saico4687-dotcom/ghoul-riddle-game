@@ -16,10 +16,15 @@ export type Database = {
     Tables: {
       competition_scores: {
         Row: {
+          address: string | null
           created_at: string
+          email: string | null
           entered_draw: boolean
+          full_name: string | null
           id: string
           paid: boolean
+          payment_phone: string | null
+          phone: string | null
           time_bonus: number
           total_correct: number
           total_points: number
@@ -28,10 +33,15 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          address?: string | null
           created_at?: string
+          email?: string | null
           entered_draw?: boolean
+          full_name?: string | null
           id?: string
           paid?: boolean
+          payment_phone?: string | null
+          phone?: string | null
           time_bonus?: number
           total_correct?: number
           total_points?: number
@@ -40,10 +50,15 @@ export type Database = {
           user_id: string
         }
         Update: {
+          address?: string | null
           created_at?: string
+          email?: string | null
           entered_draw?: boolean
+          full_name?: string | null
           id?: string
           paid?: boolean
+          payment_phone?: string | null
+          phone?: string | null
           time_bonus?: number
           total_correct?: number
           total_points?: number
