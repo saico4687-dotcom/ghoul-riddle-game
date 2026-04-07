@@ -97,6 +97,18 @@ const Index = () => {
     }
 
     if (mode === "competition" && user) {
+      // Check if competition is locked (payment confirmed/reviewing)
+      const { data: scoreData } = await supabase
+        .from("competition_scores")
+        .select("payment_status")
+        .eq("user_id", user.id)
+        .single();
+
+      if (scoreData?.payment_status === "مؤكد") {
+        // Competition locked - user already paid
+        return;
+      }
+
       const data = await ensureProfile();
       const startIndex = data?.last_puzzle_index ?? 0;
 

@@ -23,7 +23,11 @@ export type Database = {
           full_name: string | null
           id: string
           paid: boolean
+          payment_date: string | null
           payment_phone: string | null
+          payment_proof_url: string | null
+          payment_status: string | null
+          payment_time: string | null
           phone: string | null
           time_bonus: number
           total_correct: number
@@ -40,7 +44,11 @@ export type Database = {
           full_name?: string | null
           id?: string
           paid?: boolean
+          payment_date?: string | null
           payment_phone?: string | null
+          payment_proof_url?: string | null
+          payment_status?: string | null
+          payment_time?: string | null
           phone?: string | null
           time_bonus?: number
           total_correct?: number
@@ -57,7 +65,11 @@ export type Database = {
           full_name?: string | null
           id?: string
           paid?: boolean
+          payment_date?: string | null
           payment_phone?: string | null
+          payment_proof_url?: string | null
+          payment_status?: string | null
+          payment_time?: string | null
           phone?: string | null
           time_bonus?: number
           total_correct?: number
