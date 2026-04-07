@@ -9,7 +9,7 @@ import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
-type GameState = "welcome" | "login" | "playing" | "result";
+type GameState = "welcome" | "login" | "playing" | "result" | "admin";
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>("welcome");
@@ -20,7 +20,7 @@ const Index = () => {
   const [timeBonus, setTimeBonus] = useState(0);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const { startMusic, stopMusic, isPlaying: isMusicPlaying } = useHorrorBackgroundMusic();
-  const { user, loading } = useAuth();
+  const { user, loading, role } = useAuth();
 
   const funRiddles = useMemo(() => riddles.slice(0, 200), []);
   const competitionRiddles = useMemo(() => riddles.slice(200, 400), []);
@@ -41,7 +41,6 @@ const Index = () => {
     
     if (data) return data;
 
-    // Profile missing - create it
     const { data: newProfile } = await supabase
       .from("profiles")
       .insert({
@@ -97,14 +96,26 @@ const Index = () => {
     }
 
     if (mode === "competition" && user) {
-      // Check if competition is locked (payment confirmed/reviewing)
+      // Admin bypasses all restrictions
+      if (role === "admin") {
+        const data = await ensureProfile();
+        setCurrentRiddleIndex(0);
+        setScore(0);
+        setTotalPoints(0);
+        setTimeBonus(0);
+        setGameMode(mode);
+        setGameState("playing");
+        return;
+      }
+
+      // Regular user: check payment status
       const { data: scoreData } = await supabase
         .from("competition_scores")
         .select("payment_status")
         .eq("user_id", user.id)
         .single();
 
-      if (scoreData?.payment_status === "مؤكد") {
+      if (scoreData?.payment_status === "تم الدفع") {
         // Competition locked - user already paid
         return;
       }
@@ -168,8 +179,8 @@ const Index = () => {
       setTotalPoints(newTotalPoints);
     }
 
-    // Save after every answer in competition mode
-    if (gameMode === "competition" && user) {
+    // Save after every answer in competition mode (not for admin)
+    if (gameMode === "competition" && user && role !== "admin") {
       const nextIndex = currentRiddleIndex + 1;
       saveProgress(nextIndex, newScore, newTotalPoints, newTimeBonus);
     }
@@ -185,8 +196,7 @@ const Index = () => {
   };
 
   const handleRestart = async () => {
-    // Reset everything including database progress
-    if (gameMode === "competition" && user) {
+    if (gameMode === "competition" && user && role !== "admin") {
       await supabase
         .from("profiles")
         .update({ 
@@ -204,6 +214,7 @@ const Index = () => {
     setTotalPoints(0);
     setTimeBonus(0);
   };
+
   const getRank = (points: number, totalPossible: number) => {
     const percentage = (points / totalPossible) * 100;
     if (percentage >= 90) return { title: "أسطورة الرعب 👑", color: "text-yellow-400" };
@@ -227,7 +238,7 @@ const Index = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <WelcomeScreen onStart={handleStart} />
+            <WelcomeScreen onStart={handleStart} isAdmin={role === "admin"} onAdminDashboard={() => setGameState("admin")} />
           </motion.div>
         )}
 
@@ -239,6 +250,18 @@ const Index = () => {
             exit={{ opacity: 0 }}
           >
             <GoogleLoginScreen onBack={() => setGameState("welcome")} />
+          </motion.div>
+        )}
+
+        {gameState === "admin" && (
+          <motion.div
+            key="admin"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            {/* Lazy-load admin dashboard */}
+            <AdminDashboardWrapper onBack={() => setGameState("welcome")} />
           </motion.div>
         )}
 
@@ -339,6 +362,12 @@ const Index = () => {
       </AnimatePresence>
     </div>
   );
+};
+
+// Wrapper to lazy import AdminDashboard
+import AdminDashboard from "@/pages/AdminDashboard";
+const AdminDashboardWrapper = ({ onBack }: { onBack: () => void }) => {
+  return <AdminDashboard onBack={onBack} />;
 };
 
 export default Index;
