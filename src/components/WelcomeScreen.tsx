@@ -1,17 +1,15 @@
 import { motion } from "framer-motion";
 import HorrorButton from "./HorrorButton";
-import { Skull, Ghost, Flame, Trophy, Gamepad2, Shield } from "lucide-react";
+import { Skull, Ghost, Flame, Trophy, Gamepad2 } from "lucide-react";
 import heroImage from "@/assets/hero-horror.jpg";
 
 export type GameMode = "fun" | "competition";
 
 interface WelcomeScreenProps {
   onStart: (mode: GameMode) => void;
-  isAdmin?: boolean;
-  onAdminDashboard?: () => void;
 }
 
-const WelcomeScreen = ({ onStart, isAdmin, onAdminDashboard }: WelcomeScreenProps) => {
+const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
   return (
     <div className="min-h-screen bg-horror-gradient relative overflow-hidden">
       {/* Background Image */}
@@ -148,24 +146,6 @@ const WelcomeScreen = ({ onStart, isAdmin, onAdminDashboard }: WelcomeScreenProp
               </button>
             </motion.div>
           </div>
-
-          {/* Admin Dashboard Button */}
-          {isAdmin && onAdminDashboard && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="mb-8"
-            >
-              <button
-                onClick={onAdminDashboard}
-                className="flex items-center justify-center gap-3 px-8 py-4 mx-auto bg-gradient-to-r from-purple-700 to-purple-900 hover:from-purple-600 hover:to-purple-800 text-white font-horror text-xl rounded-lg border-2 border-purple-500 shadow-lg shadow-purple-900/50 transition-all duration-300"
-              >
-                <Shield className="w-6 h-6" />
-                <span>لوحة التحكم</span>
-              </button>
-            </motion.div>
-          )}
 
           {/* Score Info */}
           <motion.div
