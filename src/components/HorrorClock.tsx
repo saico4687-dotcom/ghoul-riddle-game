@@ -6,9 +6,10 @@ interface HorrorClockProps {
   isActive: boolean;
   onTimeUp?: () => void;
   isMuted?: boolean;
+  extraTime?: number; // extra seconds added via lifeline
 }
 
-const HorrorClock = ({ duration, isActive, onTimeUp, isMuted = false }: HorrorClockProps) => {
+const HorrorClock = ({ duration, isActive, onTimeUp, isMuted = false, extraTime = 0 }: HorrorClockProps) => {
   const [timeLeft, setTimeLeft] = useState(duration);
   const [secondHandAngle, setSecondHandAngle] = useState(0);
   const audioContextRef = useRef<AudioContext | null>(null);
