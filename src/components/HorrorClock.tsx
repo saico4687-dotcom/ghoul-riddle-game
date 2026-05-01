@@ -104,6 +104,17 @@ const HorrorClock = ({ duration, isActive, onTimeUp, isMuted = false, extraTime 
     setSecondHandAngle(0);
   }, [duration]);
 
+  // Apply extra time when lifeline used
+  const lastExtraRef = useRef(0);
+  useEffect(() => {
+    if (extraTime > lastExtraRef.current) {
+      const delta = extraTime - lastExtraRef.current;
+      lastExtraRef.current = extraTime;
+      setTimeLeft((prev) => prev + delta);
+    }
+    if (extraTime === 0) lastExtraRef.current = 0;
+  }, [extraTime]);
+
   useEffect(() => {
     if (!isActive) {
       if (tickIntervalRef.current) {
