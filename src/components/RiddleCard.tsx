@@ -150,7 +150,39 @@ const RiddleCard = ({
           isActive={isTypingComplete && !showResult}
           onTimeUp={handleTimeUp}
           isMuted={isMuted}
+          extraTime={extraTime}
         />
+
+        {/* Lifelines (Competition mode only) */}
+        {gameMode === "competition" && (
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleUseFifty}
+              disabled={lifelineUsed !== null || showResult || !isTypingComplete}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary border border-primary/40 text-primary text-sm font-typewriter hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              aria-label="حذف إجابة خاطئة"
+            >
+              <Scissors className="w-4 h-4" />
+              <span>حذف إجابة خاطئة</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleAddTime}
+              disabled={lifelineUsed !== null || showResult || !isTypingComplete}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary border border-primary/40 text-primary text-sm font-typewriter hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              aria-label="إضافة دقيقة"
+            >
+              <Clock className="w-4 h-4" />
+              <span>+1 دقيقة</span>
+            </button>
+          </div>
+        )}
+        {gameMode === "competition" && lifelineUsed && (
+          <p className="text-xs text-muted-foreground font-typewriter">
+            تم استخدام أداة المساعدة لهذا السؤال
+          </p>
+        )}
         
         {/* Riddle Counter and Mute */}
         <div className="flex items-center justify-between w-full">
