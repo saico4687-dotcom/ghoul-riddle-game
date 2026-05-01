@@ -57,9 +57,30 @@ const RiddleCard = ({
     setShowResult(false);
     setIsTypingComplete(false);
     setClockKey((prev) => prev + 1); // Reset clock for new riddle
+    setLifelineUsed(null);
+    setRemovedOptions([]);
+    setExtraTime(0);
     // Play ambient sound when new riddle loads
     playSound("ambient");
   }, [riddle, playSound]);
+
+  const handleUseFifty = () => {
+    if (lifelineUsed || showResult) return;
+    // Pick one wrong option to remove
+    const wrongIndices = riddle.options
+      .map((_, i) => i)
+      .filter((i) => i !== riddle.correctIndex);
+    const randomWrong = wrongIndices[Math.floor(Math.random() * wrongIndices.length)];
+    setRemovedOptions([randomWrong]);
+    setLifelineUsed("fifty");
+    if (selectedOption === randomWrong) setSelectedOption(null);
+  };
+
+  const handleAddTime = () => {
+    if (lifelineUsed || showResult) return;
+    setExtraTime((prev) => prev + 60);
+    setLifelineUsed("time");
+  };
 
   const handleTimeUp = () => {
     if (!showResult && selectedOption === null) {
