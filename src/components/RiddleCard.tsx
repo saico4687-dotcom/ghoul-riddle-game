@@ -32,6 +32,9 @@ const RiddleCard = ({
   const [isTypingComplete, setIsTypingComplete] = useState(false);
   const [clockKey, setClockKey] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  const [lifelineUsed, setLifelineUsed] = useState<null | "fifty" | "time">(null);
+  const [removedOptions, setRemovedOptions] = useState<number[]>([]);
+  const [extraTime, setExtraTime] = useState(0);
   const { playSound, setMuted } = useHorrorSounds();
   const { setVolume: setMusicVolume } = useHorrorBackgroundMusic();
 
