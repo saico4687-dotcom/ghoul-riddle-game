@@ -8,6 +8,7 @@ import HorrorClock from "./HorrorClock";
 import { Skull, Mic, MicOff } from "lucide-react";
 import { useHorrorSounds } from "@/hooks/useHorrorSounds";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
+import moneyBg from "@/assets/money-bg.jpg";
 
 interface RiddleCardProps {
   riddle: Riddle;
