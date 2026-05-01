@@ -5,7 +5,7 @@ import TypewriterText from "./TypewriterText";
 import RiddleOption from "./RiddleOption";
 import HorrorButton from "./HorrorButton";
 import HorrorClock from "./HorrorClock";
-import { Skull, Mic, MicOff } from "lucide-react";
+import { Skull, Mic, MicOff, Scissors, Clock } from "lucide-react";
 import { useHorrorSounds } from "@/hooks/useHorrorSounds";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
 import moneyBg from "@/assets/money-bg.jpg";
@@ -32,6 +32,9 @@ const RiddleCard = ({
   const [isTypingComplete, setIsTypingComplete] = useState(false);
   const [clockKey, setClockKey] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  const [lifelineUsed, setLifelineUsed] = useState<null | "fifty" | "time">(null);
+  const [removedOptions, setRemovedOptions] = useState<number[]>([]);
+  const [extraTime, setExtraTime] = useState(0);
   const { playSound, setMuted } = useHorrorSounds();
   const { setVolume: setMusicVolume } = useHorrorBackgroundMusic();
 
@@ -54,9 +57,30 @@ const RiddleCard = ({
     setShowResult(false);
     setIsTypingComplete(false);
     setClockKey((prev) => prev + 1); // Reset clock for new riddle
+    setLifelineUsed(null);
+    setRemovedOptions([]);
+    setExtraTime(0);
     // Play ambient sound when new riddle loads
     playSound("ambient");
   }, [riddle, playSound]);
+
+  const handleUseFifty = () => {
+    if (lifelineUsed || showResult) return;
+    // Pick one wrong option to remove
+    const wrongIndices = riddle.options
+      .map((_, i) => i)
+      .filter((i) => i !== riddle.correctIndex);
+    const randomWrong = wrongIndices[Math.floor(Math.random() * wrongIndices.length)];
+    setRemovedOptions([randomWrong]);
+    setLifelineUsed("fifty");
+    if (selectedOption === randomWrong) setSelectedOption(null);
+  };
+
+  const handleAddTime = () => {
+    if (lifelineUsed || showResult) return;
+    setExtraTime((prev) => prev + 60);
+    setLifelineUsed("time");
+  };
 
   const handleTimeUp = () => {
     if (!showResult && selectedOption === null) {
@@ -126,7 +150,39 @@ const RiddleCard = ({
           isActive={isTypingComplete && !showResult}
           onTimeUp={handleTimeUp}
           isMuted={isMuted}
+          extraTime={extraTime}
         />
+
+        {/* Lifelines (Competition mode only) */}
+        {gameMode === "competition" && (
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleUseFifty}
+              disabled={lifelineUsed !== null || showResult || !isTypingComplete}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary border border-primary/40 text-primary text-sm font-typewriter hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              aria-label="حذف إجابة خاطئة"
+            >
+              <Scissors className="w-4 h-4" />
+              <span>حذف إجابة خاطئة</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleAddTime}
+              disabled={lifelineUsed !== null || showResult || !isTypingComplete}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary border border-primary/40 text-primary text-sm font-typewriter hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              aria-label="إضافة دقيقة"
+            >
+              <Clock className="w-4 h-4" />
+              <span>+1 دقيقة</span>
+            </button>
+          </div>
+        )}
+        {gameMode === "competition" && lifelineUsed && (
+          <p className="text-xs text-muted-foreground font-typewriter">
+            تم استخدام أداة المساعدة لهذا السؤال
+          </p>
+        )}
         
         {/* Riddle Counter and Mute */}
         <div className="flex items-center justify-between w-full">
@@ -190,19 +246,37 @@ const RiddleCard = ({
             animate={{ opacity: 1, y: 0 }}
             className="space-y-4 mb-8"
           >
-            {riddle.options.map((option, index) => (
-              <RiddleOption
-                key={index}
-                option={option}
-                index={index}
-                selected={selectedOption === index}
-                showResult={showResult}
-                isCorrect={index === riddle.correctIndex}
-                onClick={() => handleOptionClick(index)}
-                disabled={showResult}
-                hideCorrectInCompetition={gameMode === "competition" && selectedOption !== riddle.correctIndex}
-              />
-            ))}
+            {riddle.options.map((option, index) => {
+              const isRemoved = removedOptions.includes(index);
+              if (isRemoved) {
+                return (
+                  <div
+                    key={index}
+                    className="option-horror w-full text-right flex items-center gap-4 opacity-30 line-through pointer-events-none"
+                  >
+                    <span className="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-horror text-muted-foreground text-xl shrink-0">
+                      ✕
+                    </span>
+                    <span className="font-typewriter text-muted-foreground text-lg leading-relaxed">
+                      {option}
+                    </span>
+                  </div>
+                );
+              }
+              return (
+                <RiddleOption
+                  key={index}
+                  option={option}
+                  index={index}
+                  selected={selectedOption === index}
+                  showResult={showResult}
+                  isCorrect={index === riddle.correctIndex}
+                  onClick={() => handleOptionClick(index)}
+                  disabled={showResult}
+                  hideCorrectInCompetition={gameMode === "competition" && selectedOption !== riddle.correctIndex}
+                />
+              );
+            })}
           </motion.div>
         )}
       </AnimatePresence>
