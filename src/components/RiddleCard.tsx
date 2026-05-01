@@ -246,19 +246,37 @@ const RiddleCard = ({
             animate={{ opacity: 1, y: 0 }}
             className="space-y-4 mb-8"
           >
-            {riddle.options.map((option, index) => (
-              <RiddleOption
-                key={index}
-                option={option}
-                index={index}
-                selected={selectedOption === index}
-                showResult={showResult}
-                isCorrect={index === riddle.correctIndex}
-                onClick={() => handleOptionClick(index)}
-                disabled={showResult}
-                hideCorrectInCompetition={gameMode === "competition" && selectedOption !== riddle.correctIndex}
-              />
-            ))}
+            {riddle.options.map((option, index) => {
+              const isRemoved = removedOptions.includes(index);
+              if (isRemoved) {
+                return (
+                  <div
+                    key={index}
+                    className="option-horror w-full text-right flex items-center gap-4 opacity-30 line-through pointer-events-none"
+                  >
+                    <span className="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-horror text-muted-foreground text-xl shrink-0">
+                      ✕
+                    </span>
+                    <span className="font-typewriter text-muted-foreground text-lg leading-relaxed">
+                      {option}
+                    </span>
+                  </div>
+                );
+              }
+              return (
+                <RiddleOption
+                  key={index}
+                  option={option}
+                  index={index}
+                  selected={selectedOption === index}
+                  showResult={showResult}
+                  isCorrect={index === riddle.correctIndex}
+                  onClick={() => handleOptionClick(index)}
+                  disabled={showResult}
+                  hideCorrectInCompetition={gameMode === "competition" && selectedOption !== riddle.correctIndex}
+                />
+              );
+            })}
           </motion.div>
         )}
       </AnimatePresence>
