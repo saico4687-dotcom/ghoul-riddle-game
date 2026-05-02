@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import HorrorButton from "./HorrorButton";
-import { Skull, Ghost, Flame, Trophy, Gamepad2 } from "lucide-react";
+import { Skull, Ghost, Flame, Trophy, Gamepad2, Settings as SettingsIcon } from "lucide-react";
 import heroImage from "@/assets/hero-horror.jpg";
 
 export type GameMode = "fun" | "competition";
@@ -20,6 +21,15 @@ const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
       
       {/* Vignette */}
       <div className="vignette" />
+
+      {/* Settings Button */}
+      <Link
+        to="/settings"
+        aria-label="الإعدادات"
+        className="absolute top-4 left-4 z-20 p-2 rounded-full bg-card/60 border border-primary/30 text-primary hover:bg-card hover:scale-110 transition-all backdrop-blur-sm"
+      >
+        <SettingsIcon className="w-5 h-5" />
+      </Link>
       
       {/* Fog Overlay */}
       <div className="fog-overlay" />
