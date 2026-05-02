@@ -150,13 +150,44 @@ const ResultScreen = ({
     }
   };
 
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        const base64 = result.split(",")[1] || "";
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
   const handleSubmitProof = async () => {
-    if (!proofImage || !paymentDate || !paymentTime || !user) return;
+    if (!proofImage || !user) return;
     setUploading(true);
 
     try {
-      // Upload image
-      const ext = proofImage.name.split('.').pop();
+      // 1) Verify the proof image with AI/OCR BEFORE uploading
+      const base64 = await fileToBase64(proofImage);
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
+        "verify-payment-proof",
+        { body: { imageBase64: base64, mimeType: proofImage.type } }
+      );
+
+      if (verifyError) {
+        console.error("verify error:", verifyError);
+        setDrawStep("error");
+        return;
+      }
+
+      if (!verifyData?.valid) {
+        console.warn("payment proof rejected:", verifyData?.reason, verifyData?.message);
+        setDrawStep("error");
+        return;
+      }
+
+      // 2) Upload image only after successful verification
+      const ext = proofImage.name.split(".").pop();
       const filePath = `${user.id}/${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from("payment-proofs")
@@ -168,14 +199,23 @@ const ResultScreen = ({
         .from("payment-proofs")
         .getPublicUrl(filePath);
 
-      // Update competition_scores with proof
+      // 3) Persist with extracted text and detected datetime
+      const detectedDate = verifyData.extractedDateTime
+        ? new Date(verifyData.extractedDateTime)
+        : null;
+
       await supabase
         .from("competition_scores")
         .update({
           payment_proof_url: urlData.publicUrl,
-          payment_date: paymentDate,
-          payment_time: paymentTime,
+          payment_date: detectedDate
+            ? detectedDate.toISOString().slice(0, 10)
+            : new Date().toISOString().slice(0, 10),
+          payment_time: detectedDate
+            ? detectedDate.toISOString().slice(11, 16)
+            : new Date().toISOString().slice(11, 16),
           payment_status: "قيد المراجعة",
+          extracted_text: verifyData.extractedText || null,
           updated_at: new Date().toISOString(),
         } as any)
         .eq("user_id", user.id);
@@ -225,8 +265,9 @@ const ResultScreen = ({
             <AlertCircle className="w-20 h-20 mx-auto text-red-400 mb-6" />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card-horror p-6 space-y-4">
-            <p className="font-typewriter text-lg text-foreground leading-relaxed">
-              تعذر تأكيد عملية الدفع، يرجى التأكد من صحة البيانات والمحاولة مرة أخرى.
+            <h2 className="font-horror text-2xl text-red-400 text-center">لم يتم الدفع</h2>
+            <p className="font-typewriter text-base text-foreground leading-relaxed text-center">
+              تعذر تأكيد عملية الدفع، يرجى التأكد من صحة الصورة والبيانات.
             </p>
             <HorrorButton onClick={onRestart}>
               الرجوع إلى القائمة الرئيسية
@@ -266,21 +307,16 @@ const ResultScreen = ({
               </button>
             </div>
 
-            <div>
-              <label className="font-typewriter text-sm text-muted-foreground block mb-1">تاريخ العملية *</label>
-              <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="w-full bg-background border border-primary/30 rounded-lg px-3 py-2 font-typewriter text-sm text-foreground focus:outline-none focus:border-primary" />
-            </div>
+            <p className="font-typewriter text-xs text-muted-foreground leading-relaxed text-center">
+              سيتم تحليل الصورة تلقائياً للتحقق من بيانات العملية (التاريخ، الوقت، رقم المستلم).
+            </p>
 
-            <div>
-              <label className="font-typewriter text-sm text-muted-foreground block mb-1">وقت العملية *</label>
-              <input type="time" value={paymentTime} onChange={(e) => setPaymentTime(e.target.value)} className="w-full bg-background border border-primary/30 rounded-lg px-3 py-2 font-typewriter text-sm text-foreground focus:outline-none focus:border-primary" />
-            </div>
 
             <HorrorButton 
               onClick={handleSubmitProof} 
-              disabled={uploading || !proofImage || !paymentDate || !paymentTime}
+              disabled={uploading || !proofImage}
             >
-              {uploading ? "جاري الرفع..." : "إرسال إثبات الدفع"}
+              {uploading ? "جاري التحقق..." : "إرسال إثبات الدفع"}
             </HorrorButton>
           </motion.div>
         </div>
