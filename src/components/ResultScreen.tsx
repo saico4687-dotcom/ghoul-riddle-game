@@ -265,8 +265,9 @@ const ResultScreen = ({
             <AlertCircle className="w-20 h-20 mx-auto text-red-400 mb-6" />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card-horror p-6 space-y-4">
-            <p className="font-typewriter text-lg text-foreground leading-relaxed">
-              تعذر تأكيد عملية الدفع، يرجى التأكد من صحة البيانات والمحاولة مرة أخرى.
+            <h2 className="font-horror text-2xl text-red-400 text-center">لم يتم الدفع</h2>
+            <p className="font-typewriter text-base text-foreground leading-relaxed text-center">
+              تعذر تأكيد عملية الدفع، يرجى التأكد من صحة الصورة والبيانات.
             </p>
             <HorrorButton onClick={onRestart}>
               الرجوع إلى القائمة الرئيسية
