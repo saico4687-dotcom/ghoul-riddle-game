@@ -150,13 +150,44 @@ const ResultScreen = ({
     }
   };
 
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        const base64 = result.split(",")[1] || "";
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
   const handleSubmitProof = async () => {
-    if (!proofImage || !paymentDate || !paymentTime || !user) return;
+    if (!proofImage || !user) return;
     setUploading(true);
 
     try {
-      // Upload image
-      const ext = proofImage.name.split('.').pop();
+      // 1) Verify the proof image with AI/OCR BEFORE uploading
+      const base64 = await fileToBase64(proofImage);
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
+        "verify-payment-proof",
+        { body: { imageBase64: base64, mimeType: proofImage.type } }
+      );
+
+      if (verifyError) {
+        console.error("verify error:", verifyError);
+        setDrawStep("error");
+        return;
+      }
+
+      if (!verifyData?.valid) {
+        console.warn("payment proof rejected:", verifyData?.reason, verifyData?.message);
+        setDrawStep("error");
+        return;
+      }
+
+      // 2) Upload image only after successful verification
+      const ext = proofImage.name.split(".").pop();
       const filePath = `${user.id}/${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from("payment-proofs")
@@ -168,14 +199,23 @@ const ResultScreen = ({
         .from("payment-proofs")
         .getPublicUrl(filePath);
 
-      // Update competition_scores with proof
+      // 3) Persist with extracted text and detected datetime
+      const detectedDate = verifyData.extractedDateTime
+        ? new Date(verifyData.extractedDateTime)
+        : null;
+
       await supabase
         .from("competition_scores")
         .update({
           payment_proof_url: urlData.publicUrl,
-          payment_date: paymentDate,
-          payment_time: paymentTime,
+          payment_date: detectedDate
+            ? detectedDate.toISOString().slice(0, 10)
+            : new Date().toISOString().slice(0, 10),
+          payment_time: detectedDate
+            ? detectedDate.toISOString().slice(11, 16)
+            : new Date().toISOString().slice(11, 16),
           payment_status: "قيد المراجعة",
+          extracted_text: verifyData.extractedText || null,
           updated_at: new Date().toISOString(),
         } as any)
         .eq("user_id", user.id);
