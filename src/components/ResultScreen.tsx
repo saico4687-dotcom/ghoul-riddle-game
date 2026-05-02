@@ -313,9 +313,9 @@ const ResultScreen = ({
 
             <HorrorButton 
               onClick={handleSubmitProof} 
-              disabled={uploading || !proofImage || !paymentDate || !paymentTime}
+              disabled={uploading || !proofImage}
             >
-              {uploading ? "جاري الرفع..." : "إرسال إثبات الدفع"}
+              {uploading ? "جاري التحقق..." : "إرسال إثبات الدفع"}
             </HorrorButton>
           </motion.div>
         </div>
