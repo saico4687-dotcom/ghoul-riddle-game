@@ -1,0 +1,1 @@
+ALTER TABLE public.competition_scores ADD COLUMN IF NOT EXISTS extracted_text TEXT;

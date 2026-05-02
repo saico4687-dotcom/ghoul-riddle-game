@@ -20,6 +20,7 @@ export type Database = {
           created_at: string
           email: string | null
           entered_draw: boolean
+          extracted_text: string | null
           full_name: string | null
           id: string
           paid: boolean
@@ -41,6 +42,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           entered_draw?: boolean
+          extracted_text?: string | null
           full_name?: string | null
           id?: string
           paid?: boolean
@@ -62,6 +64,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           entered_draw?: boolean
+          extracted_text?: string | null
           full_name?: string | null
           id?: string
           paid?: boolean
