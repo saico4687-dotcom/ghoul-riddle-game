@@ -306,15 +306,10 @@ const ResultScreen = ({
               </button>
             </div>
 
-            <div>
-              <label className="font-typewriter text-sm text-muted-foreground block mb-1">تاريخ العملية *</label>
-              <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="w-full bg-background border border-primary/30 rounded-lg px-3 py-2 font-typewriter text-sm text-foreground focus:outline-none focus:border-primary" />
-            </div>
+            <p className="font-typewriter text-xs text-muted-foreground leading-relaxed text-center">
+              سيتم تحليل الصورة تلقائياً للتحقق من بيانات العملية (التاريخ، الوقت، رقم المستلم).
+            </p>
 
-            <div>
-              <label className="font-typewriter text-sm text-muted-foreground block mb-1">وقت العملية *</label>
-              <input type="time" value={paymentTime} onChange={(e) => setPaymentTime(e.target.value)} className="w-full bg-background border border-primary/30 rounded-lg px-3 py-2 font-typewriter text-sm text-foreground focus:outline-none focus:border-primary" />
-            </div>
 
             <HorrorButton 
               onClick={handleSubmitProof} 
