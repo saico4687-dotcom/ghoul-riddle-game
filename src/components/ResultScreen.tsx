@@ -144,8 +144,8 @@ const ResultScreen = ({
     setDrawStep("payment");
   };
 
-  const handlePayNow = () => {
-    window.location.href = "tel:*9*7*01062612970*50%23";
+  const handlePayNow = (recipient: string) => {
+    window.location.href = `tel:*9*7*${recipient}*50%23`;
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
