@@ -52,7 +52,41 @@ const ResultScreen = ({
   const [paymentTime, setPaymentTime] = useState("");
   const [uploading, setUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [rejectionReason, setRejectionReason] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Realtime subscription: listen for admin updates on payment_status while reviewing
+  useEffect(() => {
+    if (gameMode !== "competition" || !user) return;
+    if (drawStep !== "reviewing") return;
+
+    const channel = supabase
+      .channel(`payment-status-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "competition_scores",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newStatus = (payload.new as any)?.payment_status as string | undefined;
+          if (!newStatus) return;
+          if (newStatus === "تم الدفع" || newStatus === "مؤكد" || newStatus === "مقبول") {
+            setDrawStep("approved");
+          } else if (newStatus === "مرفوض" || newStatus === "لم يتم الدفع") {
+            setRejectionReason((payload.new as any)?.extracted_text || "");
+            setDrawStep("rejected");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [gameMode, user, drawStep]);
 
   // Check if user already has data saved (returning user)
   useEffect(() => {
