@@ -17,7 +17,14 @@ interface ResultScreenProps {
   onRestart: () => void;
 }
 
-type DrawStep = "result" | "form" | "payment" | "proof" | "reviewing" | "error" | null;
+type DrawStep = "result" | "form" | "instructions" | "payment" | "proof" | "reviewing" | "error" | null;
+
+const RECIPIENT_NUMBERS = [
+  "01062612970",
+  "01012377354",
+  "01055010492",
+  "01032319753",
+];
 
 const ResultScreen = ({ 
   score, 
