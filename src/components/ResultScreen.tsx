@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import HorrorButton from "./HorrorButton";
-import { Skull, Trophy, RotateCcw, Ghost, Star, Zap, CheckCircle, Upload, AlertCircle } from "lucide-react";
+import { Skull, Trophy, RotateCcw, Ghost, Star, Zap, CheckCircle, Upload, AlertCircle, Loader2, XCircle } from "lucide-react";
 import { GameMode } from "./WelcomeScreen";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
