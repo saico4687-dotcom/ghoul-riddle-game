@@ -97,15 +97,27 @@ const Index = () => {
     }
 
     if (mode === "competition" && user) {
-      // Check if competition is locked (payment confirmed/reviewing)
+      // Check competition_scores: if user already finished and is in payment flow,
+      // send them directly to the result screen (form/payment/proof/reviewing).
       const { data: scoreData } = await supabase
         .from("competition_scores")
-        .select("payment_status")
+        .select("payment_status, entered_draw, total_correct, total_points, time_bonus, total_questions")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (scoreData?.payment_status === "مؤكد") {
+      if (scoreData?.payment_status === "تم الدفع" || scoreData?.payment_status === "مؤكد") {
         // Competition locked - user already paid
+        return;
+      }
+
+      // If user already submitted draw entry or has a pending review, jump to result screen
+      if (scoreData && (scoreData.entered_draw || scoreData.payment_status === "قيد المراجعة" || (scoreData.total_questions ?? 0) > 0)) {
+        setScore(scoreData.total_correct ?? 0);
+        setTotalPoints(scoreData.total_points ?? 0);
+        setTimeBonus(scoreData.time_bonus ?? 0);
+        setCurrentRiddleIndex(competitionRiddles.length);
+        setGameMode(mode);
+        setGameState("result");
         return;
       }
 
