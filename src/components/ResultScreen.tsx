@@ -51,6 +51,7 @@ const ResultScreen = ({
   const [paymentDate, setPaymentDate] = useState("");
   const [paymentTime, setPaymentTime] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check if user already has data saved (returning user)
