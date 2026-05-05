@@ -141,7 +141,7 @@ const ResultScreen = ({
     }
 
     setSaving(false);
-    setDrawStep("payment");
+    setDrawStep("instructions");
   };
 
   const handlePayNow = (recipient: string) => {
