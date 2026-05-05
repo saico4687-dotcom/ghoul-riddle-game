@@ -17,7 +17,14 @@ interface ResultScreenProps {
   onRestart: () => void;
 }
 
-type DrawStep = "result" | "form" | "payment" | "proof" | "reviewing" | "error" | null;
+type DrawStep = "result" | "form" | "instructions" | "payment" | "proof" | "reviewing" | "error" | null;
+
+const RECIPIENT_NUMBERS = [
+  "01062612970",
+  "01012377354",
+  "01055010492",
+  "01032319753",
+];
 
 const ResultScreen = ({ 
   score, 
@@ -44,6 +51,7 @@ const ResultScreen = ({
   const [paymentDate, setPaymentDate] = useState("");
   const [paymentTime, setPaymentTime] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check if user already has data saved (returning user)
@@ -65,7 +73,7 @@ const ResultScreen = ({
             setPhone(data.phone || "");
             setAddress(data.address || "");
             setPaymentPhone(data.payment_phone || "");
-            setDrawStep("payment");
+            setDrawStep("instructions");
           }
         }
       })();
@@ -133,11 +141,11 @@ const ResultScreen = ({
     }
 
     setSaving(false);
-    setDrawStep("payment");
+    setDrawStep("instructions");
   };
 
-  const handlePayNow = () => {
-    window.location.href = "tel:*9*7*01062612970*50%23";
+  const handlePayNow = (recipient: string) => {
+    window.location.href = `tel:*9*7*${recipient}*50%23`;
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -176,14 +184,30 @@ const ResultScreen = ({
 
       if (verifyError) {
         console.error("verify error:", verifyError);
+        setErrorMessage("تعذر الاتصال بخدمة التحقق. حاول مرة أخرى.");
         setDrawStep("error");
         return;
       }
 
       if (!verifyData?.valid) {
         console.warn("payment proof rejected:", verifyData?.reason, verifyData?.message);
+        setErrorMessage(verifyData?.message || "تعذر تأكيد عملية الدفع.");
         setDrawStep("error");
         return;
+      }
+
+      // Duplicate transaction check
+      if (verifyData.transactionNumber) {
+        const { data: dupRows } = await supabase
+          .from("competition_scores")
+          .select("user_id")
+          .eq("transaction_number", verifyData.transactionNumber as string)
+          .neq("user_id", user.id);
+        if (dupRows && dupRows.length > 0) {
+          setErrorMessage("رقم العملية هذا مستخدم من قبل ولا يمكن إعادة استخدامه.");
+          setDrawStep("error");
+          return;
+        }
       }
 
       // 2) Upload image only after successful verification
@@ -199,7 +223,6 @@ const ResultScreen = ({
         .from("payment-proofs")
         .getPublicUrl(filePath);
 
-      // 3) Persist with extracted text and detected datetime
       const detectedDate = verifyData.extractedDateTime
         ? new Date(verifyData.extractedDateTime)
         : null;
@@ -216,6 +239,7 @@ const ResultScreen = ({
             : new Date().toISOString().slice(11, 16),
           payment_status: "قيد المراجعة",
           extracted_text: verifyData.extractedText || null,
+          transaction_number: verifyData.transactionNumber || null,
           updated_at: new Date().toISOString(),
         } as any)
         .eq("user_id", user.id);
@@ -223,6 +247,7 @@ const ResultScreen = ({
       setDrawStep("reviewing");
     } catch (err) {
       console.error("Upload error:", err);
+      setErrorMessage("حدث خطأ غير متوقع أثناء الرفع.");
       setDrawStep("error");
     } finally {
       setUploading(false);
@@ -239,11 +264,16 @@ const ResultScreen = ({
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring" }}>
             <CheckCircle className="w-20 h-20 mx-auto text-green-400 mb-6" />
           </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card-horror p-6 space-y-4">
-            <p className="font-typewriter text-lg text-foreground leading-relaxed">
-              تم استلام طلبك بنجاح، وجاري مراجعة عملية الدفع للتأكيد.
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card-horror p-6 space-y-4 text-right" dir="rtl">
+            <h2 className="font-horror text-2xl text-primary text-center">تم استلام طلبك</h2>
+            <p className="font-typewriter text-base text-foreground leading-relaxed">
+              تم استلام إثبات الدفع بنجاح، وجاري مراجعة العملية للتأكيد.
             </p>
-            <div className="pt-2">
+            <p className="font-typewriter text-sm text-foreground/90 leading-relaxed">
+              تم قفل ألغاز المسابقة من حسابك، وسيتم إعلان نتيجة السحب خلال أسبوع.
+              قد تكون من الفائزين بالهدايا أو يتم إدراج رقمك ضمن الأرقام المعتمدة لاستلام التحويلات في السحوبات القادمة، حتى لو كانت درجتك أقل من 50%.
+            </p>
+            <div className="pt-2 text-center">
               <button onClick={onRestart} className="font-typewriter text-sm text-muted-foreground hover:text-foreground transition-colors">
                 العودة للقائمة الرئيسية
               </button>
@@ -267,7 +297,10 @@ const ResultScreen = ({
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card-horror p-6 space-y-4">
             <h2 className="font-horror text-2xl text-red-400 text-center">لم يتم الدفع</h2>
             <p className="font-typewriter text-base text-foreground leading-relaxed text-center">
-              تعذر تأكيد عملية الدفع، يرجى التأكد من صحة الصورة والبيانات.
+              {errorMessage || "تعذر تأكيد عملية الدفع، يرجى التأكد من صحة الصورة والبيانات."}
+            </p>
+            <p className="font-typewriter text-xs text-muted-foreground text-center">
+              تأكد أن الصورة لقطة شاشة حقيقية (غير معدّلة) وتحتوي على رقم العملية وتاريخها وأن التحويل تم لأحد الأرقام المعتمدة.
             </p>
             <HorrorButton onClick={onRestart}>
               الرجوع إلى القائمة الرئيسية
@@ -324,33 +357,96 @@ const ResultScreen = ({
     );
   }
 
+  // === INSTRUCTIONS STEP (before payment) ===
+  if (gameMode === "competition" && drawStep === "instructions") {
+    return (
+      <div className="min-h-screen bg-horror-gradient relative overflow-hidden flex items-center justify-center py-8" dir="rtl">
+        <div className="vignette" />
+        <div className="fog-overlay" />
+        <div className="relative z-10 w-full max-w-md px-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-horror p-6 space-y-4 text-right">
+            <h2 className="font-horror text-2xl text-primary text-center">تعليمات الدفع</h2>
+
+            <p className="font-typewriter text-sm text-foreground leading-relaxed">
+              قبل إتمام الدفع يرجى قراءة التعليمات بعناية:
+            </p>
+
+            <ul className="font-typewriter text-sm text-foreground/90 leading-relaxed space-y-2 list-disc pr-5">
+              <li>رسوم الاشتراك في السحب: <span className="text-primary font-bold">50 جنيه</span> فقط.</li>
+              <li>يجب التحويل إلى أحد الأرقام المعتمدة التالية فقط (أي تحويل لرقم آخر سيُرفض تلقائياً):</li>
+              <li className="list-none">
+                <div className="bg-secondary/50 border border-primary/30 rounded-lg p-3 space-y-1 mt-1">
+                  {RECIPIENT_NUMBERS.map((n) => (
+                    <div key={n} className="font-typewriter text-base text-primary text-center tracking-wider" dir="ltr">{n}</div>
+                  ))}
+                </div>
+              </li>
+              <li>بعد التحويل احتفظ بصورة الإشعار التي تحتوي على <span className="text-primary">رقم العملية</span> و<span className="text-primary">تاريخ ووقت العملية</span> ورقم المستلم.</li>
+              <li>سيقوم الذكاء الاصطناعي بمراجعة الصورة، ولن يقبل التطبيق أي صورة معدّلة أو مولّدة بالذكاء الاصطناعي.</li>
+              <li>كل رقم عملية يصلح للاستخدام مرة واحدة فقط.</li>
+              <li>عند تأكيد دفعك، يتم <span className="text-primary">قفل ألغاز المسابقة</span> من حسابك وعرض درجتك النهائية بانتظار إعلان نتيجة السحب الأسبوعية.</li>
+              <li>سواء فزت أو لم تفز: ما دامت درجتك دخلت السحب (حتى لو أقل من 50%)، سيتم إدراج رقمك ضمن أرقام السحب المعتمدة لاستلام التحويلات في السحوبات القادمة، أو ربما تختار هدايا.</li>
+            </ul>
+
+            <div className="space-y-2">
+              <p className="font-typewriter text-sm text-muted-foreground text-center">مثال على شكل إشعار التحويل المقبول:</p>
+              <img
+                src="/payment-proof-example.jpg"
+                alt="مثال إشعار التحويل"
+                className="w-full max-h-80 object-contain rounded-lg border border-primary/30"
+              />
+            </div>
+
+            <HorrorButton onClick={() => setDrawStep("payment")}>
+              فهمت، المتابعة للدفع
+            </HorrorButton>
+            <div className="pt-2 text-center">
+              <button onClick={onRestart} className="font-typewriter text-sm text-muted-foreground hover:text-foreground transition-colors">
+                العودة للقائمة الرئيسية
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
   // === PAYMENT STEP ===
   if (gameMode === "competition" && drawStep === "payment") {
     return (
-      <div className="min-h-screen bg-horror-gradient relative overflow-hidden flex items-center justify-center" dir="rtl">
+      <div className="min-h-screen bg-horror-gradient relative overflow-hidden flex items-center justify-center py-8" dir="rtl">
         <div className="vignette" />
         <div className="fog-overlay" />
-        <div className="relative z-10 text-center px-4 max-w-md">
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring" }}>
-            <CheckCircle className="w-20 h-20 mx-auto text-green-400 mb-6" />
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card-horror p-6 space-y-4">
-            <p className="font-typewriter text-base text-foreground leading-relaxed">
-              لإتمام الاشتراك في السحب، يرجى سداد رسوم الاشتراك (50 جنيه).
-              <br /><br />
-              بعد إتمام عملية الدفع، يُرجى العودة إلى التطبيق لاستكمال خطوات تأكيد الدفع.
-              <br /><br />
-              يجب إرفاق لقطة شاشة واضحة تحتوي على تاريخ ووقت العملية، حيث يتم مراجعة البيانات للتأكد من صحتها قبل تأكيد الاشتراك.
+        <div className="relative z-10 w-full max-w-md px-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-horror p-6 space-y-4 text-right">
+            <h2 className="font-horror text-2xl text-primary text-center">إتمام الدفع</h2>
+            <p className="font-typewriter text-sm text-foreground leading-relaxed text-center">
+              اختر أحد أرقام المستلمين المعتمدة لتحويل <span className="text-primary font-bold">50 جنيه</span> عبر فودافون كاش:
             </p>
-            <HorrorButton onClick={handlePayNow}>
-              💳 الدفع الآن
-            </HorrorButton>
+
+            <div className="space-y-2">
+              {RECIPIENT_NUMBERS.map((n) => (
+                <button
+                  key={n}
+                  onClick={() => handlePayNow(n)}
+                  className="w-full bg-secondary/60 border border-primary/40 hover:border-primary rounded-lg p-3 font-typewriter text-base text-primary tracking-wider transition-colors"
+                  dir="ltr"
+                >
+                  💳 {n}
+                </button>
+              ))}
+            </div>
+
+            <p className="font-typewriter text-xs text-muted-foreground text-center leading-relaxed">
+              بعد إتمام التحويل من تطبيق فودافون كاش، عُد إلى التطبيق واضغط "تم الدفع" لرفع صورة إثبات الدفع.
+            </p>
+
             <HorrorButton onClick={() => setDrawStep("proof")}>
-              ✅ تم الدفع
+              ✅ تم الدفع — رفع الإثبات
             </HorrorButton>
-            <div className="pt-2">
-              <button onClick={onRestart} className="font-typewriter text-sm text-muted-foreground hover:text-foreground transition-colors">
-                العودة للقائمة الرئيسية
+            <div className="pt-2 text-center">
+              <button onClick={() => setDrawStep("instructions")} className="font-typewriter text-sm text-muted-foreground hover:text-foreground transition-colors">
+                الرجوع للتعليمات
               </button>
             </div>
           </motion.div>

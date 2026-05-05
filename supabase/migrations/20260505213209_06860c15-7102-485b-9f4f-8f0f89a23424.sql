@@ -1,0 +1,2 @@
+ALTER TABLE public.competition_scores ADD COLUMN IF NOT EXISTS transaction_number text;
+CREATE UNIQUE INDEX IF NOT EXISTS competition_scores_transaction_number_unique ON public.competition_scores (transaction_number) WHERE transaction_number IS NOT NULL;
