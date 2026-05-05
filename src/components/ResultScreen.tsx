@@ -297,7 +297,10 @@ const ResultScreen = ({
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card-horror p-6 space-y-4">
             <h2 className="font-horror text-2xl text-red-400 text-center">لم يتم الدفع</h2>
             <p className="font-typewriter text-base text-foreground leading-relaxed text-center">
-              تعذر تأكيد عملية الدفع، يرجى التأكد من صحة الصورة والبيانات.
+              {errorMessage || "تعذر تأكيد عملية الدفع، يرجى التأكد من صحة الصورة والبيانات."}
+            </p>
+            <p className="font-typewriter text-xs text-muted-foreground text-center">
+              تأكد أن الصورة لقطة شاشة حقيقية (غير معدّلة) وتحتوي على رقم العملية وتاريخها وأن التحويل تم لأحد الأرقام المعتمدة.
             </p>
             <HorrorButton onClick={onRestart}>
               الرجوع إلى القائمة الرئيسية
