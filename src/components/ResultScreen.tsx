@@ -99,10 +99,14 @@ const ResultScreen = ({
           .single();
         
         if (data) {
-          if (data.payment_status === "قيد المراجعة") {
+          const st = data.payment_status;
+          if (st === "تم الدفع" || st === "مؤكد" || st === "مقبول") {
+            setDrawStep("approved");
+          } else if (st === "مرفوض" || st === "لم يتم الدفع") {
+            setDrawStep("rejected");
+          } else if (st === "قيد المراجعة") {
             setDrawStep("reviewing");
           } else if (data.entered_draw && data.full_name) {
-            // Already filled form, go to payment step
             setFullName(data.full_name || "");
             setPhone(data.phone || "");
             setAddress(data.address || "");
