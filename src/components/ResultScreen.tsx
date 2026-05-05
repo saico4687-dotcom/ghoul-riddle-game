@@ -264,11 +264,16 @@ const ResultScreen = ({
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring" }}>
             <CheckCircle className="w-20 h-20 mx-auto text-green-400 mb-6" />
           </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card-horror p-6 space-y-4">
-            <p className="font-typewriter text-lg text-foreground leading-relaxed">
-              تم استلام طلبك بنجاح، وجاري مراجعة عملية الدفع للتأكيد.
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card-horror p-6 space-y-4 text-right" dir="rtl">
+            <h2 className="font-horror text-2xl text-primary text-center">تم استلام طلبك</h2>
+            <p className="font-typewriter text-base text-foreground leading-relaxed">
+              تم استلام إثبات الدفع بنجاح، وجاري مراجعة العملية للتأكيد.
             </p>
-            <div className="pt-2">
+            <p className="font-typewriter text-sm text-foreground/90 leading-relaxed">
+              تم قفل ألغاز المسابقة من حسابك، وسيتم إعلان نتيجة السحب خلال أسبوع.
+              قد تكون من الفائزين بالهدايا أو يتم إدراج رقمك ضمن الأرقام المعتمدة لاستلام التحويلات في السحوبات القادمة، حتى لو كانت درجتك أقل من 50%.
+            </p>
+            <div className="pt-2 text-center">
               <button onClick={onRestart} className="font-typewriter text-sm text-muted-foreground hover:text-foreground transition-colors">
                 العودة للقائمة الرئيسية
               </button>
