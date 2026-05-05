@@ -17,7 +17,7 @@ interface ResultScreenProps {
   onRestart: () => void;
 }
 
-type DrawStep = "result" | "form" | "instructions" | "payment" | "proof" | "reviewing" | "error" | null;
+type DrawStep = "result" | "form" | "instructions" | "payment" | "proof" | "reviewing" | "approved" | "rejected" | "error" | null;
 
 const RECIPIENT_NUMBERS = [
   "01062612970",
