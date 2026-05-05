@@ -34,6 +34,7 @@ export type Database = {
           total_correct: number
           total_points: number
           total_questions: number
+          transaction_number: string | null
           updated_at: string
           user_id: string
         }
@@ -56,6 +57,7 @@ export type Database = {
           total_correct?: number
           total_points?: number
           total_questions?: number
+          transaction_number?: string | null
           updated_at?: string
           user_id: string
         }
@@ -78,6 +80,7 @@ export type Database = {
           total_correct?: number
           total_points?: number
           total_questions?: number
+          transaction_number?: string | null
           updated_at?: string
           user_id?: string
         }
