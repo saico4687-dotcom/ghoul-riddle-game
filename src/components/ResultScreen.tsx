@@ -73,7 +73,7 @@ const ResultScreen = ({
             setPhone(data.phone || "");
             setAddress(data.address || "");
             setPaymentPhone(data.payment_phone || "");
-            setDrawStep("payment");
+            setDrawStep("instructions");
           }
         }
       })();
