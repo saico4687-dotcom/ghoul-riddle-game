@@ -372,8 +372,8 @@ const ResultScreen = ({
             </p>
 
             <ul className="font-typewriter text-sm text-foreground/90 leading-relaxed space-y-2 list-disc pr-5">
-              <li>رسوم الاشتراك في السحب: <span className="text-primary font-bold">50 جنيه</span> فقط.</li>
-              <li>يجب التحويل إلى أحد الأرقام المعتمدة التالية فقط (أي تحويل لرقم آخر سيُرفض تلقائياً):</li>
+              <li>رسوم الاشتراك في السحب الأسبوعي: <span className="text-primary font-bold">50 جنيه</span> فقط.</li>
+              <li>يجب التحويل إلى أحد الأرقام المعتمدة التالية فقط، وأي تحويل لرقم آخر سيُرفض تلقائياً:</li>
               <li className="list-none">
                 <div className="bg-secondary/50 border border-primary/30 rounded-lg p-3 space-y-1 mt-1">
                   {RECIPIENT_NUMBERS.map((n) => (
@@ -382,10 +382,26 @@ const ResultScreen = ({
                 </div>
               </li>
               <li>بعد التحويل احتفظ بصورة الإشعار التي تحتوي على <span className="text-primary">رقم العملية</span> و<span className="text-primary">تاريخ ووقت العملية</span> ورقم المستلم.</li>
-              <li>سيقوم الذكاء الاصطناعي بمراجعة الصورة، ولن يقبل التطبيق أي صورة معدّلة أو مولّدة بالذكاء الاصطناعي.</li>
-              <li>كل رقم عملية يصلح للاستخدام مرة واحدة فقط.</li>
-              <li>عند تأكيد دفعك، يتم <span className="text-primary">قفل ألغاز المسابقة</span> من حسابك وعرض درجتك النهائية بانتظار إعلان نتيجة السحب الأسبوعية.</li>
-              <li>سواء فزت أو لم تفز: ما دامت درجتك دخلت السحب (حتى لو أقل من 50%)، سيتم إدراج رقمك ضمن أرقام السحب المعتمدة لاستلام التحويلات في السحوبات القادمة، أو ربما تختار هدايا.</li>
+              <li>سيقوم الذكاء الاصطناعي الاحترافي بمراجعة الصورة، ولن يقبل التطبيق أي صورة معدّلة أو مولّدة بالذكاء الاصطناعي.</li>
+              <li>كل رقم عملية يصلح للاستخدام مرة واحدة فقط ولا يمكن تكراره.</li>
+              <li>بعد تأكيد الدفع يتم <span className="text-primary">قفل ألغاز المسابقة</span> من حسابك وعرض درجتك النهائية بانتظار إعلان نتائج السحب الأسبوعي.</li>
+              <li className="list-none">
+                <div className="border border-primary/30 rounded-lg p-3 mt-2 space-y-2 bg-secondary/30">
+                  <p className="font-horror text-base text-primary text-center">آلية اختيار الفائزين</p>
+                  <p className="leading-relaxed">
+                    يتم اختيار الفائزين بناءً على <span className="text-primary">أسرع إجابة صحيحة</span> ضمن المشتركين الذين أتموا الدفع، وذلك على النحو التالي:
+                  </p>
+                  <p className="leading-relaxed">
+                    <span className="text-primary font-bold">• الدرجة 50% فأعلى:</span> يحصل صاحب أسرع إجابة صحيحة على إحدى الجوائز التالية حسب الاختيار: <span className="text-primary">عمرة</span> أو <span className="text-primary">إقامة لمدة أسبوع</span> في فندق على أقرب شاطئ بحري إليه.
+                  </p>
+                  <p className="leading-relaxed">
+                    <span className="text-primary font-bold">• الدرجة أقل من 50%:</span> يحصل صاحب أسرع إجابة صحيحة على شرف <span className="text-primary">إدراج رقمه ضمن أرقام التحويل المعتمدة</span> لاستقبال رسوم الاشتراكات في السحوبات القادمة.
+                  </p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    ملاحظة: يتم تسجيل زمن إجابتك تلقائياً في قاعدة البيانات، ويُعرض ترتيب أسرع المتسابقين لمالك التطبيق لاعتماد الفائزين بشفافية كاملة.
+                  </p>
+                </div>
+              </li>
             </ul>
 
             <div className="space-y-2">
