@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import HorrorButton from "./HorrorButton";
-import { Skull, Trophy, RotateCcw, Ghost, Star, Zap, CheckCircle, Upload, AlertCircle } from "lucide-react";
+import { Skull, Trophy, RotateCcw, Ghost, Star, Zap, CheckCircle, Upload, AlertCircle, Loader2, XCircle } from "lucide-react";
 import { GameMode } from "./WelcomeScreen";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,7 +17,7 @@ interface ResultScreenProps {
   onRestart: () => void;
 }
 
-type DrawStep = "result" | "form" | "instructions" | "payment" | "proof" | "reviewing" | "error" | null;
+type DrawStep = "result" | "form" | "instructions" | "payment" | "proof" | "reviewing" | "approved" | "rejected" | "error" | null;
 
 const RECIPIENT_NUMBERS = [
   "01062612970",
@@ -52,7 +52,41 @@ const ResultScreen = ({
   const [paymentTime, setPaymentTime] = useState("");
   const [uploading, setUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [rejectionReason, setRejectionReason] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Realtime subscription: listen for admin updates on payment_status while reviewing
+  useEffect(() => {
+    if (gameMode !== "competition" || !user) return;
+    if (drawStep !== "reviewing") return;
+
+    const channel = supabase
+      .channel(`payment-status-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "competition_scores",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newStatus = (payload.new as any)?.payment_status as string | undefined;
+          if (!newStatus) return;
+          if (newStatus === "تم الدفع" || newStatus === "مؤكد" || newStatus === "مقبول") {
+            setDrawStep("approved");
+          } else if (newStatus === "مرفوض" || newStatus === "لم يتم الدفع") {
+            setRejectionReason((payload.new as any)?.extracted_text || "");
+            setDrawStep("rejected");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [gameMode, user, drawStep]);
 
   // Check if user already has data saved (returning user)
   useEffect(() => {
@@ -65,10 +99,14 @@ const ResultScreen = ({
           .single();
         
         if (data) {
-          if (data.payment_status === "قيد المراجعة") {
+          const st = data.payment_status;
+          if (st === "تم الدفع" || st === "مؤكد" || st === "مقبول") {
+            setDrawStep("approved");
+          } else if (st === "مرفوض" || st === "لم يتم الدفع") {
+            setDrawStep("rejected");
+          } else if (st === "قيد المراجعة") {
             setDrawStep("reviewing");
           } else if (data.entered_draw && data.full_name) {
-            // Already filled form, go to payment step
             setFullName(data.full_name || "");
             setPhone(data.phone || "");
             setAddress(data.address || "");
@@ -261,23 +299,99 @@ const ResultScreen = ({
         <div className="vignette" />
         <div className="fog-overlay" />
         <div className="relative z-10 text-center px-4 max-w-md">
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring" }}>
-            <CheckCircle className="w-20 h-20 mx-auto text-green-400 mb-6" />
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="mb-6 inline-block"
+          >
+            <Loader2 className="w-20 h-20 mx-auto text-yellow-400" />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card-horror p-6 space-y-4 text-right" dir="rtl">
-            <h2 className="font-horror text-2xl text-primary text-center">تم استلام طلبك</h2>
-            <p className="font-typewriter text-base text-foreground leading-relaxed">
-              تم استلام إثبات الدفع بنجاح، وجاري مراجعة العملية للتأكيد.
-            </p>
-            <p className="font-typewriter text-sm text-foreground/90 leading-relaxed">
-              تم قفل ألغاز المسابقة من حسابك، وسيتم إعلان نتيجة السحب خلال أسبوع.
-              قد تكون من الفائزين بالهدايا أو يتم إدراج رقمك ضمن الأرقام المعتمدة لاستلام التحويلات في السحوبات القادمة، حتى لو كانت درجتك أقل من 50%.
+            <div className="flex items-center justify-center gap-2">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-400"></span>
+              </span>
+              <h2 className="font-horror text-2xl text-yellow-400 text-center">قيد المراجعة</h2>
+            </div>
+            <div className="bg-yellow-400/10 border border-yellow-400/40 rounded-lg p-3">
+              <p className="font-typewriter text-sm text-foreground text-center leading-relaxed">
+                طلبك تحت المراجعة من قِبَل الإدارة الآن.
+                ستظهر النتيجة هنا تلقائياً بمجرد اعتماد أو رفض العملية دون الحاجة لإعادة فتح الصفحة.
+              </p>
+            </div>
+            <p className="font-typewriter text-xs text-muted-foreground leading-relaxed text-center">
+              تم قفل ألغاز المسابقة من حسابك. سيتم إعلان نتيجة السحب خلال أسبوع.
             </p>
             <div className="pt-2 text-center">
               <button onClick={onRestart} className="font-typewriter text-sm text-muted-foreground hover:text-foreground transition-colors">
                 العودة للقائمة الرئيسية
               </button>
             </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // === APPROVED STATE ===
+  if (gameMode === "competition" && drawStep === "approved") {
+    return (
+      <div className="min-h-screen bg-horror-gradient relative overflow-hidden flex items-center justify-center" dir="rtl">
+        <div className="vignette" />
+        <div className="fog-overlay" />
+        <div className="relative z-10 text-center px-4 max-w-md">
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring" }}>
+            <CheckCircle className="w-20 h-20 mx-auto text-green-400 mb-6" />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card-horror p-6 space-y-4 text-right border-green-400/40" dir="rtl">
+            <h2 className="font-horror text-2xl text-green-400 text-center">تم اعتماد الدفع ✅</h2>
+            <p className="font-typewriter text-base text-foreground leading-relaxed text-center">
+              تم تأكيد عملية الدفع وإدراج اشتراكك في السحب الأسبوعي بنجاح.
+            </p>
+            <p className="font-typewriter text-sm text-foreground/90 leading-relaxed">
+              سيتم إعلان نتيجة السحب خلال أسبوع. قد تكون من الفائزين بالهدايا (عمرة أو إقامة أسبوع بفندق على شاطئ البحر) أو يتم إدراج رقمك ضمن الأرقام المعتمدة لاستقبال التحويلات في السحوبات القادمة.
+            </p>
+            <HorrorButton onClick={onRestart}>
+              العودة للقائمة الرئيسية
+            </HorrorButton>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // === REJECTED STATE ===
+  if (gameMode === "competition" && drawStep === "rejected") {
+    return (
+      <div className="min-h-screen bg-horror-gradient relative overflow-hidden flex items-center justify-center" dir="rtl">
+        <div className="vignette" />
+        <div className="fog-overlay" />
+        <div className="relative z-10 text-center px-4 max-w-md">
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring" }}>
+            <XCircle className="w-20 h-20 mx-auto text-red-400 mb-6" />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card-horror p-6 space-y-4 border-red-400/40">
+            <h2 className="font-horror text-2xl text-red-400 text-center">تم رفض الدفع ❌</h2>
+            <p className="font-typewriter text-base text-foreground leading-relaxed text-center">
+              تم رفض إثبات الدفع من قِبَل الإدارة.
+            </p>
+            {rejectionReason && (
+              <div className="bg-red-400/10 border border-red-400/40 rounded-lg p-3">
+                <p className="font-typewriter text-xs text-foreground/90 text-center leading-relaxed">
+                  {rejectionReason}
+                </p>
+              </div>
+            )}
+            <p className="font-typewriter text-xs text-muted-foreground text-center leading-relaxed">
+              يمكنك إعادة المحاولة برفع صورة إثبات صحيحة وغير معدّلة لأحد الأرقام المعتمدة.
+            </p>
+            <HorrorButton onClick={() => { setDrawStep("instructions"); setProofImage(null); setProofPreview(null); }}>
+              إعادة المحاولة
+            </HorrorButton>
+            <button onClick={onRestart} className="block mx-auto font-typewriter text-sm text-muted-foreground hover:text-foreground transition-colors">
+              العودة للقائمة الرئيسية
+            </button>
           </motion.div>
         </div>
       </div>
