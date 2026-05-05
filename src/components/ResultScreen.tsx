@@ -184,14 +184,30 @@ const ResultScreen = ({
 
       if (verifyError) {
         console.error("verify error:", verifyError);
+        setErrorMessage("تعذر الاتصال بخدمة التحقق. حاول مرة أخرى.");
         setDrawStep("error");
         return;
       }
 
       if (!verifyData?.valid) {
         console.warn("payment proof rejected:", verifyData?.reason, verifyData?.message);
+        setErrorMessage(verifyData?.message || "تعذر تأكيد عملية الدفع.");
         setDrawStep("error");
         return;
+      }
+
+      // Duplicate transaction check
+      if (verifyData.transactionNumber) {
+        const { data: dupRows } = await supabase
+          .from("competition_scores")
+          .select("user_id")
+          .eq("transaction_number", verifyData.transactionNumber as string)
+          .neq("user_id", user.id);
+        if (dupRows && dupRows.length > 0) {
+          setErrorMessage("رقم العملية هذا مستخدم من قبل ولا يمكن إعادة استخدامه.");
+          setDrawStep("error");
+          return;
+        }
       }
 
       // 2) Upload image only after successful verification
@@ -207,7 +223,6 @@ const ResultScreen = ({
         .from("payment-proofs")
         .getPublicUrl(filePath);
 
-      // 3) Persist with extracted text and detected datetime
       const detectedDate = verifyData.extractedDateTime
         ? new Date(verifyData.extractedDateTime)
         : null;
@@ -224,6 +239,7 @@ const ResultScreen = ({
             : new Date().toISOString().slice(11, 16),
           payment_status: "قيد المراجعة",
           extracted_text: verifyData.extractedText || null,
+          transaction_number: verifyData.transactionNumber || null,
           updated_at: new Date().toISOString(),
         } as any)
         .eq("user_id", user.id);
@@ -231,6 +247,7 @@ const ResultScreen = ({
       setDrawStep("reviewing");
     } catch (err) {
       console.error("Upload error:", err);
+      setErrorMessage("حدث خطأ غير متوقع أثناء الرفع.");
       setDrawStep("error");
     } finally {
       setUploading(false);
