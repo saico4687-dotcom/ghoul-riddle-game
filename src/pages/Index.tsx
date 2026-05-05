@@ -75,9 +75,33 @@ const Index = () => {
   useEffect(() => {
     if (gameState === "login" && user) {
       (async () => {
+        // Check if user already has a competition entry
+        const { data: scoreData } = await supabase
+          .from("competition_scores")
+          .select("payment_status, entered_draw, total_correct, total_points, time_bonus, total_questions")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (scoreData?.payment_status === "تم الدفع" || scoreData?.payment_status === "مؤكد") {
+          setGameMode("competition");
+          setGameState("welcome");
+          return;
+        }
+
+        if (scoreData && (scoreData.entered_draw || scoreData.payment_status === "قيد المراجعة" || (scoreData.total_questions ?? 0) > 0)) {
+          setGameMode("competition");
+          setScore(scoreData.total_correct ?? 0);
+          setTotalPoints(scoreData.total_points ?? 0);
+          setTimeBonus(scoreData.time_bonus ?? 0);
+          setCurrentRiddleIndex(competitionRiddles.length);
+          setProfileLoaded(true);
+          setGameState("result");
+          return;
+        }
+
         const data = await ensureProfile();
         const startIndex = data?.last_puzzle_index ?? 0;
-        
+
         setGameMode("competition");
         setCurrentRiddleIndex(startIndex);
         setScore(data?.saved_score ?? 0);
@@ -87,7 +111,7 @@ const Index = () => {
         setGameState("playing");
       })();
     }
-  }, [user, gameState, ensureProfile]);
+  }, [user, gameState, ensureProfile, competitionRiddles.length]);
 
   const handleStart = async (mode: GameMode) => {
     if (mode === "competition" && !user) {
