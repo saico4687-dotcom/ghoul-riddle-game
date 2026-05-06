@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Privacy from "./pages/Privacy";
 import Settings from "./pages/Settings";
 import TestResult from "./pages/TestResult";
+import AdminSpeed from "./pages/AdminSpeed";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/test-result" element={<TestResult />} />
+          <Route path="/admin/speed" element={<AdminSpeed />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
