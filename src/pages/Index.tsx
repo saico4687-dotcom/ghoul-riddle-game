@@ -96,14 +96,10 @@ const Index = () => {
     await startFromProfile();
   };
 
-  const handleAnswer = (isCorrect: boolean, remainingTime?: number) => {
+  const handleAnswer = (isCorrect: boolean, selectedIndex: number | null, remainingTime?: number) => {
     let newScore = score;
     let newTotalPoints = totalPoints;
     let newTimeBonus = timeBonus;
-
-    if (!isCorrect) {
-      // No interstitial here — handled by 5-question counter below
-    }
 
     if (isCorrect) {
       newScore = score + 1;
@@ -118,6 +114,18 @@ const Index = () => {
       newTotalPoints = totalPoints + points;
       setTotalPoints(newTotalPoints);
     }
+
+    const r = allRiddles[currentRiddleIndex];
+    setAnswers((prev) => [
+      ...prev,
+      {
+        q: r.question,
+        selected: selectedIndex,
+        correct: r.correctIndex,
+        options: r.options,
+        explanation: r.explanation,
+      },
+    ]);
 
     // Interstitial every 5 answered questions
     const newAnswered = answeredCount + 1;
