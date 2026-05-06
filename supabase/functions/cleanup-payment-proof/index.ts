@@ -35,9 +35,9 @@ Deno.serve(async (req) => {
 
     const filePaths = (files ?? []).map((file) => file.name).filter(Boolean);
 
-    if (filePaths.length > 0) {
-      const { error: removeFilesError } = await admin.storage.from(BUCKET).remove(filePaths);
-      if (removeFilesError) throw removeFilesError;
+    const { error: emptyBucketError } = await admin.storage.emptyBucket(BUCKET);
+    if (emptyBucketError && !String(emptyBucketError.message).toLowerCase().includes("not found")) {
+      throw emptyBucketError;
     }
 
     const { error: removeBucketError } = await admin.storage.deleteBucket(BUCKET);
@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : String(error),
       }),
       {
         status: 500,
