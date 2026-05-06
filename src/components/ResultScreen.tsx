@@ -766,20 +766,8 @@ const ResultScreen = ({
           </div>
         </motion.div>
 
-        {/* Time Bonus */}
-        {timeBonus > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-            className="card-horror p-3 mb-6 inline-flex items-center gap-2"
-          >
-            <Zap className="w-5 h-5 text-yellow-400" />
-            <span className="font-typewriter text-sm text-yellow-400">
-              +{timeBonus} نقاط إضافية للسرعة!
-            </span>
-          </motion.div>
-        )}
+        {/* Time Bonus - مخفي عن المستخدم، يُحفظ في قاعدة البيانات للمالك فقط */}
+
 
         {/* Score Bar */}
         <motion.div
