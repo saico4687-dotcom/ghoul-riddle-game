@@ -12,6 +12,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import SplashScreen from "./components/SplashScreen";
+import { initAdMob } from "./lib/ads";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,7 @@ const App = () => {
 
   useEffect(() => {
     const t = setTimeout(() => setShowSplash(false), 2500);
+    initAdMob();
     return () => clearTimeout(t);
   }, []);
 
