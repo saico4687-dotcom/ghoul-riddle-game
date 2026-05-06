@@ -21,19 +21,7 @@ Deno.serve(async (req) => {
       throw new Error("Missing backend credentials");
     }
 
-    const admin = createClient(supabaseUrl, serviceRoleKey);
-    const { data: files, error: listError } = await admin
-      .schema("storage")
-      .from("objects")
-      .select("name")
-      .eq("bucket_id", BUCKET)
-      .limit(1000);
-
-    if (listError && !String(listError.message).toLowerCase().includes("not found")) {
-      throw listError;
-    }
-
-    const filePaths = (files ?? []).map((file) => file.name).filter(Boolean);
+    createClient(supabaseUrl, serviceRoleKey);
 
     const emptyResponse = await fetch(`${supabaseUrl}/storage/v1/bucket/${BUCKET}/empty`, {
       method: "POST",
@@ -60,7 +48,7 @@ Deno.serve(async (req) => {
       throw new Error(await deleteResponse.text());
     }
 
-    return new Response(JSON.stringify({ success: true, removedFiles: filePaths.length }), {
+    return new Response(JSON.stringify({ success: true, bucket: BUCKET }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
