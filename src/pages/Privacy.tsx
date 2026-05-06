@@ -66,6 +66,7 @@ const Privacy = () => {
           <ul className="list-disc pr-6 space-y-2 mt-2">
             <li><strong>Google Sign-In:</strong> للمصادقة وتسجيل الدخول.</li>
             <li><strong>خدمة قاعدة البيانات السحابية:</strong> لتخزين بياناتك بشكل آمن.</li>
+            <li><strong>Google AdMob:</strong> لعرض الإعلانات داخل التطبيق.</li>
           </ul>
         </Section>
 
@@ -110,13 +111,30 @@ const Privacy = () => {
         <Section title="8. الأذونات المطلوبة">
           <ul className="list-disc pr-6 space-y-2">
             <li><strong>الإنترنت:</strong> للاتصال بخوادمنا وحفظ تقدمك.</li>
+            <li><strong>معرّف الإعلانات (Advertising ID):</strong> لعرض إعلانات Google AdMob.</li>
           </ul>
         </Section>
 
-        <Section title="9. الإعلانات والتحليلات">
+        <Section title="9. الإعلانات (Google AdMob)">
           <p>
-            لا يحتوي التطبيق حاليًا على إعلانات من أطراف ثالثة، ولا نستخدم أي
-            معرّفات إعلانية لتتبع المستخدمين عبر التطبيقات.
+            يعتمد التطبيق على إعلانات <strong>Google AdMob</strong> للحفاظ على
+            مجانيته. قد تقوم Google ومزوّدوها بجمع واستخدام معرّف الإعلانات
+            الخاص بجهازك لعرض إعلانات أكثر ملاءمة وقياس أدائها، وذلك وفقًا
+            لـ{" "}
+            <a
+              href="https://policies.google.com/technologies/ads"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              سياسة Google للشركاء الإعلانيين
+            </a>
+            . يمكنك في أي وقت اختيار إعلانات غير مخصّصة من شاشة الموافقة داخل
+            التطبيق، أو إعادة ضبط/تعطيل معرّف الإعلانات من إعدادات جهازك.
+          </p>
+          <p className="mt-2">
+            داخل الاتحاد الأوروبي والمملكة المتحدة، نعرض شاشة موافقة (UMP) من
+            Google قبل تحميل أي إعلانات.
           </p>
         </Section>
 
