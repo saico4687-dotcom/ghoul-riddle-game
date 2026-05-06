@@ -38,20 +38,19 @@ const Settings = () => {
               <ArrowRight className="w-4 h-4 text-muted-foreground" />
             </Link>
 
-            <a
-              href="/privacy-policy.pdf"
-              download
+            <Link
+              to="/terms"
               className="flex items-center justify-between gap-3 p-4 rounded-lg border border-border/40 bg-background/40 hover:bg-background/70 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Download className="w-5 h-5 text-primary" />
+                <FileText className="w-5 h-5 text-primary" />
                 <div className="text-right">
-                  <p className="text-base text-foreground">تحميل سياسة الخصوصية (PDF)</p>
-                  <p className="text-xs text-muted-foreground">نسخة قابلة للحفظ والمشاركة</p>
+                  <p className="text-base text-foreground">شروط الاستخدام</p>
+                  <p className="text-xs text-muted-foreground">القواعد والاشتراك في المسابقة</p>
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-muted-foreground" />
-            </a>
+            </Link>
           </div>
         </section>
 
