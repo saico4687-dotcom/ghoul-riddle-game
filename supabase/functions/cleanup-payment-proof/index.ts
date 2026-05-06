@@ -35,14 +35,29 @@ Deno.serve(async (req) => {
 
     const filePaths = (files ?? []).map((file) => file.name).filter(Boolean);
 
-    const { error: emptyBucketError } = await admin.storage.emptyBucket(BUCKET);
-    if (emptyBucketError && !String(emptyBucketError.message).toLowerCase().includes("not found")) {
-      throw emptyBucketError;
+    const emptyResponse = await fetch(`${supabaseUrl}/storage/v1/bucket/${BUCKET}/empty`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${serviceRoleKey}`,
+        apikey: serviceRoleKey,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!emptyResponse.ok && emptyResponse.status !== 404) {
+      throw new Error(await emptyResponse.text());
     }
 
-    const { error: removeBucketError } = await admin.storage.deleteBucket(BUCKET);
-    if (removeBucketError && !String(removeBucketError.message).toLowerCase().includes("not found")) {
-      throw removeBucketError;
+    const deleteResponse = await fetch(`${supabaseUrl}/storage/v1/bucket/${BUCKET}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${serviceRoleKey}`,
+        apikey: serviceRoleKey,
+      },
+    });
+
+    if (!deleteResponse.ok && deleteResponse.status !== 404) {
+      throw new Error(await deleteResponse.text());
     }
 
     return new Response(JSON.stringify({ success: true, removedFiles: filePaths.length }), {
@@ -52,7 +67,12 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error:
+          error instanceof Error
+            ? error.message
+            : typeof error === "object"
+              ? JSON.stringify(error)
+              : String(error),
       }),
       {
         status: 500,
