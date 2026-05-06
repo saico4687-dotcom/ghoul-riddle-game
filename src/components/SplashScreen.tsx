@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import appIcon from "@/assets/app-icon.png";
 
 const SplashScreen = () => {
   return (
@@ -15,11 +16,23 @@ const SplashScreen = () => {
         transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
       />
 
-      <motion.h1
-        initial={{ scale: 0.7, opacity: 0, filter: "blur(20px)" }}
+      <motion.img
+        src={appIcon}
+        alt="ربح - تطبيق الألغاز"
+        width={180}
+        height={180}
+        initial={{ scale: 0.6, opacity: 0, filter: "blur(20px)" }}
         animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
-        transition={{ duration: 1.4, ease: "easeOut" }}
-        className="font-horror text-7xl md:text-9xl text-primary relative z-10 text-center px-6"
+        transition={{ duration: 1.2, ease: "easeOut" }}
+        className="w-44 h-44 md:w-56 md:h-56 relative z-10 rounded-3xl"
+        style={{ filter: "drop-shadow(0 0 40px hsl(var(--primary) / 0.7))" }}
+      />
+
+      <motion.h1
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.4, duration: 1, ease: "easeOut" }}
+        className="font-horror text-6xl md:text-8xl text-primary relative z-10 text-center px-6 mt-6"
         style={{ textShadow: "0 0 40px hsl(var(--primary) / 0.8)" }}
       >
         ربح
