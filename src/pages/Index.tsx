@@ -18,6 +18,7 @@ const Index = () => {
   const [totalPoints, setTotalPoints] = useState(0);
   const [timeBonus, setTimeBonus] = useState(0);
   const [answeredCount, setAnsweredCount] = useState(0);
+  const [answers, setAnswers] = useState<Array<{ q: string; selected: number | null; correct: number; options: string[]; explanation: string }>>([]);
   const { user } = useAuth();
 
   const allRiddles = useMemo(() => riddles.slice(0, 400), []);
