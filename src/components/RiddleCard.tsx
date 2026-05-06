@@ -5,7 +5,7 @@ import TypewriterText from "./TypewriterText";
 import RiddleOption from "./RiddleOption";
 import HorrorButton from "./HorrorButton";
 import HorrorClock from "./HorrorClock";
-import { Skull, Mic, MicOff, Scissors, Clock } from "lucide-react";
+import { Brain, Mic, MicOff, Scissors, Clock } from "lucide-react";
 import { useHorrorSounds } from "@/hooks/useHorrorSounds";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
 import moneyBg from "@/assets/money-bg.jpg";
@@ -66,14 +66,14 @@ const RiddleCard = ({
 
   const handleUseFifty = () => {
     if (lifelineUsed || showResult) return;
-    // Pick one wrong option to remove
     const wrongIndices = riddle.options
       .map((_, i) => i)
       .filter((i) => i !== riddle.correctIndex);
-    const randomWrong = wrongIndices[Math.floor(Math.random() * wrongIndices.length)];
-    setRemovedOptions([randomWrong]);
+    const shuffled = [...wrongIndices].sort(() => Math.random() - 0.5);
+    const toRemove = shuffled.slice(0, 2);
+    setRemovedOptions(toRemove);
     setLifelineUsed("fifty");
-    if (selectedOption === randomWrong) setSelectedOption(null);
+    if (selectedOption !== null && toRemove.includes(selectedOption)) setSelectedOption(null);
   };
 
   const handleAddTime = () => {
@@ -161,10 +161,10 @@ const RiddleCard = ({
               onClick={handleUseFifty}
               disabled={lifelineUsed !== null || showResult || !isTypingComplete}
               className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary border border-primary/40 text-primary text-sm font-typewriter hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              aria-label="حذف إجابة خاطئة"
+              aria-label="حذف إجابتين خاطئتين"
             >
               <Scissors className="w-4 h-4" />
-              <span>حذف إجابة خاطئة</span>
+              <span>حذف إجابتين</span>
             </button>
             <button
               type="button"
@@ -187,8 +187,8 @@ const RiddleCard = ({
         {/* Riddle Counter and Mute */}
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3">
-            <Skull className="w-8 h-8 text-primary flicker" />
-            <span className="font-horror text-2xl text-blood">
+            <Brain className="w-8 h-8 text-primary" />
+            <span className="font-horror text-2xl text-primary">
               اللغز {riddleNumber} / {totalRiddles}
             </span>
           </div>
@@ -290,17 +290,16 @@ const RiddleCard = ({
             className="card-horror p-6 mb-8 text-right"
           >
             <h3 className="font-horror text-2xl mb-3 text-primary">
-              {selectedOption === riddle.correctIndex ? "🎃 أحسنت!" : "💀 خطأ!"}
+              {selectedOption === riddle.correctIndex ? "🎉 أحسنت!" : "💡 إجابة غير صحيحة"}
             </h3>
-            {/* In competition mode, hide explanation for wrong answers */}
             {(gameMode === "fun" || selectedOption === riddle.correctIndex) && (
               <p className="font-typewriter text-foreground text-lg leading-relaxed">
                 {riddle.explanation}
               </p>
             )}
             {gameMode === "competition" && selectedOption !== riddle.correctIndex && (
-              <p className="font-typewriter text-muted-foreground text-lg">
-                الإجابة خاطئة... جرب حظك في اللغز التالي!
+              <p className="font-typewriter text-foreground/80 text-lg">
+                لا بأس... ركّز أكثر في اللغز التالي!
               </p>
             )}
           </motion.div>

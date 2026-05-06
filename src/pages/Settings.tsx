@@ -19,7 +19,7 @@ const Settings = () => {
     <div className="min-h-screen bg-background text-foreground" dir="rtl">
       <header className="border-b border-border/40 bg-card/40 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="font-horror text-2xl text-blood">الإعدادات</h1>
+          <h1 className="font-horror text-2xl text-primary">الإعدادات</h1>
           <Link
             to="/"
             className="inline-flex items-center gap-2 text-sm text-primary hover:underline font-typewriter"
@@ -88,8 +88,8 @@ const Settings = () => {
             <h2 className="font-horror text-lg text-primary">عن التطبيق</h2>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed mb-2">
-            ألغاز الرعب — تطبيق ألغاز عربي يجمع بين المتعة والتحدي. حلّ الألغاز،
-            اجمع النقاط، وادخل سحب الجوائز.
+            ربح — تطبيق ألغاز عربي ممتع يحفّز العقل وينمّي مهارات التفكير.
+            حلّ الألغاز، اجمع النقاط، وارتقِ بترتيبك.
           </p>
           <p className="text-xs text-muted-foreground/70" dir="ltr">
             Version 1.0.0
