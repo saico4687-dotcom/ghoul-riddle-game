@@ -43,7 +43,6 @@ const Settings = () => {
                 <Shield className="w-5 h-5 text-primary" />
                 <div className="text-right">
                   <p className="text-base text-foreground">سياسة الخصوصية</p>
-                  <p className="text-xs text-muted-foreground">قراءة داخل التطبيق</p>
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-muted-foreground" />
@@ -57,7 +56,6 @@ const Settings = () => {
                 <FileText className="w-5 h-5 text-primary" />
                 <div className="text-right">
                   <p className="text-base text-foreground">شروط الاستخدام</p>
-                  <p className="text-xs text-muted-foreground">قواعد استخدام التطبيق</p>
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-muted-foreground" />
