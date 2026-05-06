@@ -33,7 +33,7 @@ const AdsConsentDialog = ({ onAccepted }: Props) => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[100] bg-background/90 backdrop-blur-sm flex items-center justify-center p-4"
-          dir="rtl"
+          dir="ltr"
         >
           <motion.div
             initial={{ scale: 0.92, y: 20 }}
@@ -46,33 +46,32 @@ const AdsConsentDialog = ({ onAccepted }: Props) => {
               </div>
               <div>
                 <h2 className="font-horror text-xl text-primary">
-                  تطبيق مجاني مدعوم بالإعلانات
+                  Free App Supported by Ads
                 </h2>
                 <p className="text-xs text-muted-foreground font-typewriter">
-                  لتقديم الخدمة لك بدون مقابل
+                  To keep the service free for you
                 </p>
               </div>
             </div>
 
             <p className="font-typewriter text-sm text-foreground leading-relaxed">
-              تطبيق <span className="text-primary font-bold">«ربح»</span> خدمة
-              مجانية بالكامل. نعتمد على عرض إعلانات قصيرة من Google AdMob
-              لتغطية تكاليف التشغيل وتطوير ألغاز جديدة باستمرار.
+              This app is completely free. We rely on short ads from
+              Google AdMob to cover running costs and keep building new riddles.
             </p>
 
             <div className="space-y-2 text-sm font-typewriter">
               <div className="flex items-start gap-2">
                 <Sparkles className="w-4 h-4 text-primary mt-1 shrink-0" />
                 <span>
-                  إعلانات بسيطة بين الألغاز، وإعلانات مكافأة اختيارية مقابل
-                  وسائل المساعدة (حذف إجابتين / إضافة دقيقة).
+                  Brief ads between riddles, plus optional rewarded ads for
+                  helpful tools (remove two answers / add a minute).
                 </span>
               </div>
               <div className="flex items-start gap-2">
                 <ShieldCheck className="w-4 h-4 text-primary mt-1 shrink-0" />
                 <span>
-                  يمكن استخدام معرّف الإعلان لعرض إعلانات أكثر ملاءمة. يحق لك
-                  اختيار إعلانات غير مخصصة في أي وقت.
+                  Your advertising ID may be used to show more relevant ads.
+                  You can choose non-personalized ads at any time.
                 </span>
               </div>
             </div>
@@ -82,21 +81,21 @@ const AdsConsentDialog = ({ onAccepted }: Props) => {
                 onClick={() => accept(true)}
                 className="w-full px-4 py-3 rounded-lg bg-gradient-to-r from-primary via-yellow-400 to-primary text-primary-foreground font-horror text-lg shadow-[0_4px_20px_hsl(var(--primary)/0.4)]"
               >
-                موافق — إعلانات مخصصة
+                Accept — Personalized Ads
               </button>
               <button
                 onClick={() => accept(false)}
                 className="w-full px-4 py-3 rounded-lg border border-primary/40 text-foreground font-typewriter hover:bg-primary/10 transition-colors"
               >
-                إعلانات غير مخصصة
+                Non-Personalized Ads
               </button>
             </div>
 
             <p className="text-[11px] text-muted-foreground/80 font-typewriter text-center leading-relaxed">
-              بمتابعتك تكون قد اطلعت على{" "}
-              <a href="/privacy" className="text-primary underline">سياسة الخصوصية</a>{" "}
-              و
-              <a href="/terms" className="text-primary underline">شروط الاستخدام</a>.
+              By continuing you acknowledge our{" "}
+              <a href="/privacy" className="text-primary underline">Privacy Policy</a>{" "}
+              and{" "}
+              <a href="/terms" className="text-primary underline">Terms of Use</a>.
             </p>
           </motion.div>
         </motion.div>
