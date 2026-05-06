@@ -22,18 +22,18 @@ Deno.serve(async (req) => {
     }
 
     const admin = createClient(supabaseUrl, serviceRoleKey);
-    const { data: files, error: listError } = await admin.storage.from(BUCKET).list("", {
-      limit: 1000,
-      sortBy: { column: "name", order: "asc" },
-    });
+    const { data: files, error: listError } = await admin
+      .schema("storage")
+      .from("objects")
+      .select("name")
+      .eq("bucket_id", BUCKET)
+      .limit(1000);
 
     if (listError && !String(listError.message).toLowerCase().includes("not found")) {
       throw listError;
     }
 
-    const filePaths = (files ?? [])
-      .filter((file) => file.name && file.id)
-      .map((file) => file.name);
+    const filePaths = (files ?? []).map((file) => file.name).filter(Boolean);
 
     if (filePaths.length > 0) {
       const { error: removeFilesError } = await admin.storage.from(BUCKET).remove(filePaths);
