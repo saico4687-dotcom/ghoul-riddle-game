@@ -4,6 +4,8 @@ import WelcomeScreen, { GameMode } from "@/components/WelcomeScreen";
 import RiddleCard from "@/components/RiddleCard";
 import ResultScreen from "@/components/ResultScreen";
 import GoogleLoginScreen from "@/components/GoogleLoginScreen";
+import AdPlaceholder from "@/components/AdPlaceholder";
+import HorrorButton from "@/components/HorrorButton";
 import { riddles } from "@/data/riddles";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
