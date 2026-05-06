@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { ArrowRight, Check, X, Loader2, RefreshCw, Eye } from "lucide-react";
+import { ArrowRight, Loader2, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -11,18 +11,12 @@ interface Score {
   full_name: string | null;
   email: string | null;
   phone: string | null;
-  payment_phone: string | null;
   total_points: number;
   total_correct: number;
+  total_questions: number;
   time_bonus: number;
-  payment_status: string | null;
-  payment_proof_url: string | null;
-  paid: boolean;
   entered_draw: boolean;
   created_at: string;
-  transaction_number: string | null;
-  payment_date: string | null;
-  payment_time: string | null;
 }
 
 const Admin = () => {
@@ -30,10 +24,6 @@ const Admin = () => {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [scores, setScores] = useState<Score[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">(
-    "pending"
-  );
-  const [actingId, setActingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -51,7 +41,8 @@ const Admin = () => {
     const { data, error } = await supabase
       .from("competition_scores")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("total_points", { ascending: false })
+      .order("time_bonus", { ascending: false });
     if (error) toast.error("فشل تحميل البيانات");
     else setScores((data as Score[]) ?? []);
     setLoading(false);
@@ -60,24 +51,6 @@ const Admin = () => {
   useEffect(() => {
     if (isAdmin) fetchScores();
   }, [isAdmin]);
-
-  const updateStatus = async (id: string, status: "approved" | "rejected") => {
-    setActingId(id);
-    const { error } = await supabase
-      .from("competition_scores")
-      .update({
-        payment_status: status,
-        paid: status === "approved",
-        entered_draw: status === "approved",
-      })
-      .eq("id", id);
-    if (error) toast.error("تعذّر تحديث الحالة");
-    else {
-      toast.success(status === "approved" ? "تم القبول" : "تم الرفض");
-      await fetchScores();
-    }
-    setActingId(null);
-  };
 
   if (authLoading || isAdmin === null) {
     return (
@@ -104,21 +77,6 @@ const Admin = () => {
       </div>
     );
   }
-
-  const filtered = scores.filter((s) => {
-    if (filter === "all") return true;
-    if (filter === "pending") return (s.payment_status ?? "pending") === "pending";
-    if (filter === "approved") return s.payment_status === "approved";
-    if (filter === "rejected") return s.payment_status === "rejected";
-    return true;
-  });
-
-  const counts = {
-    all: scores.length,
-    pending: scores.filter((s) => (s.payment_status ?? "pending") === "pending").length,
-    approved: scores.filter((s) => s.payment_status === "approved").length,
-    rejected: scores.filter((s) => s.payment_status === "rejected").length,
-  };
 
   return (
     <div className="min-h-screen bg-background text-foreground" dir="rtl">
@@ -147,133 +105,47 @@ const Admin = () => {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6">
-        {/* Filters */}
-        <div className="flex flex-wrap gap-2 mb-6 font-typewriter">
-          {(["pending", "approved", "rejected", "all"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-lg border text-sm transition-colors ${
-                filter === f
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card/40 border-border/40 hover:border-primary/40"
-              }`}
-            >
-              {f === "pending" && `قيد المراجعة (${counts.pending})`}
-              {f === "approved" && `مقبول (${counts.approved})`}
-              {f === "rejected" && `مرفوض (${counts.rejected})`}
-              {f === "all" && `الكل (${counts.all})`}
-            </button>
-          ))}
-        </div>
+        <p className="font-typewriter text-muted-foreground mb-4 text-sm">
+          إجمالي المشاركين: {scores.length}
+        </p>
 
         {loading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-        ) : filtered.length === 0 ? (
+        ) : scores.length === 0 ? (
           <p className="text-center text-muted-foreground font-typewriter py-20">
-            لا توجد سجلات في هذا التصنيف.
+            لا توجد نتائج بعد.
           </p>
         ) : (
           <div className="space-y-4">
-            {filtered.map((s) => {
-              const status = s.payment_status ?? "pending";
-              const speed = s.time_bonus;
-              return (
-                <div
-                  key={s.id}
-                  className="bg-card/60 border border-border/40 rounded-xl p-4 backdrop-blur-sm"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-                    <div>
-                      <h3 className="font-horror text-lg text-foreground">
-                        {s.full_name || "مستخدم"}
-                      </h3>
-                      <p className="text-xs text-muted-foreground font-typewriter mt-1">
-                        {s.email || "—"} · {s.phone || "—"}
-                      </p>
-                    </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-typewriter ${
-                        status === "approved"
-                          ? "bg-green-500/20 text-green-400 border border-green-500/40"
-                          : status === "rejected"
-                          ? "bg-red-500/20 text-red-400 border border-red-500/40"
-                          : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/40"
-                      }`}
-                    >
-                      {status === "approved"
-                        ? "مقبول"
-                        : status === "rejected"
-                        ? "مرفوض"
-                        : "قيد المراجعة"}
-                    </span>
+            {scores.map((s, idx) => (
+              <div
+                key={s.id}
+                className="bg-card/60 border border-border/40 rounded-xl p-4 backdrop-blur-sm"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                  <div>
+                    <h3 className="font-horror text-lg text-foreground">
+                      #{idx + 1} — {s.full_name || "مستخدم"}
+                    </h3>
+                    <p className="text-xs text-muted-foreground font-typewriter mt-1">
+                      {s.email || "—"} · {s.phone || "—"}
+                    </p>
                   </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm font-typewriter mb-3">
-                    <Field label="النقاط" value={s.total_points} />
-                    <Field label="الإجابات الصحيحة" value={s.total_correct} />
-                    <Field
-                      label="السرعة (مالك فقط)"
-                      value={speed}
-                      highlight
-                    />
-                    <Field
-                      label="هاتف الدفع"
-                      value={s.payment_phone || "—"}
-                    />
-                    <Field
-                      label="رقم العملية"
-                      value={s.transaction_number || "—"}
-                    />
-                    <Field
-                      label="تاريخ الدفع"
-                      value={s.payment_date || "—"}
-                    />
-                    <Field
-                      label="وقت الدفع"
-                      value={s.payment_time || "—"}
-                    />
-                    <Field
-                      label="تاريخ التسجيل"
-                      value={new Date(s.created_at).toLocaleString("ar-EG")}
-                    />
-                  </div>
-
-                  {s.payment_proof_url && (
-                    <a
-                      href={s.payment_proof_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-sm text-primary hover:underline mb-3"
-                    >
-                      <Eye className="w-4 h-4" />
-                      عرض إثبات الدفع
-                    </a>
-                  )}
-
-                  {status === "pending" && (
-                    <div className="flex gap-2 pt-3 border-t border-border/40">
-                      <button
-                        disabled={actingId === s.id}
-                        onClick={() => updateStatus(s.id, "approved")}
-                        className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-green-600/80 hover:bg-green-600 text-white transition-colors disabled:opacity-50 font-typewriter"
-                      >
-                        <Check className="w-4 h-4" /> قبول
-                      </button>
-                      <button
-                        disabled={actingId === s.id}
-                        onClick={() => updateStatus(s.id, "rejected")}
-                        className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-600/80 hover:bg-red-600 text-white transition-colors disabled:opacity-50 font-typewriter"
-                      >
-                        <X className="w-4 h-4" /> رفض
-                      </button>
-                    </div>
-                  )}
                 </div>
-              );
-            })}
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm font-typewriter">
+                  <Field label="النقاط" value={s.total_points} highlight />
+                  <Field label="إجابات صحيحة" value={`${s.total_correct}/${s.total_questions}`} />
+                  <Field label="السرعة (مالك فقط)" value={s.time_bonus} highlight />
+                  <Field
+                    label="تاريخ التسجيل"
+                    value={new Date(s.created_at).toLocaleString("ar-EG")}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </main>

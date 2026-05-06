@@ -16,71 +16,44 @@ export type Database = {
     Tables: {
       competition_scores: {
         Row: {
-          address: string | null
           created_at: string
           email: string | null
           entered_draw: boolean
-          extracted_text: string | null
           full_name: string | null
           id: string
-          paid: boolean
-          payment_date: string | null
-          payment_phone: string | null
-          payment_proof_url: string | null
-          payment_status: string | null
-          payment_time: string | null
           phone: string | null
           time_bonus: number
           total_correct: number
           total_points: number
           total_questions: number
-          transaction_number: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
-          address?: string | null
           created_at?: string
           email?: string | null
           entered_draw?: boolean
-          extracted_text?: string | null
           full_name?: string | null
           id?: string
-          paid?: boolean
-          payment_date?: string | null
-          payment_phone?: string | null
-          payment_proof_url?: string | null
-          payment_status?: string | null
-          payment_time?: string | null
           phone?: string | null
           time_bonus?: number
           total_correct?: number
           total_points?: number
           total_questions?: number
-          transaction_number?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
-          address?: string | null
           created_at?: string
           email?: string | null
           entered_draw?: boolean
-          extracted_text?: string | null
           full_name?: string | null
           id?: string
-          paid?: boolean
-          payment_date?: string | null
-          payment_phone?: string | null
-          payment_proof_url?: string | null
-          payment_status?: string | null
-          payment_time?: string | null
           phone?: string | null
           time_bonus?: number
           total_correct?: number
           total_points?: number
           total_questions?: number
-          transaction_number?: string | null
           updated_at?: string
           user_id?: string
         }
