@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Download } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 const APP_NAME = "ألغاز الرعب";
 const CONTACT_EMAIL = "support@ghoul-riddle-game.com";
@@ -23,18 +23,10 @@ const Privacy = () => {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-8 font-typewriter leading-loose text-right">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="mb-6">
           <p className="text-sm text-muted-foreground">
             آخر تحديث: {LAST_UPDATED}
           </p>
-          <a
-            href="/privacy-policy.pdf"
-            download
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/40 text-primary hover:bg-primary/20 transition-colors text-sm"
-          >
-            <Download className="w-4 h-4" />
-            <span>تحميل PDF</span>
-          </a>
         </div>
 
         <section className="mb-8">
