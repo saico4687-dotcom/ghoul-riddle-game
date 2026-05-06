@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Download } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 const APP_NAME = "ألغاز الرعب";
 const CONTACT_EMAIL = "support@ghoul-riddle-game.com";
