@@ -4,13 +4,11 @@ import WelcomeScreen, { GameMode } from "@/components/WelcomeScreen";
 import RiddleCard from "@/components/RiddleCard";
 import ResultScreen from "@/components/ResultScreen";
 import GoogleLoginScreen from "@/components/GoogleLoginScreen";
-import AdPlaceholder from "@/components/AdPlaceholder";
-import HorrorButton from "@/components/HorrorButton";
 import { riddles } from "@/data/riddles";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
-type GameState = "welcome" | "login" | "playing" | "ad-break" | "result";
+type GameState = "welcome" | "login" | "playing" | "result";
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>("welcome");
@@ -122,23 +120,12 @@ const Index = () => {
 
   const handleNext = () => {
     if (currentRiddleIndex < allRiddles.length - 1) {
-      const nextIndex = currentRiddleIndex + 1;
-      // Show an ad break every 3 riddles
-      if (nextIndex > 0 && nextIndex % 3 === 0) {
-        setGameState("ad-break");
-      } else {
-        setCurrentRiddleIndex(nextIndex);
-      }
+      setCurrentRiddleIndex(currentRiddleIndex + 1);
     } else {
       // Mark fully completed
       if (user) saveProgress(allRiddles.length, score, totalPoints, timeBonus);
       setGameState("result");
     }
-  };
-
-  const handleAdBreakContinue = () => {
-    setCurrentRiddleIndex(currentRiddleIndex + 1);
-    setGameState("playing");
   };
 
   const handleRestart = () => {
@@ -239,27 +226,6 @@ const Index = () => {
                 onNext={handleNext}
                 gameMode="competition"
               />
-            </div>
-          </motion.div>
-        )}
-
-        {gameState === "ad-break" && (
-          <motion.div
-            key="ad-break"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="min-h-screen bg-horror-gradient flex flex-col items-center justify-center px-4 py-8"
-          >
-            <div className="vignette" />
-            <h2 className="font-horror text-3xl text-primary mb-6 text-center">
-              استراحة قصيرة
-            </h2>
-            <AdPlaceholder slot="interstitial-every-3" label="إعلان بيني (كل 3 ألغاز)" className="min-h-[250px]" />
-            <div className="mt-6">
-              <HorrorButton onClick={handleAdBreakContinue}>
-                متابعة الألغاز
-              </HorrorButton>
             </div>
           </motion.div>
         )}

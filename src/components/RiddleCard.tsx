@@ -8,7 +8,6 @@ import HorrorClock from "./HorrorClock";
 import { Skull, Mic, MicOff, Scissors, Clock } from "lucide-react";
 import { useHorrorSounds } from "@/hooks/useHorrorSounds";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
-import AdPlaceholder from "./AdPlaceholder";
 import moneyBg from "@/assets/money-bg.jpg";
 
 interface RiddleCardProps {
@@ -180,12 +179,9 @@ const RiddleCard = ({
           </div>
         )}
         {gameMode === "competition" && lifelineUsed && (
-          <>
-            <p className="text-xs text-muted-foreground font-typewriter">
-              تم استخدام أداة المساعدة لهذا السؤال
-            </p>
-            <AdPlaceholder slot="lifeline-used" label="إعلان (عند استخدام وسيلة المساعدة)" />
-          </>
+          <p className="text-xs text-muted-foreground font-typewriter">
+            تم استخدام أداة المساعدة لهذا السؤال
+          </p>
         )}
         
         {/* Riddle Counter and Mute */}
@@ -303,12 +299,9 @@ const RiddleCard = ({
               </p>
             )}
             {gameMode === "competition" && selectedOption !== riddle.correctIndex && (
-              <>
-                <p className="font-typewriter text-muted-foreground text-lg">
-                  الإجابة خاطئة... جرب حظك في اللغز التالي!
-                </p>
-                <AdPlaceholder slot="on-wrong-answer" label="إعلان (عند الخسارة)" className="mt-4" />
-              </>
+              <p className="font-typewriter text-muted-foreground text-lg">
+                الإجابة خاطئة... جرب حظك في اللغز التالي!
+              </p>
             )}
           </motion.div>
         )}
