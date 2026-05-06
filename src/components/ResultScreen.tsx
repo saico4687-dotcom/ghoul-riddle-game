@@ -317,8 +317,8 @@ const ResultScreen = ({
                 <div className="font-typewriter text-[10px] text-muted-foreground">نقطة</div>
               </div>
               <div>
-                <div className="font-horror text-lg text-yellow-400">+{timeBonus}</div>
-                <div className="font-typewriter text-[10px] text-muted-foreground">سرعة</div>
+                <div className="font-horror text-lg text-yellow-400/60 blur-sm select-none" aria-hidden="true">＊＊＊</div>
+                <div className="font-typewriter text-[10px] text-muted-foreground">سرعة (مخفي)</div>
               </div>
             </div>
             <p className={`font-horror text-xs text-center mt-2 ${rank.color}`}>{rank.title}</p>
