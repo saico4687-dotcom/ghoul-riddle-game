@@ -3,7 +3,7 @@ import { ArrowRight, Shield, FileText, Mail, Info, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
-const CONTACT_EMAIL = "support@ghoul-riddle-game.com";
+const CONTACT_EMAIL = "support@rebh-app.com";
 
 const Settings = () => {
   const { user, signOut } = useAuth();
