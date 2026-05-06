@@ -298,13 +298,38 @@ const ResultScreen = ({
       <div className="min-h-screen bg-horror-gradient relative overflow-hidden flex items-center justify-center" dir="rtl">
         <div className="vignette" />
         <div className="fog-overlay" />
-        <div className="relative z-10 text-center px-4 max-w-md">
+        <div className="relative z-10 text-center px-4 max-w-md w-full py-6">
+          {/* Mini result summary at top */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="card-horror p-3 mb-4 text-right border-primary/40"
+            dir="rtl"
+          >
+            <p className="font-horror text-sm text-primary text-center mb-2">نتيجتك في المسابقة</p>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div>
+                <div className="font-horror text-lg text-primary">{score}/{totalQuestions}</div>
+                <div className="font-typewriter text-[10px] text-muted-foreground">صحيحة</div>
+              </div>
+              <div>
+                <div className="font-horror text-lg text-primary">{totalPoints}</div>
+                <div className="font-typewriter text-[10px] text-muted-foreground">نقطة</div>
+              </div>
+              <div>
+                <div className="font-horror text-lg text-yellow-400">+{timeBonus}</div>
+                <div className="font-typewriter text-[10px] text-muted-foreground">سرعة</div>
+              </div>
+            </div>
+            <p className={`font-horror text-xs text-center mt-2 ${rank.color}`}>{rank.title}</p>
+          </motion.div>
+
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="mb-6 inline-block"
+            className="mb-4 inline-block"
           >
-            <Loader2 className="w-20 h-20 mx-auto text-yellow-400" />
+            <Loader2 className="w-16 h-16 mx-auto text-yellow-400" />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card-horror p-6 space-y-4 text-right" dir="rtl">
             <div className="flex items-center justify-center gap-2">
