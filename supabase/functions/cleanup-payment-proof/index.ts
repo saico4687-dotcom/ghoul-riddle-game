@@ -1,5 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -20,8 +18,6 @@ Deno.serve(async (req) => {
     if (!supabaseUrl || !serviceRoleKey) {
       throw new Error("Missing backend credentials");
     }
-
-    createClient(supabaseUrl, serviceRoleKey);
 
     const emptyResponse = await fetch(`${supabaseUrl}/storage/v1/bucket/${BUCKET}/empty`, {
       method: "POST",
