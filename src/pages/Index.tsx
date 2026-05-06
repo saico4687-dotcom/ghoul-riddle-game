@@ -7,6 +7,7 @@ import GoogleLoginScreen from "@/components/GoogleLoginScreen";
 import { riddles } from "@/data/riddles";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { showInterstitial } from "@/lib/ads";
 
 type GameState = "welcome" | "login" | "playing" | "result";
 
@@ -98,6 +99,11 @@ const Index = () => {
     let newTotalPoints = totalPoints;
     let newTimeBonus = timeBonus;
 
+    if (!isCorrect) {
+      // Show ad on wrong answer (loss feedback)
+      showInterstitial();
+    }
+
     if (isCorrect) {
       newScore = score + 1;
       setScore(newScore);
@@ -120,7 +126,12 @@ const Index = () => {
 
   const handleNext = () => {
     if (currentRiddleIndex < allRiddles.length - 1) {
-      setCurrentRiddleIndex(currentRiddleIndex + 1);
+      const nextIndex = currentRiddleIndex + 1;
+      // Show interstitial after every 3 riddles
+      if (nextIndex > 0 && nextIndex % 3 === 0) {
+        showInterstitial();
+      }
+      setCurrentRiddleIndex(nextIndex);
     } else {
       // Mark fully completed
       if (user) saveProgress(allRiddles.length, score, totalPoints, timeBonus);

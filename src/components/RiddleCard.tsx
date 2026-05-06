@@ -8,6 +8,7 @@ import HorrorClock from "./HorrorClock";
 import { Brain, Mic, MicOff, Scissors, Clock } from "lucide-react";
 import { useHorrorSounds } from "@/hooks/useHorrorSounds";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
+import { showInterstitial } from "@/lib/ads";
 import moneyBg from "@/assets/money-bg.jpg";
 
 interface RiddleCardProps {
@@ -78,6 +79,7 @@ const RiddleCard = ({
 
   const handleAddTime = () => {
     if (lifelineUsed || showResult) return;
+    showInterstitial();
     setExtraTime((prev) => prev + 60);
     setLifelineUsed("time");
   };
