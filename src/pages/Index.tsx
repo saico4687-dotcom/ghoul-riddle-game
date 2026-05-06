@@ -135,12 +135,12 @@ const Index = () => {
 
   const getRank = (points: number, totalPossible: number) => {
     const percentage = (points / totalPossible) * 100;
-    if (percentage >= 90) return { title: "أسطورة الرعب 👑", color: "text-yellow-400" };
+    if (percentage >= 90) return { title: "أسطورة الذكاء 👑", color: "text-yellow-400" };
     if (percentage >= 75) return { title: "سيد الألغاز 🏆", color: "text-purple-400" };
     if (percentage >= 60) return { title: "محقق ماهر 🔍", color: "text-blue-400" };
-    if (percentage >= 45) return { title: "مغامر شجاع ⚔️", color: "text-green-400" };
+    if (percentage >= 45) return { title: "مفكّر شجاع ⚔️", color: "text-green-400" };
     if (percentage >= 30) return { title: "مبتدئ واعد 📚", color: "text-orange-400" };
-    return { title: "مرعوب 😱", color: "text-red-400" };
+    return { title: "في بداية الطريق 🌱", color: "text-pink-400" };
   };
 
   const maxPoints = allRiddles.length * 15;
