@@ -317,8 +317,8 @@ const ResultScreen = ({
                 <div className="font-typewriter text-[10px] text-muted-foreground">نقطة</div>
               </div>
               <div>
-                <div className="font-horror text-lg text-yellow-400/60 blur-sm select-none" aria-hidden="true">＊＊＊</div>
-                <div className="font-typewriter text-[10px] text-muted-foreground">سرعة (مخفي)</div>
+                <div className="font-horror text-lg text-yellow-400">+{timeBonus}</div>
+                <div className="font-typewriter text-[10px] text-muted-foreground">سرعة</div>
               </div>
             </div>
             <p className={`font-horror text-xs text-center mt-2 ${rank.color}`}>{rank.title}</p>
@@ -779,8 +779,8 @@ const ResultScreen = ({
             className="card-horror p-3 mb-6 inline-flex items-center gap-2"
           >
             <Zap className="w-5 h-5 text-yellow-400" />
-            <span className="font-typewriter text-sm text-yellow-400/70">
-              نقاط السرعة محفوظة بشكل سري لدى الإدارة
+            <span className="font-typewriter text-sm text-yellow-400">
+              +{timeBonus} نقاط إضافية للسرعة!
             </span>
           </motion.div>
         )}
