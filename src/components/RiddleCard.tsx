@@ -180,9 +180,12 @@ const RiddleCard = ({
           </div>
         )}
         {gameMode === "competition" && lifelineUsed && (
-          <p className="text-xs text-muted-foreground font-typewriter">
-            تم استخدام أداة المساعدة لهذا السؤال
-          </p>
+          <>
+            <p className="text-xs text-muted-foreground font-typewriter">
+              تم استخدام أداة المساعدة لهذا السؤال
+            </p>
+            <AdPlaceholder slot="lifeline-used" label="إعلان (عند استخدام وسيلة المساعدة)" />
+          </>
         )}
         
         {/* Riddle Counter and Mute */}
