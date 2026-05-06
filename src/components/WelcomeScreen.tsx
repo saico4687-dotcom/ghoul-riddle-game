@@ -91,7 +91,7 @@ const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
           </motion.div>
 
           {/* Title */}
-          <h1 className="font-horror text-6xl md:text-8xl text-blood pulse-blood mb-6">
+          <h1 className="font-horror text-5xl sm:text-6xl md:text-8xl text-blood pulse-blood mb-6 whitespace-nowrap">
             ألغاز الرعب
           </h1>
           
