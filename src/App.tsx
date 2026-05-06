@@ -10,6 +10,7 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Admin from "./pages/Admin";
 import SplashScreen from "./components/SplashScreen";
 
 const queryClient = new QueryClient();
