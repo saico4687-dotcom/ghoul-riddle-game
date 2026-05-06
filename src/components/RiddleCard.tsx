@@ -303,9 +303,12 @@ const RiddleCard = ({
               </p>
             )}
             {gameMode === "competition" && selectedOption !== riddle.correctIndex && (
-              <p className="font-typewriter text-muted-foreground text-lg">
-                الإجابة خاطئة... جرب حظك في اللغز التالي!
-              </p>
+              <>
+                <p className="font-typewriter text-muted-foreground text-lg">
+                  الإجابة خاطئة... جرب حظك في اللغز التالي!
+                </p>
+                <AdPlaceholder slot="on-wrong-answer" label="إعلان (عند الخسارة)" className="mt-4" />
+              </>
             )}
           </motion.div>
         )}
