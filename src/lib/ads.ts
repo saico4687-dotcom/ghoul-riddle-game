@@ -11,6 +11,26 @@ const LAST_APP_OPEN_KEY = "last_app_open_ad";
 
 let initialized = false;
 
+/**
+ * Request Google UMP (User Messaging Platform) consent — required by Google
+ * Play & EEA/UK GDPR. Falls back gracefully on web.
+ */
+export const requestUMPConsent = async () => {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    const { AdMob } = await import("@capacitor-community/admob");
+    const consentInfo = await AdMob.requestConsentInfo();
+    if (
+      consentInfo.isConsentFormAvailable &&
+      consentInfo.status === "REQUIRED"
+    ) {
+      await AdMob.showConsentForm();
+    }
+  } catch (e) {
+    console.warn("[AdMob] UMP consent failed", e);
+  }
+};
+
 export const initAdMob = async () => {
   if (initialized) return;
   if (!Capacitor.isNativePlatform()) {
@@ -19,7 +39,17 @@ export const initAdMob = async () => {
   }
   try {
     const { AdMob } = await import("@capacitor-community/admob");
+    // 1) Ask for GDPR/UMP consent BEFORE initializing ads
+    await requestUMPConsent();
+    // 2) Initialize AdMob (production mode)
     await AdMob.initialize({ initializeForTesting: false });
+    // 3) Tracking authorization (iOS ATT) — no-op on Android
+    try {
+      const tracking = await AdMob.trackingAuthorizationStatus();
+      if (tracking.status === "notDetermined") {
+        await AdMob.requestTrackingAuthorization();
+      }
+    } catch {}
     initialized = true;
   } catch (e) {
     console.warn("[AdMob] init failed", e);
