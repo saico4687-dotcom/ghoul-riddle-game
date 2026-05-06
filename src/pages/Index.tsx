@@ -17,6 +17,7 @@ const Index = () => {
   const [score, setScore] = useState(0);
   const [totalPoints, setTotalPoints] = useState(0);
   const [timeBonus, setTimeBonus] = useState(0);
+  const [answeredCount, setAnsweredCount] = useState(0);
   const { user } = useAuth();
 
   const allRiddles = useMemo(() => riddles.slice(0, 400), []);
@@ -100,8 +101,7 @@ const Index = () => {
     let newTimeBonus = timeBonus;
 
     if (!isCorrect) {
-      // Show ad on wrong answer (loss feedback)
-      showInterstitial();
+      // No interstitial here — handled by 5-question counter below
     }
 
     if (isCorrect) {
@@ -118,6 +118,15 @@ const Index = () => {
       setTotalPoints(newTotalPoints);
     }
 
+    // Interstitial every 5 answered questions
+    const newAnswered = answeredCount + 1;
+    if (newAnswered >= 5) {
+      showInterstitial();
+      setAnsweredCount(0);
+    } else {
+      setAnsweredCount(newAnswered);
+    }
+
     if (user) {
       const nextIndex = currentRiddleIndex + 1;
       saveProgress(nextIndex, newScore, newTotalPoints, newTimeBonus);
@@ -126,12 +135,7 @@ const Index = () => {
 
   const handleNext = () => {
     if (currentRiddleIndex < allRiddles.length - 1) {
-      const nextIndex = currentRiddleIndex + 1;
-      // Show interstitial after every 3 riddles
-      if (nextIndex > 0 && nextIndex % 3 === 0) {
-        showInterstitial();
-      }
-      setCurrentRiddleIndex(nextIndex);
+      setCurrentRiddleIndex(currentRiddleIndex + 1);
     } else {
       // Mark fully completed
       if (user) saveProgress(allRiddles.length, score, totalPoints, timeBonus);

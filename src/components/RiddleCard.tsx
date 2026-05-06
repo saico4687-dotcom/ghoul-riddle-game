@@ -8,7 +8,7 @@ import HorrorClock from "./HorrorClock";
 import { Brain, Mic, MicOff, Scissors, Clock } from "lucide-react";
 import { useHorrorSounds } from "@/hooks/useHorrorSounds";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
-import { showInterstitial } from "@/lib/ads";
+import { showRewarded } from "@/lib/ads";
 import moneyBg from "@/assets/money-bg.jpg";
 
 interface RiddleCardProps {
@@ -65,8 +65,10 @@ const RiddleCard = ({
     playSound("ambient");
   }, [riddle, playSound]);
 
-  const handleUseFifty = () => {
+  const handleUseFifty = async () => {
     if (lifelineUsed || showResult) return;
+    const earned = await showRewarded();
+    if (!earned) return;
     const wrongIndices = riddle.options
       .map((_, i) => i)
       .filter((i) => i !== riddle.correctIndex);
@@ -77,9 +79,10 @@ const RiddleCard = ({
     if (selectedOption !== null && toRemove.includes(selectedOption)) setSelectedOption(null);
   };
 
-  const handleAddTime = () => {
+  const handleAddTime = async () => {
     if (lifelineUsed || showResult) return;
-    showInterstitial();
+    const earned = await showRewarded();
+    if (!earned) return;
     setExtraTime((prev) => prev + 60);
     setLifelineUsed("time");
   };
