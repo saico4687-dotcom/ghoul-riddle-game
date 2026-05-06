@@ -212,7 +212,7 @@ const Index = () => {
                   </span>
                 </div>
               )}
-              <div className="px-4 py-2 rounded-lg font-horror text-sm bg-red-900/80 text-red-300 border border-red-500">
+              <div className="px-4 py-2 rounded-lg font-horror text-sm bg-primary/20 text-primary border border-primary/50">
                 🏆 الألغاز
               </div>
             </motion.div>

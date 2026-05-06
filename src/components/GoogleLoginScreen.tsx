@@ -50,10 +50,10 @@ const GoogleLoginScreen = ({ onBack }: GoogleLoginScreenProps) => {
           <Trophy className="w-16 h-16 mx-auto text-primary flicker" />
         </motion.div>
 
-        <h2 className="font-horror text-4xl text-blood mb-4">ألغاز المسابقة</h2>
+        <h2 className="font-horror text-4xl text-primary mb-4">ابدأ الألغاز</h2>
 
-        <p className="font-typewriter text-muted-foreground mb-8">
-          سجّل دخولك بحساب Google للمشاركة في المسابقة وحفظ نتائجك
+        <p className="font-typewriter text-foreground/80 mb-8">
+          سجّل دخولك بحساب Google لحفظ تقدّمك ونتائجك
         </p>
 
         <button
