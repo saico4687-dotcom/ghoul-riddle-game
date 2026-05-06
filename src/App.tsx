@@ -12,6 +12,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import SplashScreen from "./components/SplashScreen";
+import AdsConsentDialog from "./components/AdsConsentDialog";
 import { initAdMob, showAppOpenAdIfDue } from "./lib/ads";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => {
         <Toaster />
         <Sonner />
         <AnimatePresence>{showSplash && <SplashScreen />}</AnimatePresence>
+        <AdsConsentDialog />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
