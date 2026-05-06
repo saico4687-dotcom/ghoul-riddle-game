@@ -265,6 +265,7 @@ const Index = () => {
               rank={rank}
               gameMode="competition"
               onRestart={handleRestart}
+              answers={answers}
             />
           </motion.div>
         )}
