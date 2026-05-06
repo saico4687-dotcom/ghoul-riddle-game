@@ -95,6 +95,20 @@ const Settings = () => {
             Version 1.0.0
           </p>
         </section>
+
+        {user && (
+          <section className="card-horror p-5">
+            <h2 className="font-horror text-lg text-primary mb-2">الحساب</h2>
+            <p className="text-xs text-muted-foreground mb-4" dir="ltr">{user.email}</p>
+            <button
+              onClick={handleSignOut}
+              className="w-full flex items-center justify-center gap-2 p-4 rounded-lg border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 transition-colors text-red-400 font-typewriter"
+            >
+              <LogOut className="w-5 h-5" />
+              <span>تسجيل الخروج</span>
+            </button>
+          </section>
+        )}
       </main>
     </div>
   );
