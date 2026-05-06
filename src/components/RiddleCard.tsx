@@ -15,7 +15,7 @@ interface RiddleCardProps {
   riddle: Riddle;
   riddleNumber: number;
   totalRiddles: number;
-  onAnswer: (isCorrect: boolean) => void;
+  onAnswer: (isCorrect: boolean, selectedIndex: number | null) => void;
   onNext: () => void;
   gameMode: "fun" | "competition";
 }
@@ -92,7 +92,7 @@ const RiddleCard = ({
       // Auto-submit as wrong when time is up
       setShowResult(true);
       playSound("wrong");
-      onAnswer(false);
+      onAnswer(false, null);
       
       // In competition mode, auto-advance after time up
       if (gameMode === "competition") {
@@ -115,7 +115,7 @@ const RiddleCard = ({
     const isCorrect = selectedOption === riddle.correctIndex;
     setShowResult(true);
     playSound(isCorrect ? "correct" : "wrong");
-    onAnswer(isCorrect);
+    onAnswer(isCorrect, selectedOption);
     
     // In competition mode, auto-advance after wrong answer
     if (gameMode === "competition" && !isCorrect) {
