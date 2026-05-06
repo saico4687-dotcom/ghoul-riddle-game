@@ -10,7 +10,7 @@ import { riddles } from "@/data/riddles";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
-type GameState = "welcome" | "login" | "playing" | "result";
+type GameState = "welcome" | "login" | "playing" | "ad-break" | "result";
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>("welcome");
