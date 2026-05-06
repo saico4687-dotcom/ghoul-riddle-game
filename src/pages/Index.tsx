@@ -122,12 +122,23 @@ const Index = () => {
 
   const handleNext = () => {
     if (currentRiddleIndex < allRiddles.length - 1) {
-      setCurrentRiddleIndex(currentRiddleIndex + 1);
+      const nextIndex = currentRiddleIndex + 1;
+      // Show an ad break every 3 riddles
+      if (nextIndex > 0 && nextIndex % 3 === 0) {
+        setGameState("ad-break");
+      } else {
+        setCurrentRiddleIndex(nextIndex);
+      }
     } else {
       // Mark fully completed
       if (user) saveProgress(allRiddles.length, score, totalPoints, timeBonus);
       setGameState("result");
     }
+  };
+
+  const handleAdBreakContinue = () => {
+    setCurrentRiddleIndex(currentRiddleIndex + 1);
+    setGameState("playing");
   };
 
   const handleRestart = () => {
