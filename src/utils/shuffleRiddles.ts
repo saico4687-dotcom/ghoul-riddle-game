@@ -51,10 +51,8 @@ export function shuffleAllRiddles(riddles: ShuffledRiddle[]): ShuffledRiddle[] {
       riddle.id * 17 + index * 31 // Unique seed per riddle
     );
     
-    // Apply unified background images:
-    // - First 200 riddles (index 0-199): Fun riddles get vortex background
-    // - Last 200 riddles (index 200-399): Competition riddles get competition background
-    const unifiedImage = index < 200 ? riddleFunBackground : riddleCompetition;
+    // All 400 riddles use the unified competition background
+    const unifiedImage = riddleCompetition;
     
     return {
       ...riddle,
