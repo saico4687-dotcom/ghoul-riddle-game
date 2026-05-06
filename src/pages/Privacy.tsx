@@ -66,6 +66,7 @@ const Privacy = () => {
           <ul className="list-disc pr-6 space-y-2 mt-2">
             <li><strong>Google Sign-In:</strong> للمصادقة وتسجيل الدخول.</li>
             <li><strong>خدمة قاعدة البيانات السحابية:</strong> لتخزين بياناتك بشكل آمن.</li>
+            <li><strong>Google AdMob:</strong> لعرض الإعلانات داخل التطبيق.</li>
           </ul>
         </Section>
 
