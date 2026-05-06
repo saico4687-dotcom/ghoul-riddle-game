@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Creepster&family=Special+Elite&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Tajawal:wght@500;700;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,72 +6,72 @@
 
 @layer base {
   :root {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 90%;
+    --background: 250 60% 12%;
+    --foreground: 48 100% 96%;
 
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 90%;
+    --card: 252 45% 18%;
+    --card-foreground: 48 100% 96%;
 
-    --popover: 0 0% 6%;
-    --popover-foreground: 0 0% 90%;
+    --popover: 252 45% 16%;
+    --popover-foreground: 48 100% 96%;
 
-    --primary: 0 85% 40%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 45 100% 55%;
+    --primary-foreground: 252 60% 12%;
 
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 90%;
+    --secondary: 270 50% 30%;
+    --secondary-foreground: 48 100% 96%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 252 30% 25%;
+    --muted-foreground: 48 30% 80%;
 
-    --accent: 0 70% 30%;
+    --accent: 320 85% 60%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 15%;
-    --ring: 0 85% 40%;
+    --border: 270 40% 35%;
+    --input: 252 40% 22%;
+    --ring: 45 100% 55%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --horror-blood: 0 85% 35%;
-    --horror-glow: 0 100% 50%;
-    --horror-dark: 0 0% 2%;
-    --horror-fog: 0 0% 40%;
-    --horror-eerie: 180 50% 20%;
+    --horror-blood: 45 100% 55%;
+    --horror-glow: 45 100% 65%;
+    --horror-dark: 252 60% 10%;
+    --horror-fog: 270 40% 40%;
+    --horror-eerie: 180 60% 40%;
 
-    --sidebar-background: 0 0% 6%;
-    --sidebar-foreground: 0 0% 80%;
-    --sidebar-primary: 0 85% 40%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 0 0% 90%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 0 85% 40%;
+    --sidebar-background: 252 45% 16%;
+    --sidebar-foreground: 48 100% 90%;
+    --sidebar-primary: 45 100% 55%;
+    --sidebar-primary-foreground: 252 60% 12%;
+    --sidebar-accent: 270 50% 30%;
+    --sidebar-accent-foreground: 48 100% 96%;
+    --sidebar-border: 270 40% 35%;
+    --sidebar-ring: 45 100% 55%;
   }
 
   .dark {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 90%;
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 90%;
-    --popover: 0 0% 6%;
-    --popover-foreground: 0 0% 90%;
-    --primary: 0 85% 40%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 90%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 0 70% 30%;
+    --background: 250 60% 12%;
+    --foreground: 48 100% 96%;
+    --card: 252 45% 18%;
+    --card-foreground: 48 100% 96%;
+    --popover: 252 45% 16%;
+    --popover-foreground: 48 100% 96%;
+    --primary: 45 100% 55%;
+    --primary-foreground: 252 60% 12%;
+    --secondary: 270 50% 30%;
+    --secondary-foreground: 48 100% 96%;
+    --muted: 252 30% 25%;
+    --muted-foreground: 48 30% 80%;
+    --accent: 320 85% 60%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 20%;
-    --input: 0 0% 15%;
-    --ring: 0 85% 40%;
+    --border: 270 40% 35%;
+    --input: 252 40% 22%;
+    --ring: 45 100% 55%;
   }
 }
 
@@ -82,17 +82,21 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Special Elite', cursive;
+    font-family: 'Tajawal', 'Cairo', sans-serif;
+    font-weight: 700;
   }
 }
 
 @layer components {
   .font-horror {
-    font-family: 'Creepster', cursive;
+    font-family: 'Cairo', sans-serif;
+    font-weight: 900;
+    letter-spacing: 0.02em;
   }
 
   .font-typewriter {
-    font-family: 'Special Elite', cursive;
+    font-family: 'Tajawal', sans-serif;
+    font-weight: 700;
   }
 
   .text-blood {
@@ -109,10 +113,10 @@
 
   .bg-horror-gradient {
     background: linear-gradient(
-      180deg,
-      hsl(var(--horror-dark)) 0%,
-      hsl(0 0% 6%) 50%,
-      hsl(var(--horror-blood) / 0.2) 100%
+      135deg,
+      hsl(252 60% 15%) 0%,
+      hsl(270 55% 22%) 50%,
+      hsl(320 60% 25%) 100%
     );
   }
 
