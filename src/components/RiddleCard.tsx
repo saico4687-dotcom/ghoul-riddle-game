@@ -5,7 +5,7 @@ import TypewriterText from "./TypewriterText";
 import RiddleOption from "./RiddleOption";
 import HorrorButton from "./HorrorButton";
 import HorrorClock from "./HorrorClock";
-import { Skull, Mic, MicOff, Scissors, Clock } from "lucide-react";
+import { Brain, Mic, MicOff, Scissors, Clock } from "lucide-react";
 import { useHorrorSounds } from "@/hooks/useHorrorSounds";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
 import moneyBg from "@/assets/money-bg.jpg";
