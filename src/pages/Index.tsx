@@ -243,6 +243,27 @@ const Index = () => {
           </motion.div>
         )}
 
+        {gameState === "ad-break" && (
+          <motion.div
+            key="ad-break"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="min-h-screen bg-horror-gradient flex flex-col items-center justify-center px-4 py-8"
+          >
+            <div className="vignette" />
+            <h2 className="font-horror text-3xl text-primary mb-6 text-center">
+              استراحة قصيرة
+            </h2>
+            <AdPlaceholder slot="interstitial-every-3" label="إعلان بيني (كل 3 ألغاز)" className="min-h-[250px]" />
+            <div className="mt-6">
+              <HorrorButton onClick={handleAdBreakContinue}>
+                متابعة الألغاز
+              </HorrorButton>
+            </div>
+          </motion.div>
+        )}
+
         {gameState === "result" && (
           <motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <ResultScreen
