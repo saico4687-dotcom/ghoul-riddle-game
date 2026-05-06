@@ -779,8 +779,8 @@ const ResultScreen = ({
             className="card-horror p-3 mb-6 inline-flex items-center gap-2"
           >
             <Zap className="w-5 h-5 text-yellow-400" />
-            <span className="font-typewriter text-sm text-yellow-400">
-              +{timeBonus} نقاط إضافية للسرعة!
+            <span className="font-typewriter text-sm text-yellow-400/70">
+              نقاط السرعة محفوظة بشكل سري لدى الإدارة
             </span>
           </motion.div>
         )}
