@@ -5,7 +5,6 @@ import RiddleCard from "@/components/RiddleCard";
 import ResultScreen from "@/components/ResultScreen";
 import GoogleLoginScreen from "@/components/GoogleLoginScreen";
 import { riddles } from "@/data/riddles";
-import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -16,21 +15,11 @@ const Index = () => {
   const [currentRiddleIndex, setCurrentRiddleIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [totalPoints, setTotalPoints] = useState(0);
-  const [gameMode, setGameMode] = useState<GameMode>("fun");
   const [timeBonus, setTimeBonus] = useState(0);
-  const [profileLoaded, setProfileLoaded] = useState(false);
-  const { startMusic, stopMusic, isPlaying: isMusicPlaying } = useHorrorBackgroundMusic();
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
 
-  const funRiddles = useMemo(() => riddles.slice(0, 200), []);
-  const competitionRiddles = useMemo(() => riddles.slice(200, 400), []);
+  const allRiddles = useMemo(() => riddles.slice(0, 400), []);
 
-  const currentRiddles = useMemo(() => 
-    gameMode === "fun" ? funRiddles : competitionRiddles,
-    [gameMode, funRiddles, competitionRiddles]
-  );
-
-  // Ensure profile exists, create if missing
   const ensureProfile = useCallback(async () => {
     if (!user) return null;
     const { data } = await supabase
@@ -38,158 +27,77 @@ const Index = () => {
       .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
       .eq("user_id", user.id)
       .single();
-    
     if (data) return data;
-
-    // Profile missing - create it
     const { data: newProfile } = await supabase
       .from("profiles")
       .insert({
         user_id: user.id,
         email: user.email,
-        name: user.user_metadata?.full_name || user.user_metadata?.name || '',
-        profile_image: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+        name: user.user_metadata?.full_name || user.user_metadata?.name || "",
+        profile_image: user.user_metadata?.avatar_url || user.user_metadata?.picture || "",
       })
       .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
       .single();
-    
     return newProfile;
   }, [user]);
 
-  // Save progress after each riddle in competition mode
-  const saveProgress = useCallback(async (newIndex: number, newScore: number, newTotalPoints: number, newTimeBonus: number) => {
-    if (!user || gameMode !== "competition") return;
-    await supabase
-      .from("profiles")
-      .update({ 
-        last_puzzle_index: newIndex, 
-        saved_score: newScore,
-        saved_total_points: newTotalPoints,
-        saved_time_bonus: newTimeBonus,
-        updated_at: new Date().toISOString() 
-      })
-      .eq("user_id", user.id);
-  }, [user, gameMode]);
+  const saveProgress = useCallback(
+    async (newIndex: number, newScore: number, newTotalPoints: number, newTimeBonus: number) => {
+      if (!user) return;
+      await supabase
+        .from("profiles")
+        .update({
+          last_puzzle_index: newIndex,
+          saved_score: newScore,
+          saved_total_points: newTotalPoints,
+          saved_time_bonus: newTimeBonus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", user.id);
+    },
+    [user]
+  );
 
-  // When user logs in while on login screen, load progress then start
+  const startFromProfile = useCallback(async () => {
+    const data = await ensureProfile();
+    const startIndex = data?.last_puzzle_index ?? 0;
+    const savedScore = data?.saved_score ?? 0;
+    const savedPoints = data?.saved_total_points ?? 0;
+    const savedBonus = data?.saved_time_bonus ?? 0;
+
+    setScore(savedScore);
+    setTotalPoints(savedPoints);
+    setTimeBonus(savedBonus);
+
+    if (startIndex >= allRiddles.length) {
+      // Locked — already finished
+      setCurrentRiddleIndex(allRiddles.length);
+      setGameState("result");
+    } else {
+      setCurrentRiddleIndex(startIndex);
+      setGameState("playing");
+    }
+  }, [ensureProfile, allRiddles.length]);
+
   useEffect(() => {
     if (gameState === "login" && user) {
-      (async () => {
-        // Check if user already has a competition entry
-        const { data: scoreData } = await supabase
-          .from("competition_scores")
-          .select("payment_status, entered_draw, total_correct, total_points, time_bonus, total_questions")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (scoreData?.payment_status === "تم الدفع" || scoreData?.payment_status === "مؤكد") {
-          setGameMode("competition");
-          setGameState("welcome");
-          return;
-        }
-
-        if (scoreData && (scoreData.entered_draw || scoreData.payment_status === "قيد المراجعة" || (scoreData.total_questions ?? 0) > 0)) {
-          setGameMode("competition");
-          setScore(scoreData.total_correct ?? 0);
-          setTotalPoints(scoreData.total_points ?? 0);
-          setTimeBonus(scoreData.time_bonus ?? 0);
-          setCurrentRiddleIndex(competitionRiddles.length);
-          setProfileLoaded(true);
-          setGameState("result");
-          return;
-        }
-
-        const data = await ensureProfile();
-        const startIndex = data?.last_puzzle_index ?? 0;
-
-        setGameMode("competition");
-        setCurrentRiddleIndex(startIndex);
-        setScore(data?.saved_score ?? 0);
-        setTotalPoints(data?.saved_total_points ?? 0);
-        setTimeBonus(data?.saved_time_bonus ?? 0);
-        setProfileLoaded(true);
-        setGameState("playing");
-      })();
+      startFromProfile();
     }
-  }, [user, gameState, ensureProfile, competitionRiddles.length]);
+  }, [user, gameState, startFromProfile]);
 
-  const handleStart = async (mode: GameMode) => {
-    if (mode === "competition" && !user) {
-      setGameMode("competition");
+  const handleStart = async (_mode: GameMode) => {
+    if (!user) {
       setGameState("login");
       return;
     }
-
-    if (mode === "competition" && user) {
-      // Check competition_scores: if user already finished and is in payment flow,
-      // send them directly to the result screen (form/payment/proof/reviewing).
-      const { data: scoreData } = await supabase
-        .from("competition_scores")
-        .select("payment_status, entered_draw, total_correct, total_points, time_bonus, total_questions")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (scoreData?.payment_status === "تم الدفع" || scoreData?.payment_status === "مؤكد") {
-        // Competition locked - user already paid
-        return;
-      }
-
-      // If user already submitted draw entry or has a pending review, jump to result screen
-      if (scoreData && (scoreData.entered_draw || scoreData.payment_status === "قيد المراجعة" || (scoreData.total_questions ?? 0) > 0)) {
-        setScore(scoreData.total_correct ?? 0);
-        setTotalPoints(scoreData.total_points ?? 0);
-        setTimeBonus(scoreData.time_bonus ?? 0);
-        setCurrentRiddleIndex(competitionRiddles.length);
-        setGameMode(mode);
-        setGameState("result");
-        return;
-      }
-
-      const data = await ensureProfile();
-      const startIndex = data?.last_puzzle_index ?? 0;
-
-      if (startIndex >= competitionRiddles.length) {
-        setCurrentRiddleIndex(0);
-        setScore(data?.saved_score ?? 0);
-        setTotalPoints(data?.saved_total_points ?? 0);
-        setTimeBonus(data?.saved_time_bonus ?? 0);
-        setGameMode(mode);
-        setGameState("result");
-        return;
-      } else {
-        setCurrentRiddleIndex(startIndex);
-        setScore(data?.saved_score ?? 0);
-        setTotalPoints(data?.saved_total_points ?? 0);
-        setTimeBonus(data?.saved_time_bonus ?? 0);
-      }
-    } else {
-      setCurrentRiddleIndex(0);
-      setScore(0);
-      setTotalPoints(0);
-      setTimeBonus(0);
-    }
-
-    setGameMode(mode);
-    setGameState("playing");
-    
-    if (mode === "fun") {
-      startMusic();
-    }
+    await startFromProfile();
   };
-
-  useEffect(() => {
-    if (gameState !== "playing" || gameMode !== "fun") {
-      if (isMusicPlaying) {
-        stopMusic();
-      }
-    }
-  }, [gameState, gameMode, isMusicPlaying, stopMusic]);
 
   const handleAnswer = (isCorrect: boolean, remainingTime?: number) => {
     let newScore = score;
     let newTotalPoints = totalPoints;
     let newTimeBonus = timeBonus;
-    
+
     if (isCorrect) {
       newScore = score + 1;
       setScore(newScore);
@@ -204,42 +112,27 @@ const Index = () => {
       setTotalPoints(newTotalPoints);
     }
 
-    // Save after every answer in competition mode
-    if (gameMode === "competition" && user) {
+    if (user) {
       const nextIndex = currentRiddleIndex + 1;
       saveProgress(nextIndex, newScore, newTotalPoints, newTimeBonus);
     }
   };
 
   const handleNext = () => {
-    if (currentRiddleIndex < currentRiddles.length - 1) {
-      const newIndex = currentRiddleIndex + 1;
-      setCurrentRiddleIndex(newIndex);
+    if (currentRiddleIndex < allRiddles.length - 1) {
+      setCurrentRiddleIndex(currentRiddleIndex + 1);
     } else {
+      // Mark fully completed
+      if (user) saveProgress(allRiddles.length, score, totalPoints, timeBonus);
       setGameState("result");
     }
   };
 
-  const handleRestart = async () => {
-    // Reset everything including database progress
-    if (gameMode === "competition" && user) {
-      await supabase
-        .from("profiles")
-        .update({ 
-          last_puzzle_index: 0, 
-          saved_score: 0, 
-          saved_total_points: 0, 
-          saved_time_bonus: 0,
-          updated_at: new Date().toISOString() 
-        })
-        .eq("user_id", user.id);
-    }
+  const handleRestart = () => {
+    // Locked: just go back to welcome (no reset of completed state)
     setGameState("welcome");
-    setCurrentRiddleIndex(0);
-    setScore(0);
-    setTotalPoints(0);
-    setTimeBonus(0);
   };
+
   const getRank = (points: number, totalPossible: number) => {
     const percentage = (points / totalPossible) * 100;
     if (percentage >= 90) return { title: "أسطورة الرعب 👑", color: "text-yellow-400" };
@@ -250,30 +143,20 @@ const Index = () => {
     return { title: "مرعوب 😱", color: "text-red-400" };
   };
 
-  const maxPoints = currentRiddles.length * 15;
+  const maxPoints = allRiddles.length * 15;
   const rank = getRank(totalPoints, maxPoints);
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <AnimatePresence mode="wait">
         {gameState === "welcome" && (
-          <motion.div
-            key="welcome"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+          <motion.div key="welcome" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <WelcomeScreen onStart={handleStart} />
           </motion.div>
         )}
 
         {gameState === "login" && (
-          <motion.div
-            key="login"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+          <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <GoogleLoginScreen onBack={() => setGameState("welcome")} />
           </motion.div>
         )}
@@ -287,8 +170,7 @@ const Index = () => {
             className="min-h-screen bg-horror-gradient py-8"
           >
             <div className="vignette" />
-            
-            {/* Score Display */}
+
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -307,13 +189,12 @@ const Index = () => {
               </div>
             </motion.div>
 
-            {/* Game Mode Badge + User Info */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               className="fixed top-4 right-4 z-50 flex items-center gap-3"
             >
-              {gameMode === "competition" && user && (
+              {user && (
                 <div className="card-horror px-3 py-2 flex items-center gap-2">
                   {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
                     <img
@@ -331,43 +212,34 @@ const Index = () => {
                   </span>
                 </div>
               )}
-              <div className={`px-4 py-2 rounded-lg font-horror text-sm ${
-                gameMode === "fun" 
-                  ? "bg-green-900/80 text-green-300 border border-green-500" 
-                  : "bg-red-900/80 text-red-300 border border-red-500"
-              }`}>
-                {gameMode === "fun" ? "🎮 ألغاز المتعة" : "🏆 ألغاز المسابقة"}
+              <div className="px-4 py-2 rounded-lg font-horror text-sm bg-red-900/80 text-red-300 border border-red-500">
+                🏆 الألغاز
               </div>
             </motion.div>
-            
+
             <div className="pt-16">
               <RiddleCard
-                riddle={currentRiddles[currentRiddleIndex]}
+                riddle={allRiddles[currentRiddleIndex]}
                 riddleNumber={currentRiddleIndex + 1}
-                totalRiddles={currentRiddles.length}
+                totalRiddles={allRiddles.length}
                 onAnswer={handleAnswer}
                 onNext={handleNext}
-                gameMode={gameMode}
+                gameMode="competition"
               />
             </div>
           </motion.div>
         )}
 
         {gameState === "result" && (
-          <motion.div
-            key="result"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+          <motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <ResultScreen
               score={score}
-              totalQuestions={currentRiddles.length}
+              totalQuestions={allRiddles.length}
               totalPoints={totalPoints}
               maxPoints={maxPoints}
               timeBonus={timeBonus}
               rank={rank}
-              gameMode={gameMode}
+              gameMode="competition"
               onRestart={handleRestart}
             />
           </motion.div>
