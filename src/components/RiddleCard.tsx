@@ -169,17 +169,17 @@ const RiddleCard = ({
               aria-label="حذف إجابتين خاطئتين"
             >
               <Scissors className="w-4 h-4" />
-              <span>حذف إجابتين</span>
+              <span>شاهد الإعلان لحذف إجابتين</span>
             </button>
             <button
               type="button"
               onClick={handleAddTime}
               disabled={lifelineUsed !== null || showResult || !isTypingComplete}
               className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary border border-primary/40 text-primary text-sm font-typewriter hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              aria-label="إضافة دقيقة"
+              aria-label="شاهد الإعلان لإضافة دقيقة"
             >
               <Clock className="w-4 h-4" />
-              <span>+1 دقيقة</span>
+              <span>شاهد الإعلان لإضافة دقيقة</span>
             </button>
           </div>
         )}
