@@ -1,9 +1,20 @@
-import { Link } from "react-router-dom";
-import { ArrowRight, Shield, FileText, Mail, Info } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, Shield, FileText, Mail, Info, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 const CONTACT_EMAIL = "support@ghoul-riddle-game.com";
 
 const Settings = () => {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success("تم تسجيل الخروج");
+    navigate("/");
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground" dir="rtl">
       <header className="border-b border-border/40 bg-card/40 backdrop-blur-sm sticky top-0 z-10">
