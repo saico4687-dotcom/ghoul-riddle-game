@@ -1,7 +1,15 @@
 import { motion } from "framer-motion";
 import HorrorButton from "./HorrorButton";
-import { Brain, Trophy, Sparkles, Star, Zap } from "lucide-react";
+import { Brain, Trophy, Sparkles, Star, Zap, Calendar, Check, X } from "lucide-react";
 import { GameMode } from "./WelcomeScreen";
+
+interface AnswerRecord {
+  q: string;
+  selected: number | null;
+  correct: number;
+  options: string[];
+  explanation: string;
+}
 
 interface ResultScreenProps {
   score: number;
@@ -12,6 +20,7 @@ interface ResultScreenProps {
   rank: { title: string; color: string };
   gameMode: GameMode;
   onRestart: () => void;
+  answers?: AnswerRecord[];
 }
 
 const ResultScreen = ({
@@ -22,9 +31,10 @@ const ResultScreen = ({
   timeBonus,
   rank,
   onRestart,
+  answers = [],
 }: ResultScreenProps) => {
-  const percentage = (score / totalQuestions) * 100;
-  const pointsPercentage = (totalPoints / maxPoints) * 100;
+  const percentage = totalQuestions ? (score / totalQuestions) * 100 : 0;
+  const pointsPercentage = maxPoints ? (totalPoints / maxPoints) * 100 : 0;
 
   const getMessage = () => {
     if (percentage === 100) return { title: "عبقري الألغاز! 🏆", subtitle: "أداء استثنائي ومذهل!" };
@@ -36,7 +46,7 @@ const ResultScreen = ({
   const { title, subtitle } = getMessage();
 
   return (
-    <div className="min-h-screen bg-horror-gradient relative overflow-hidden flex items-center justify-center">
+    <div className="min-h-screen bg-horror-gradient relative overflow-hidden flex items-start justify-center">
       {[...Array(5)].map((_, i) => (
         <motion.div
           key={i}
@@ -50,7 +60,16 @@ const ResultScreen = ({
         </motion.div>
       ))}
 
-      <div className="relative z-10 text-center px-4 max-w-2xl py-8" dir="rtl">
+      <div className="relative z-10 text-center px-4 max-w-2xl py-8 w-full" dir="rtl">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card-horror p-3 mb-6 inline-flex items-center gap-2 border-primary/40"
+        >
+          <Calendar className="w-5 h-5 text-primary" />
+          <span className="font-horror text-primary">المسابقة الأسبوعية</span>
+        </motion.div>
+
         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.8 }}>
           {percentage >= 70 ? (
             <Trophy className="w-24 h-24 mx-auto text-primary mb-8" />
@@ -120,6 +139,62 @@ const ResultScreen = ({
           )}
         </motion.div>
 
+        {answers.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.95 }}
+            className="card-horror p-4 mb-8 text-right"
+          >
+            <h2 className="font-horror text-2xl text-primary mb-4 text-center">
+              مراجعة الإجابات
+            </h2>
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+              {answers.map((a, idx) => {
+                const isCorrect = a.selected === a.correct;
+                return (
+                  <div
+                    key={idx}
+                    className="border border-primary/20 rounded-lg p-3 bg-background/40"
+                  >
+                    <div className="flex items-start gap-2 mb-2">
+                      <span className="font-horror text-primary text-sm shrink-0">
+                        {idx + 1}.
+                      </span>
+                      <p className="font-typewriter text-sm text-foreground leading-relaxed">
+                        {a.q}
+                      </p>
+                    </div>
+                    <div className="space-y-1 mb-2">
+                      <div className="flex items-center gap-2">
+                        {isCorrect ? (
+                          <Check className="w-4 h-4 text-green-400 shrink-0" />
+                        ) : (
+                          <X className="w-4 h-4 text-red-400 shrink-0" />
+                        )}
+                        <span className="font-typewriter text-xs text-foreground/80">
+                          إجابتك: {a.selected !== null ? a.options[a.selected] : "لم تجب"}
+                        </span>
+                      </div>
+                      {!isCorrect && (
+                        <div className="flex items-center gap-2">
+                          <Check className="w-4 h-4 text-green-400 shrink-0" />
+                          <span className="font-typewriter text-xs text-green-400">
+                            الصحيحة: {a.options[a.correct]}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="font-typewriter text-xs text-foreground/70 leading-relaxed border-t border-primary/10 pt-2">
+                      💡 {a.explanation}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -127,7 +202,8 @@ const ResultScreen = ({
           className="card-horror p-4 mb-6 border-primary/40"
         >
           <p className="font-typewriter text-sm text-foreground leading-relaxed">
-            🔒 لقد أكملت جميع الألغاز الـ 400. تم حفظ نتيجتك النهائية.
+            🔒 لقد أكملت المسابقة الأسبوعية. لا يمكن إعادة فتح الألغاز على نفس
+            الحساب. تابعنا لانتظار مسابقة الأسبوع القادم!
           </p>
         </motion.div>
 
