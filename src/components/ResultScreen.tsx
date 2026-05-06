@@ -835,7 +835,7 @@ const ResultScreen = ({
         >
           {gameMode === "competition" && (
             <HorrorButton onClick={() => setDrawStep("form")}>
-              🎯 الدخول في السحب
+              🎯 المتابعة لتعليمات الدفع والسحب
             </HorrorButton>
           )}
           <HorrorButton onClick={onRestart}>
