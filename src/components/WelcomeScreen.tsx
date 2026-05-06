@@ -47,7 +47,7 @@ const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
             repeat: Infinity,
             ease: "easeInOut",
           }}
-          className="absolute top-20 left-10 text-primary/30"
+          className="hidden sm:block absolute top-20 left-10 text-primary/30"
         >
           <Ghost className="w-16 h-16" />
         </motion.div>
@@ -63,7 +63,7 @@ const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
             ease: "easeInOut",
             delay: 1,
           }}
-          className="absolute top-32 right-16 text-primary/20"
+          className="hidden sm:block absolute top-32 right-16 text-primary/20"
         >
           <Flame className="w-12 h-12" />
         </motion.div>
@@ -91,7 +91,7 @@ const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
           </motion.div>
 
           {/* Title */}
-          <h1 className="font-horror text-6xl md:text-8xl text-blood pulse-blood mb-6">
+          <h1 className="font-horror text-5xl sm:text-6xl md:text-8xl text-blood pulse-blood mb-6 whitespace-nowrap">
             ألغاز الرعب
           </h1>
           

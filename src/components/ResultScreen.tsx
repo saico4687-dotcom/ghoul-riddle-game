@@ -344,10 +344,10 @@ const ResultScreen = ({
             <p className="font-typewriter text-xs text-muted-foreground leading-relaxed text-center">
               تم قفل ألغاز المسابقة من حسابك. سيتم إعلان نتيجة السحب خلال أسبوع.
             </p>
-            <div className="pt-2 text-center">
-              <button onClick={onRestart} className="font-typewriter text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <div className="pt-2">
+              <HorrorButton onClick={onRestart}>
                 العودة للقائمة الرئيسية
-              </button>
+              </HorrorButton>
             </div>
           </motion.div>
         </div>
