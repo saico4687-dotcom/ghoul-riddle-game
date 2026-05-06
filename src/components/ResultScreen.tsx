@@ -307,7 +307,7 @@ const ResultScreen = ({
             dir="rtl"
           >
             <p className="font-horror text-sm text-primary text-center mb-2">نتيجتك في المسابقة</p>
-            <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="grid grid-cols-2 gap-2 text-center">
               <div>
                 <div className="font-horror text-lg text-primary">{score}/{totalQuestions}</div>
                 <div className="font-typewriter text-[10px] text-muted-foreground">صحيحة</div>
@@ -315,10 +315,6 @@ const ResultScreen = ({
               <div>
                 <div className="font-horror text-lg text-primary">{totalPoints}</div>
                 <div className="font-typewriter text-[10px] text-muted-foreground">نقطة</div>
-              </div>
-              <div>
-                <div className="font-horror text-lg text-yellow-400">+{timeBonus}</div>
-                <div className="font-typewriter text-[10px] text-muted-foreground">سرعة</div>
               </div>
             </div>
             <p className={`font-horror text-xs text-center mt-2 ${rank.color}`}>{rank.title}</p>
@@ -770,20 +766,8 @@ const ResultScreen = ({
           </div>
         </motion.div>
 
-        {/* Time Bonus */}
-        {timeBonus > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-            className="card-horror p-3 mb-6 inline-flex items-center gap-2"
-          >
-            <Zap className="w-5 h-5 text-yellow-400" />
-            <span className="font-typewriter text-sm text-yellow-400">
-              +{timeBonus} نقاط إضافية للسرعة!
-            </span>
-          </motion.div>
-        )}
+        {/* Time Bonus - مخفي عن المستخدم، يُحفظ في قاعدة البيانات للمالك فقط */}
+
 
         {/* Score Bar */}
         <motion.div
