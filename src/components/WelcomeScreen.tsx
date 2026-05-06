@@ -4,7 +4,7 @@ import HorrorButton from "./HorrorButton";
 import { Skull, Ghost, Flame, Trophy, Gamepad2, Settings as SettingsIcon } from "lucide-react";
 import heroImage from "@/assets/hero-horror.jpg";
 
-export type GameMode = "fun" | "competition";
+export type GameMode = "competition";
 
 interface WelcomeScreenProps {
   onStart: (mode: GameMode) => void;
@@ -128,31 +128,18 @@ const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
             </motion.div>
           </div>
 
-          {/* Game Mode Buttons */}
-          <div className="flex flex-col sm:flex-row justify-center gap-4 mb-8">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <button
-                onClick={() => onStart("fun")}
-                className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-green-700 to-green-900 hover:from-green-600 hover:to-green-800 text-white font-horror text-xl rounded-lg border-2 border-green-500 shadow-lg shadow-green-900/50 transition-all duration-300"
-              >
-                <Gamepad2 className="w-6 h-6" />
-                <span>ألغاز المتعة (200)</span>
-              </button>
-            </motion.div>
-            
+          {/* Single Start Button */}
+          <div className="flex justify-center mb-8">
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
               <button
                 onClick={() => onStart("competition")}
-                className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-horror-blood to-red-900 hover:from-red-600 hover:to-red-800 text-white font-horror text-xl rounded-lg border-2 border-red-500 shadow-lg shadow-red-900/50 transition-all duration-300"
+                className="w-full sm:w-auto flex items-center justify-center gap-3 px-10 py-5 bg-gradient-to-r from-horror-blood to-red-900 hover:from-red-600 hover:to-red-800 text-white font-horror text-2xl rounded-lg border-2 border-red-500 shadow-lg shadow-red-900/50 transition-all duration-300"
               >
-                <Trophy className="w-6 h-6" />
-                <span>ألغاز المسابقة (200)</span>
+                <Trophy className="w-7 h-7" />
+                <span>الألغاز (400)</span>
               </button>
             </motion.div>
           </div>
