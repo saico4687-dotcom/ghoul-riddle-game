@@ -1,16 +1,16 @@
 {
-  "name": "ألغاز الرعب - تحدّي الغموض",
-  "short_name": "ألغاز الرعب",
-  "description": "لعبة ألغاز رعب عربية تفاعلية مع سحب على الجوائز.",
+  "name": "ربح - تحدّي الألغاز الذهنية",
+  "short_name": "ربح",
+  "description": "لعبة ألغاز عربية ممتعة لتحفيز العقل وتنمية التفكير.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
+  "background_color": "#1e1b4b",
+  "theme_color": "#1e1b4b",
   "lang": "ar",
   "dir": "rtl",
-  "categories": ["games", "entertainment"],
+  "categories": ["games", "education", "entertainment"],
   "icons": [
     {
       "src": "/favicon.png",
