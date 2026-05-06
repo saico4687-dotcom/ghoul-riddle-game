@@ -108,6 +108,27 @@ const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
               +10 نقاط لكل إجابة صحيحة | +5 نقاط إضافية للسرعة
             </p>
           </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.8 }}
+            className="mt-8 flex items-center justify-center gap-6"
+          >
+            <Link
+              to="/settings"
+              className="font-typewriter text-base text-foreground hover:text-primary transition-colors"
+            >
+              الإعدادات
+            </Link>
+            <span className="text-foreground/40">|</span>
+            <Link
+              to="/privacy"
+              className="font-typewriter text-base text-foreground hover:text-primary transition-colors"
+            >
+              سياسة الخصوصية
+            </Link>
+          </motion.div>
         </motion.div>
       </div>
     </div>

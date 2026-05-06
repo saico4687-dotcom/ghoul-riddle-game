@@ -3,7 +3,7 @@ import { ArrowRight, Shield, FileText, Mail, Info, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
-const CONTACT_EMAIL = "support@ghoul-riddle-game.com";
+const CONTACT_EMAIL = "support@rebh-app.com";
 
 const Settings = () => {
   const { user, signOut } = useAuth();
@@ -43,7 +43,6 @@ const Settings = () => {
                 <Shield className="w-5 h-5 text-primary" />
                 <div className="text-right">
                   <p className="text-base text-foreground">سياسة الخصوصية</p>
-                  <p className="text-xs text-muted-foreground">عرض داخل التطبيق</p>
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-muted-foreground" />
@@ -57,7 +56,6 @@ const Settings = () => {
                 <FileText className="w-5 h-5 text-primary" />
                 <div className="text-right">
                   <p className="text-base text-foreground">شروط الاستخدام</p>
-                  <p className="text-xs text-muted-foreground">القواعد والاشتراك في المسابقة</p>
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-muted-foreground" />
