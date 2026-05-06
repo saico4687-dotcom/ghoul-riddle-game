@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Shield, Download, Mail } from "lucide-react";
+import { ArrowRight, Shield, FileText, Mail, Info } from "lucide-react";
 
 const CONTACT_EMAIL = "support@ghoul-riddle-game.com";
 
