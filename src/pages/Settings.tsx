@@ -72,9 +72,16 @@ const Settings = () => {
         </section>
 
         <section className="card-horror p-5">
-          <h2 className="font-horror text-lg text-primary mb-2">عن التطبيق</h2>
-          <p className="text-sm text-muted-foreground">
-            ألغاز الرعب — تطبيق ألغاز عربي يجمع بين المتعة والتحدي.
+          <div className="flex items-center gap-2 mb-2">
+            <Info className="w-5 h-5 text-primary" />
+            <h2 className="font-horror text-lg text-primary">عن التطبيق</h2>
+          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-2">
+            ألغاز الرعب — تطبيق ألغاز عربي يجمع بين المتعة والتحدي. حلّ الألغاز،
+            اجمع النقاط، وادخل سحب الجوائز.
+          </p>
+          <p className="text-xs text-muted-foreground/70" dir="ltr">
+            Version 1.0.0
           </p>
         </section>
       </main>
