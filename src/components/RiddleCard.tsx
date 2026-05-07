@@ -319,7 +319,7 @@ const RiddleCard = ({
           transition={{ delay: 0.5 }}
           className="text-center mb-4"
         >
-          <p className="font-typewriter text-[11px] text-muted-foreground leading-relaxed">
+          <p className="inline-block bg-black/80 border border-white/20 rounded-lg px-4 py-2 text-sm md:text-base font-bold text-white shadow-[0_0_15px_rgba(255,255,255,0.3)] leading-relaxed">
             فوق أو تحت 50% — أسرع إجابة صحيحة تفوز 🏆 | إعلان الفائز أسبوعياً
           </p>
         </motion.div>
