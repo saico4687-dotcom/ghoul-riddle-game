@@ -1,15 +1,7 @@
 import { motion } from "framer-motion";
 import HorrorButton from "./HorrorButton";
-import { Brain, Trophy, Sparkles, Star, Zap, Calendar, Check, X } from "lucide-react";
+import { Brain, Trophy, Sparkles, Star, Calendar, Hourglass } from "lucide-react";
 import { GameMode } from "./WelcomeScreen";
-
-interface AnswerRecord {
-  q: string;
-  selected: number | null;
-  correct: number;
-  options: string[];
-  explanation: string;
-}
 
 interface ResultScreenProps {
   score: number;
@@ -20,7 +12,6 @@ interface ResultScreenProps {
   rank: { title: string; color: string };
   gameMode: GameMode;
   onRestart: () => void;
-  answers?: AnswerRecord[];
 }
 
 const ResultScreen = ({
@@ -28,10 +19,8 @@ const ResultScreen = ({
   totalQuestions,
   totalPoints,
   maxPoints,
-  timeBonus,
   rank,
   onRestart,
-  answers = [],
 }: ResultScreenProps) => {
   const percentage = totalQuestions ? (score / totalQuestions) * 100 : 0;
   const pointsPercentage = maxPoints ? (totalPoints / maxPoints) * 100 : 0;
@@ -118,82 +107,30 @@ const ResultScreen = ({
             <div className="font-typewriter text-sm text-foreground/80">إجابات صحيحة</div>
           </div>
           <div className="card-horror p-4">
-            <Zap className="w-8 h-8 mx-auto text-primary mb-2" />
-            <div className="font-horror text-4xl text-primary">{totalPoints}</div>
-            <div className="font-typewriter text-sm text-foreground/80">إجمالي النقاط</div>
+            <Trophy className="w-8 h-8 mx-auto text-primary mb-2" />
+            <div className="font-horror text-4xl text-primary">{pointsPercentage.toFixed(0)}%</div>
+            <div className="font-typewriter text-sm text-foreground/80">نسبة الإتقان</div>
           </div>
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.85 }}
-          className="card-horror p-4 mb-8"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.9 }}
+          className="card-horror p-5 mb-6 border-primary/40 text-right"
         >
-          <p className="font-typewriter text-sm text-foreground/80 mb-1">نسبة الإتقان</p>
-          <p className="font-horror text-2xl text-primary">{pointsPercentage.toFixed(1)}%</p>
-          {timeBonus > 0 && (
-            <p className="font-typewriter text-xs text-foreground/70 mt-2">
-              ⚡ نقاط السرعة الإضافية: {timeBonus}
-            </p>
-          )}
+          <div className="flex items-center gap-2 mb-2 justify-center">
+            <Hourglass className="w-5 h-5 text-primary" />
+            <h3 className="font-horror text-xl text-primary">جارِ فرز الإجابات</h3>
+          </div>
+          <p className="font-typewriter text-sm text-foreground leading-relaxed">
+            شكراً لمشاركتك! يتم الآن فرز إجابات جميع المتسابقين، ويُعلَن الفائز
+            صاحب أسرع إجابات صحيحة في نهاية كل أسبوع، وتُسلَّم الجوائز نهاية كل شهر.
+          </p>
+          <p className="font-typewriter text-xs text-foreground/70 mt-2 text-center">
+            بالتوفيق 🌟
+          </p>
         </motion.div>
-
-        {answers.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.95 }}
-            className="card-horror p-4 mb-8 text-right"
-          >
-            <h2 className="font-horror text-2xl text-primary mb-4 text-center">
-              مراجعة الإجابات
-            </h2>
-            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-              {answers.map((a, idx) => {
-                const isCorrect = a.selected === a.correct;
-                return (
-                  <div
-                    key={idx}
-                    className="border border-primary/20 rounded-lg p-3 bg-background/40"
-                  >
-                    <div className="flex items-start gap-2 mb-2">
-                      <span className="font-horror text-primary text-sm shrink-0">
-                        {idx + 1}.
-                      </span>
-                      <p className="font-typewriter text-sm text-foreground leading-relaxed">
-                        {a.q}
-                      </p>
-                    </div>
-                    <div className="space-y-1 mb-2">
-                      <div className="flex items-center gap-2">
-                        {isCorrect ? (
-                          <Check className="w-4 h-4 text-green-400 shrink-0" />
-                        ) : (
-                          <X className="w-4 h-4 text-red-400 shrink-0" />
-                        )}
-                        <span className="font-typewriter text-xs text-foreground/80">
-                          إجابتك: {a.selected !== null ? a.options[a.selected] : "لم تجب"}
-                        </span>
-                      </div>
-                      {!isCorrect && (
-                        <div className="flex items-center gap-2">
-                          <Check className="w-4 h-4 text-green-400 shrink-0" />
-                          <span className="font-typewriter text-xs text-green-400">
-                            الصحيحة: {a.options[a.correct]}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <p className="font-typewriter text-xs text-foreground/70 leading-relaxed border-t border-primary/10 pt-2">
-                      💡 {a.explanation}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}

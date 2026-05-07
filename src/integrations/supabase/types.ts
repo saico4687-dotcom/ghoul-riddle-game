@@ -61,11 +61,14 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address: string | null
           created_at: string
           email: string | null
+          full_name: string | null
           id: string
           last_puzzle_index: number
           name: string | null
+          phone: string | null
           profile_image: string | null
           saved_score: number
           saved_time_bonus: number
@@ -74,11 +77,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          address?: string | null
           created_at?: string
           email?: string | null
+          full_name?: string | null
           id?: string
           last_puzzle_index?: number
           name?: string | null
+          phone?: string | null
           profile_image?: string | null
           saved_score?: number
           saved_time_bonus?: number
@@ -87,11 +93,14 @@ export type Database = {
           user_id: string
         }
         Update: {
+          address?: string | null
           created_at?: string
           email?: string | null
+          full_name?: string | null
           id?: string
           last_puzzle_index?: number
           name?: string | null
+          phone?: string | null
           profile_image?: string | null
           saved_score?: number
           saved_time_bonus?: number

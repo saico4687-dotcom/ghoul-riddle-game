@@ -8,8 +8,9 @@ import { riddles } from "@/data/riddles";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { showInterstitial } from "@/lib/ads";
+import ParticipantInfoForm from "@/components/ParticipantInfoForm";
 
-type GameState = "welcome" | "login" | "playing" | "result";
+type GameState = "welcome" | "login" | "info" | "playing" | "result";
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>("welcome");
@@ -18,7 +19,7 @@ const Index = () => {
   const [totalPoints, setTotalPoints] = useState(0);
   const [timeBonus, setTimeBonus] = useState(0);
   const [answeredCount, setAnsweredCount] = useState(0);
-  const [answers, setAnswers] = useState<Array<{ q: string; selected: number | null; correct: number; options: string[]; explanation: string }>>([]);
+  const [profileData, setProfileData] = useState<{ full_name: string | null; phone: string | null; address: string | null } | null>(null);
   const { user } = useAuth();
 
   const allRiddles = useMemo(() => riddles.slice(0, 400), []);
@@ -27,7 +28,7 @@ const Index = () => {
     if (!user) return null;
     const { data } = await supabase
       .from("profiles")
-      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
+      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus, full_name, phone, address")
       .eq("user_id", user.id)
       .single();
     if (data) return data;
@@ -39,7 +40,7 @@ const Index = () => {
         name: user.user_metadata?.full_name || user.user_metadata?.name || "",
         profile_image: user.user_metadata?.avatar_url || user.user_metadata?.picture || "",
       })
-      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
+      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus, full_name, phone, address")
       .single();
     return newProfile;
   }, [user]);
@@ -71,9 +72,19 @@ const Index = () => {
     setScore(savedScore);
     setTotalPoints(savedPoints);
     setTimeBonus(savedBonus);
+    setProfileData({
+      full_name: data?.full_name ?? null,
+      phone: data?.phone ?? null,
+      address: data?.address ?? null,
+    });
+
+    const hasInfo = !!(data?.full_name && data?.phone && data?.address);
+    if (!hasInfo) {
+      setGameState("info");
+      return;
+    }
 
     if (startIndex >= allRiddles.length) {
-      // Locked — already finished
       setCurrentRiddleIndex(allRiddles.length);
       setGameState("result");
     } else {
@@ -115,18 +126,6 @@ const Index = () => {
       setTotalPoints(newTotalPoints);
     }
 
-    const r = allRiddles[currentRiddleIndex];
-    setAnswers((prev) => [
-      ...prev,
-      {
-        q: r.question,
-        selected: selectedIndex,
-        correct: r.correctIndex,
-        options: r.options,
-        explanation: r.explanation,
-      },
-    ]);
-
     // Interstitial every 5 answered questions
     const newAnswered = answeredCount + 1;
     if (newAnswered >= 5) {
@@ -157,18 +156,27 @@ const Index = () => {
     setGameState("welcome");
   };
 
-  const getRank = (points: number, totalPossible: number) => {
+  const beginnerLabels = [
+    "في بداية الطريق 🌱",
+    "خطوة أولى نحو النور 🕯️",
+    "بذرة الذكاء 🌰",
+    "محقّق متدرّب 🧭",
+    "عقل يستيقظ 🌙",
+  ];
+
+  const getRank = (points: number, totalPossible: number, index: number) => {
     const percentage = (points / totalPossible) * 100;
     if (percentage >= 90) return { title: "أسطورة الذكاء 👑", color: "text-yellow-400" };
     if (percentage >= 75) return { title: "سيد الألغاز 🏆", color: "text-purple-400" };
     if (percentage >= 60) return { title: "محقق ماهر 🔍", color: "text-blue-400" };
     if (percentage >= 45) return { title: "مفكّر شجاع ⚔️", color: "text-green-400" };
     if (percentage >= 30) return { title: "مبتدئ واعد 📚", color: "text-orange-400" };
-    return { title: "في بداية الطريق 🌱", color: "text-pink-400" };
+    const slot = Math.floor(index / 100) % beginnerLabels.length;
+    return { title: beginnerLabels[slot], color: "text-pink-400" };
   };
 
   const maxPoints = allRiddles.length * 15;
-  const rank = getRank(totalPoints, maxPoints);
+  const rank = getRank(totalPoints, maxPoints, currentRiddleIndex);
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
@@ -182,6 +190,16 @@ const Index = () => {
         {gameState === "login" && (
           <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <GoogleLoginScreen onBack={() => setGameState("welcome")} />
+          </motion.div>
+        )}
+
+        {gameState === "info" && user && (
+          <motion.div key="info" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <ParticipantInfoForm
+              userId={user.id}
+              defaults={profileData ?? undefined}
+              onSaved={() => startFromProfile()}
+            />
           </motion.div>
         )}
 
@@ -265,7 +283,6 @@ const Index = () => {
               rank={rank}
               gameMode="competition"
               onRestart={handleRestart}
-              answers={answers}
             />
           </motion.div>
         )}
