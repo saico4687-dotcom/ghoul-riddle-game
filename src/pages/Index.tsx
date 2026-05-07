@@ -8,8 +8,9 @@ import { riddles } from "@/data/riddles";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { showInterstitial } from "@/lib/ads";
+import ParticipantInfoForm from "@/components/ParticipantInfoForm";
 
-type GameState = "welcome" | "login" | "playing" | "result";
+type GameState = "welcome" | "login" | "info" | "playing" | "result";
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>("welcome");
@@ -18,7 +19,7 @@ const Index = () => {
   const [totalPoints, setTotalPoints] = useState(0);
   const [timeBonus, setTimeBonus] = useState(0);
   const [answeredCount, setAnsweredCount] = useState(0);
-  const [answers, setAnswers] = useState<Array<{ q: string; selected: number | null; correct: number; options: string[]; explanation: string }>>([]);
+  const [profileData, setProfileData] = useState<{ full_name: string | null; phone: string | null; address: string | null } | null>(null);
   const { user } = useAuth();
 
   const allRiddles = useMemo(() => riddles.slice(0, 400), []);
@@ -27,7 +28,7 @@ const Index = () => {
     if (!user) return null;
     const { data } = await supabase
       .from("profiles")
-      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
+      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus, full_name, phone, address")
       .eq("user_id", user.id)
       .single();
     if (data) return data;
@@ -39,7 +40,7 @@ const Index = () => {
         name: user.user_metadata?.full_name || user.user_metadata?.name || "",
         profile_image: user.user_metadata?.avatar_url || user.user_metadata?.picture || "",
       })
-      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
+      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus, full_name, phone, address")
       .single();
     return newProfile;
   }, [user]);
@@ -71,9 +72,19 @@ const Index = () => {
     setScore(savedScore);
     setTotalPoints(savedPoints);
     setTimeBonus(savedBonus);
+    setProfileData({
+      full_name: data?.full_name ?? null,
+      phone: data?.phone ?? null,
+      address: data?.address ?? null,
+    });
+
+    const hasInfo = !!(data?.full_name && data?.phone && data?.address);
+    if (!hasInfo) {
+      setGameState("info");
+      return;
+    }
 
     if (startIndex >= allRiddles.length) {
-      // Locked — already finished
       setCurrentRiddleIndex(allRiddles.length);
       setGameState("result");
     } else {
@@ -114,18 +125,6 @@ const Index = () => {
       newTotalPoints = totalPoints + points;
       setTotalPoints(newTotalPoints);
     }
-
-    const r = allRiddles[currentRiddleIndex];
-    setAnswers((prev) => [
-      ...prev,
-      {
-        q: r.question,
-        selected: selectedIndex,
-        correct: r.correctIndex,
-        options: r.options,
-        explanation: r.explanation,
-      },
-    ]);
 
     // Interstitial every 5 answered questions
     const newAnswered = answeredCount + 1;
