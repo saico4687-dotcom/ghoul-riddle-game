@@ -49,37 +49,36 @@ const AdsConsentDialog = ({ onAccepted }: Props) => {
                   تطبيق مجاني مدعوم بالإعلانات
                 </h2>
                 <p className="text-xs text-muted-foreground font-typewriter">
-                  لإبقاء الخدمة مجانية لك
+                  نبقّي الخدمة مجانية لك
                 </p>
               </div>
             </div>
 
             <p className="font-typewriter text-sm text-foreground leading-relaxed">
-              هذا التطبيق مجاني بالكامل، ونعتمد على إعلانات قصيرة من Google AdMob
-              لتغطية تكاليف التشغيل واستمرار إضافة ألغاز جديدة.
+              هذا التطبيق مجاني بالكامل؛ نعرض إعلانات مختصرة من Google AdMob
+              لتغطية تكاليف التشغيل وإضافة ألغاز جديدة باستمرار.
             </p>
 
             <div className="space-y-2 text-sm font-typewriter">
               <div className="flex items-start gap-2">
                 <Sparkles className="w-4 h-4 text-primary mt-1 shrink-0" />
                 <span>
-                  إعلانات قصيرة بين الألغاز، وإعلانات اختيارية للحصول على أدوات
-                  مساعدة (حذف إجابتين / إضافة دقيقة).
+                  إعلانات قصيرة بين الألغاز، وإعلانات اختيارية لأدوات
+                  مساعدة (حذف إجابتين / دقيقة إضافية).
                 </span>
               </div>
               <div className="flex items-start gap-2">
                 <ShieldCheck className="w-4 h-4 text-primary mt-1 shrink-0" />
                 <span>
-                  قد يُستخدم معرّف الإعلانات لعرض إعلانات أنسب لك، ويمكنك اختيار
-                  إعلانات غير مخصّصة في أي وقت.
+                  معرّف الإعلانات قد يُستخدم لعرض إعلانات أنسب، ويمكنك اختيار
+                  إعلانات غير مخصّصة لاحقاً.
                 </span>
               </div>
               <div className="flex items-start gap-2">
                 <Trophy className="w-4 h-4 text-primary mt-1 shrink-0" />
                 <span>
-                  كل من حقّق نسبة فوق أو تحت 50% يدخل السحب، ويفوز صاحب أسرع
-                  إجابات صحيحة. يُعلَن الفائز نهاية كل أسبوع وتُسلَّم الجوائز
-                  نهاية كل شهر.
+                  يدخل السحب كل من حقّق أكثر أو أقل من 50% — بشرط سرعة الإجابة
+                  الصحيحة. يُعلَن الفائز أسبوعياً وتُسلَّم الجوائز شهرياً.
                 </span>
               </div>
             </div>

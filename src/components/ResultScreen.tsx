@@ -124,8 +124,8 @@ const ResultScreen = ({
             <h3 className="font-horror text-xl text-primary">جارِ فرز الإجابات</h3>
           </div>
           <p className="font-typewriter text-sm text-foreground leading-relaxed">
-            شكراً لمشاركتك! يتم الآن فرز إجابات جميع المتسابقين، ويُعلَن الفائز
-            صاحب أسرع إجابات صحيحة في نهاية كل أسبوع، وتُسلَّم الجوائز نهاية كل شهر.
+            شكراً لمشاركتك! يتم فرز إجابات جميع المتسابقين حسب السرعة والدقة.
+            يُعلَن الفائز أسبوعياً وتُسلَّم الجوائز شهرياً.
           </p>
           <p className="font-typewriter text-xs text-foreground/70 mt-2 text-center">
             بالتوفيق 🌟
@@ -139,8 +139,7 @@ const ResultScreen = ({
           className="card-horror p-4 mb-6 border-primary/40"
         >
           <p className="font-typewriter text-sm text-foreground leading-relaxed">
-            🔒 لقد أكملت المسابقة الأسبوعية. لا يمكن إعادة فتح الألغاز على نفس
-            الحساب. تابعنا لانتظار مسابقة الأسبوع القادم!
+            ✅ اكتملت المسابقة الأسبوعية على هذا الحساب. تابعنا لمسابقة الأسبوع القادم!
           </p>
         </motion.div>
 
