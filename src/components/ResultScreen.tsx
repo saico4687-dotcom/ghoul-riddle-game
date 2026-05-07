@@ -1,15 +1,7 @@
 import { motion } from "framer-motion";
 import HorrorButton from "./HorrorButton";
-import { Brain, Trophy, Sparkles, Star, Zap, Calendar, Check, X } from "lucide-react";
+import { Brain, Trophy, Sparkles, Star, Calendar, Hourglass } from "lucide-react";
 import { GameMode } from "./WelcomeScreen";
-
-interface AnswerRecord {
-  q: string;
-  selected: number | null;
-  correct: number;
-  options: string[];
-  explanation: string;
-}
 
 interface ResultScreenProps {
   score: number;
@@ -20,7 +12,6 @@ interface ResultScreenProps {
   rank: { title: string; color: string };
   gameMode: GameMode;
   onRestart: () => void;
-  answers?: AnswerRecord[];
 }
 
 const ResultScreen = ({
@@ -28,10 +19,8 @@ const ResultScreen = ({
   totalQuestions,
   totalPoints,
   maxPoints,
-  timeBonus,
   rank,
   onRestart,
-  answers = [],
 }: ResultScreenProps) => {
   const percentage = totalQuestions ? (score / totalQuestions) * 100 : 0;
   const pointsPercentage = maxPoints ? (totalPoints / maxPoints) * 100 : 0;
