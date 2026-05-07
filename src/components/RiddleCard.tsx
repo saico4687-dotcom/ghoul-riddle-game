@@ -311,6 +311,20 @@ const RiddleCard = ({
         )}
       </AnimatePresence>
 
+      {/* Competition notice */}
+      {gameMode === "competition" && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="text-center mb-4"
+        >
+          <p className="font-typewriter text-[11px] text-muted-foreground leading-relaxed">
+            فوق أو تحت 50% — أسرع إجابة صحيحة تفوز 🏆 | إعلان الفائز أسبوعياً
+          </p>
+        </motion.div>
+      )}
+
       {/* Actions */}
       <div className="flex justify-center gap-4">
         {!showResult ? (
