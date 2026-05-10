@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Trophy, ArrowRight, Mail, Lock, LogIn, UserPlus } from "lucide-react";
+import { Trophy, ArrowRight, Mail, Lock, LogIn, UserPlus, Shield } from "lucide-react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+
 
 interface EmailAuthScreenProps {
   onBack: () => void;
