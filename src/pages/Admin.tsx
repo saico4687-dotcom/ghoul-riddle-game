@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { ArrowRight, Loader2, RefreshCw } from "lucide-react";
+import { ArrowRight, Loader2, RefreshCw, Trophy, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -19,10 +19,21 @@ interface Score {
   created_at: string;
 }
 
+interface FastAnswer {
+  id: string;
+  user_id: string;
+  riddle_index: number;
+  elapsed_ms: number;
+  created_at: string;
+  full_name?: string | null;
+  email?: string | null;
+}
+
 const Admin = () => {
   const { user, loading: authLoading } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [scores, setScores] = useState<Score[]>([]);
+  const [weeklyFastest, setWeeklyFastest] = useState<FastAnswer[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,6 +47,42 @@ const Admin = () => {
       .then(({ data }) => setIsAdmin(!!data));
   }, [user]);
 
+  const fetchWeeklyFastest = async () => {
+    // Start of current ISO week (Monday 00:00 local)
+    const now = new Date();
+    const day = now.getDay(); // 0=Sun..6=Sat
+    const diff = (day + 6) % 7; // days since Monday
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - diff);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const { data, error } = await supabase
+      .from("answer_times")
+      .select("id, user_id, riddle_index, elapsed_ms, created_at")
+      .gte("created_at", weekStart.toISOString())
+      .order("elapsed_ms", { ascending: true })
+      .limit(20);
+
+    if (error || !data) return;
+
+    // Enrich with profile name/email
+    const userIds = Array.from(new Set(data.map((d) => d.user_id)));
+    const { data: profs } = await supabase
+      .from("profiles")
+      .select("user_id, full_name, name, email")
+      .in("user_id", userIds);
+    const map = new Map(
+      (profs ?? []).map((p: any) => [p.user_id, { name: p.full_name || p.name, email: p.email }])
+    );
+    setWeeklyFastest(
+      data.map((d) => ({
+        ...d,
+        full_name: map.get(d.user_id)?.name ?? null,
+        email: map.get(d.user_id)?.email ?? null,
+      }))
+    );
+  };
+
   const fetchScores = async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -45,6 +92,7 @@ const Admin = () => {
       .order("time_bonus", { ascending: false });
     if (error) toast.error("فشل تحميل البيانات");
     else setScores((data as Score[]) ?? []);
+    await fetchWeeklyFastest();
     setLoading(false);
   };
 
@@ -104,8 +152,47 @@ const Admin = () => {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6">
-        <p className="font-typewriter text-muted-foreground mb-4 text-sm">
+      <main className="max-w-6xl mx-auto px-4 py-6 space-y-8">
+        {/* Weekly Fastest Answers */}
+        <section className="bg-card/60 border border-primary/30 rounded-xl p-4 backdrop-blur-sm">
+          <h2 className="font-horror text-xl text-blood mb-3 flex items-center gap-2">
+            <Zap className="w-5 h-5" />
+            أسرع إجابات صحيحة هذا الأسبوع
+          </h2>
+          {weeklyFastest.length === 0 ? (
+            <p className="text-sm text-muted-foreground font-typewriter">
+              لا توجد إجابات مسجّلة هذا الأسبوع بعد.
+            </p>
+          ) : (
+            <ol className="space-y-2">
+              {weeklyFastest.map((a, i) => (
+                <li
+                  key={a.id}
+                  className="flex items-center justify-between gap-3 bg-background/40 rounded-lg px-3 py-2 text-sm font-typewriter"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="font-horror text-blood text-lg w-6 shrink-0">
+                      {i === 0 ? <Trophy className="w-5 h-5 inline" /> : `#${i + 1}`}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-foreground truncate">
+                        {a.full_name || "مستخدم"}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {a.email || "—"} · لغز #{a.riddle_index}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-blood font-bold whitespace-nowrap">
+                    {(a.elapsed_ms / 1000).toFixed(2)} ث
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+
+        <p className="font-typewriter text-muted-foreground text-sm">
           إجمالي المشاركين: {scores.length}
         </p>
 

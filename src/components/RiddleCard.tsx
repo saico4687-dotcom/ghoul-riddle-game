@@ -10,6 +10,7 @@ import { useHorrorSounds } from "@/hooks/useHorrorSounds";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
 import { showRewarded } from "@/lib/ads";
 import moneyBg from "@/assets/money-bg.jpg";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RiddleCardProps {
   riddle: Riddle;
@@ -36,6 +37,7 @@ const RiddleCard = ({
   const [lifelineUsed, setLifelineUsed] = useState<null | "fifty" | "time">(null);
   const [removedOptions, setRemovedOptions] = useState<number[]>([]);
   const [extraTime, setExtraTime] = useState(0);
+  const [startTime, setStartTime] = useState<number | null>(null);
   const { playSound, setMuted } = useHorrorSounds();
   const { setVolume: setMusicVolume } = useHorrorBackgroundMusic();
 
@@ -61,9 +63,17 @@ const RiddleCard = ({
     setLifelineUsed(null);
     setRemovedOptions([]);
     setExtraTime(0);
+    setStartTime(null);
     // Play ambient sound when new riddle loads
     playSound("ambient");
   }, [riddle, playSound]);
+
+  // Mark start time once typing finishes (timer starts)
+  useEffect(() => {
+    if (isTypingComplete && startTime === null) {
+      setStartTime(Date.now());
+    }
+  }, [isTypingComplete, startTime]);
 
   const handleUseFifty = async () => {
     if (lifelineUsed || showResult) return;
@@ -109,14 +119,32 @@ const RiddleCard = ({
     setSelectedOption(index);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (selectedOption === null) return;
-    
+
     const isCorrect = selectedOption === riddle.correctIndex;
     setShowResult(true);
     playSound(isCorrect ? "correct" : "wrong");
     onAnswer(isCorrect, selectedOption);
-    
+
+    // Log fastest answer time on correct competition answers
+    if (isCorrect && gameMode === "competition" && startTime !== null) {
+      const elapsed = Date.now() - startTime;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from("answer_times").insert({
+            user_id: user.id,
+            riddle_index: riddleNumber,
+            elapsed_ms: elapsed,
+            game_mode: "competition",
+          });
+        }
+      } catch (e) {
+        console.error("Failed to log answer time", e);
+      }
+    }
+
     // In competition mode, auto-advance after wrong answer
     if (gameMode === "competition" && !isCorrect) {
       setTimeout(() => {
