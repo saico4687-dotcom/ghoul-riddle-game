@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      answer_times: {
+        Row: {
+          created_at: string
+          elapsed_ms: number
+          game_mode: string
+          id: string
+          riddle_index: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          elapsed_ms: number
+          game_mode?: string
+          id?: string
+          riddle_index: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          elapsed_ms?: number
+          game_mode?: string
+          id?: string
+          riddle_index?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       competition_scores: {
         Row: {
           created_at: string
