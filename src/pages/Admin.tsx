@@ -152,8 +152,47 @@ const Admin = () => {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6">
-        <p className="font-typewriter text-muted-foreground mb-4 text-sm">
+      <main className="max-w-6xl mx-auto px-4 py-6 space-y-8">
+        {/* Weekly Fastest Answers */}
+        <section className="bg-card/60 border border-primary/30 rounded-xl p-4 backdrop-blur-sm">
+          <h2 className="font-horror text-xl text-blood mb-3 flex items-center gap-2">
+            <Zap className="w-5 h-5" />
+            أسرع إجابات صحيحة هذا الأسبوع
+          </h2>
+          {weeklyFastest.length === 0 ? (
+            <p className="text-sm text-muted-foreground font-typewriter">
+              لا توجد إجابات مسجّلة هذا الأسبوع بعد.
+            </p>
+          ) : (
+            <ol className="space-y-2">
+              {weeklyFastest.map((a, i) => (
+                <li
+                  key={a.id}
+                  className="flex items-center justify-between gap-3 bg-background/40 rounded-lg px-3 py-2 text-sm font-typewriter"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="font-horror text-blood text-lg w-6 shrink-0">
+                      {i === 0 ? <Trophy className="w-5 h-5 inline" /> : `#${i + 1}`}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-foreground truncate">
+                        {a.full_name || "مستخدم"}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {a.email || "—"} · لغز #{a.riddle_index}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-blood font-bold whitespace-nowrap">
+                    {(a.elapsed_ms / 1000).toFixed(2)} ث
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+
+        <p className="font-typewriter text-muted-foreground text-sm">
           إجمالي المشاركين: {scores.length}
         </p>
 
