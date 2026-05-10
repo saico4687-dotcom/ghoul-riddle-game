@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import WelcomeScreen, { GameMode } from "@/components/WelcomeScreen";
 import RiddleCard from "@/components/RiddleCard";
 import ResultScreen from "@/components/ResultScreen";
-import GoogleLoginScreen from "@/components/GoogleLoginScreen";
+import GoogleLoginScreen from "@/components/EmailAuthScreen";
 import { riddles } from "@/data/riddles";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
