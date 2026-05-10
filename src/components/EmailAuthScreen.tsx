@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Trophy, ArrowRight, Mail, Lock, LogIn, UserPlus } from "lucide-react";
+import { Trophy, ArrowRight, Mail, Lock, LogIn, UserPlus, Shield } from "lucide-react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+
 
 interface EmailAuthScreenProps {
   onBack: () => void;
@@ -160,6 +162,14 @@ const EmailAuthScreen = ({ onBack }: EmailAuthScreenProps) => {
           <LogIn className="w-4 h-4" />
           <span>المتابعة بـ Google</span>
         </button>
+
+        <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground font-typewriter">
+          <Shield className="w-4 h-4" />
+          <span>بالاستمرار أنت توافق على</span>
+          <Link to="/privacy" className="text-primary hover:underline underline-offset-4">
+            سياسة الخصوصية
+          </Link>
+        </div>
 
         <button
           type="button"
