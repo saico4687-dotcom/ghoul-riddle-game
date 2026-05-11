@@ -1,294 +1,308 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import WelcomeScreen, { GameMode } from "@/components/WelcomeScreen";
-import RiddleCard from "@/components/RiddleCard";
-import ResultScreen from "@/components/ResultScreen";
-import GoogleLoginScreen from "@/components/EmailAuthScreen";
-import { riddles } from "@/data/riddles";
-import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { format, isPast, isToday } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
-import { showInterstitial } from "@/lib/ads";
-import ParticipantInfoForm from "@/components/ParticipantInfoForm";
+import type { Session } from "@supabase/supabase-js";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
+import {
+  Plus, LogOut, Pencil, Trash2, CalendarClock, CheckCircle2, Loader2, ListTodo,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
-type GameState = "welcome" | "login" | "info" | "playing" | "result";
-
-const Index = () => {
-  const [gameState, setGameState] = useState<GameState>("welcome");
-  const [currentRiddleIndex, setCurrentRiddleIndex] = useState(0);
-  const [score, setScore] = useState(0);
-  const [totalPoints, setTotalPoints] = useState(0);
-  const [timeBonus, setTimeBonus] = useState(0);
-  const [answeredCount, setAnsweredCount] = useState(0);
-  const [profileData, setProfileData] = useState<{ full_name: string | null; phone: string | null; address: string | null } | null>(null);
-  const { user } = useAuth();
-
-  const allRiddles = useMemo(() => riddles.slice(0, 400), []);
-
-  const ensureProfile = useCallback(async () => {
-    if (!user) return null;
-    const { data } = await supabase
-      .from("profiles")
-      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus, full_name, phone, address")
-      .eq("user_id", user.id)
-      .single();
-    if (data) return data;
-    const { data: newProfile } = await supabase
-      .from("profiles")
-      .insert({
-        user_id: user.id,
-        email: user.email,
-        name: user.user_metadata?.full_name || user.user_metadata?.name || "",
-        profile_image: user.user_metadata?.avatar_url || user.user_metadata?.picture || "",
-      })
-      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus, full_name, phone, address")
-      .single();
-    return newProfile;
-  }, [user]);
-
-  const saveProgress = useCallback(
-    async (newIndex: number, newScore: number, newTotalPoints: number, newTimeBonus: number) => {
-      if (!user) return;
-      await supabase
-        .from("profiles")
-        .update({
-          last_puzzle_index: newIndex,
-          saved_score: newScore,
-          saved_total_points: newTotalPoints,
-          saved_time_bonus: newTimeBonus,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", user.id);
-    },
-    [user]
-  );
-
-  const startFromProfile = useCallback(async () => {
-    const data = await ensureProfile();
-    const startIndex = data?.last_puzzle_index ?? 0;
-    const savedScore = data?.saved_score ?? 0;
-    const savedPoints = data?.saved_total_points ?? 0;
-    const savedBonus = data?.saved_time_bonus ?? 0;
-
-    setScore(savedScore);
-    setTotalPoints(savedPoints);
-    setTimeBonus(savedBonus);
-    setProfileData({
-      full_name: data?.full_name ?? null,
-      phone: data?.phone ?? null,
-      address: data?.address ?? null,
-    });
-
-    const hasInfo = !!(data?.full_name && data?.phone && data?.address);
-    if (!hasInfo) {
-      setGameState("info");
-      return;
-    }
-
-    if (startIndex >= allRiddles.length) {
-      setCurrentRiddleIndex(allRiddles.length);
-      setGameState("result");
-    } else {
-      setCurrentRiddleIndex(startIndex);
-      setGameState("playing");
-    }
-  }, [ensureProfile, allRiddles.length]);
-
-  useEffect(() => {
-    if (gameState === "login" && user) {
-      startFromProfile();
-    }
-  }, [user, gameState, startFromProfile]);
-
-  const handleStart = async (_mode: GameMode) => {
-    if (!user) {
-      setGameState("login");
-      return;
-    }
-    await startFromProfile();
-  };
-
-  const handleAnswer = (isCorrect: boolean, selectedIndex: number | null, remainingTime?: number) => {
-    let newScore = score;
-    let newTotalPoints = totalPoints;
-    let newTimeBonus = timeBonus;
-
-    if (isCorrect) {
-      newScore = score + 1;
-      setScore(newScore);
-      let points = 10;
-      if (remainingTime !== undefined && remainingTime > 0) {
-        const bonus = Math.min(5, Math.floor(remainingTime / 12));
-        points += bonus;
-        newTimeBonus = timeBonus + bonus;
-        setTimeBonus(newTimeBonus);
-      }
-      newTotalPoints = totalPoints + points;
-      setTotalPoints(newTotalPoints);
-    }
-
-    // Interstitial every 5 answered questions
-    const newAnswered = answeredCount + 1;
-    if (newAnswered >= 5) {
-      showInterstitial();
-      setAnsweredCount(0);
-    } else {
-      setAnsweredCount(newAnswered);
-    }
-
-    if (user) {
-      const nextIndex = currentRiddleIndex + 1;
-      saveProgress(nextIndex, newScore, newTotalPoints, newTimeBonus);
-    }
-  };
-
-  const handleNext = () => {
-    if (currentRiddleIndex < allRiddles.length - 1) {
-      setCurrentRiddleIndex(currentRiddleIndex + 1);
-    } else {
-      // Mark fully completed
-      if (user) saveProgress(allRiddles.length, score, totalPoints, timeBonus);
-      setGameState("result");
-    }
-  };
-
-  const handleRestart = () => {
-    // Locked: just go back to welcome (no reset of completed state)
-    setGameState("welcome");
-  };
-
-  const beginnerLabels = [
-    "في بداية الطريق 🌱",
-    "خطوة أولى نحو النور 🕯️",
-    "بذرة الذكاء 🌰",
-    "محقّق متدرّب 🧭",
-    "عقل يستيقظ 🌙",
-  ];
-
-  const getRank = (points: number, totalPossible: number, index: number) => {
-    const percentage = (points / totalPossible) * 100;
-    if (percentage >= 90) return { title: "أسطورة الذكاء 👑", color: "text-yellow-400" };
-    if (percentage >= 75) return { title: "سيد الألغاز 🏆", color: "text-purple-400" };
-    if (percentage >= 60) return { title: "محقق ماهر 🔍", color: "text-blue-400" };
-    if (percentage >= 45) return { title: "مفكّر شجاع ⚔️", color: "text-green-400" };
-    if (percentage >= 30) return { title: "مبتدئ واعد 📚", color: "text-orange-400" };
-    const slot = Math.floor(index / 100) % beginnerLabels.length;
-    return { title: beginnerLabels[slot], color: "text-pink-400" };
-  };
-
-  const maxPoints = allRiddles.length * 15;
-  const rank = getRank(totalPoints, maxPoints, currentRiddleIndex);
-
-  return (
-    <div className="min-h-screen bg-background" dir="rtl">
-      <AnimatePresence mode="wait">
-        {gameState === "welcome" && (
-          <motion.div key="welcome" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <WelcomeScreen onStart={handleStart} />
-          </motion.div>
-        )}
-
-        {gameState === "login" && (
-          <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <GoogleLoginScreen onBack={() => setGameState("welcome")} />
-          </motion.div>
-        )}
-
-        {gameState === "info" && user && (
-          <motion.div key="info" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <ParticipantInfoForm
-              userId={user.id}
-              defaults={profileData ?? undefined}
-              onSaved={() => startFromProfile()}
-            />
-          </motion.div>
-        )}
-
-        {gameState === "playing" && (
-          <motion.div
-            key="playing"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="min-h-screen bg-horror-gradient py-8"
-          >
-            <div className="vignette" />
-
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="fixed top-4 left-4 z-50 card-horror px-4 py-2"
-            >
-              <div className="flex items-center gap-4">
-                <div className="text-center">
-                  <p className="font-typewriter text-xs text-muted-foreground">النقاط</p>
-                  <p className="font-horror text-2xl text-primary">{totalPoints}</p>
-                </div>
-                <div className="w-px h-8 bg-primary/30" />
-                <div className="text-center">
-                  <p className="font-typewriter text-xs text-muted-foreground">الترتيب</p>
-                  <p className={`font-horror text-sm ${rank.color}`}>{rank.title}</p>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="fixed top-4 right-4 z-50 flex items-center gap-3"
-            >
-              {user && (
-                <div className="card-horror px-3 py-2 flex items-center gap-2">
-                  {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
-                    <img
-                      src={user.user_metadata.avatar_url || user.user_metadata.picture}
-                      alt="avatar"
-                      className="w-8 h-8 rounded-full border border-primary/50"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center font-horror text-sm text-primary-foreground">
-                      {(user.user_metadata?.full_name || user.user_metadata?.name || user.email || "?")[0]}
-                    </div>
-                  )}
-                  <span className="font-typewriter text-xs text-foreground max-w-[100px] truncate">
-                    {user.user_metadata?.full_name || user.user_metadata?.name || user.email}
-                  </span>
-                </div>
-              )}
-              <div className="px-4 py-2 rounded-lg font-horror text-sm bg-primary/20 text-primary border border-primary/50">
-                🏆 الألغاز
-              </div>
-            </motion.div>
-
-            <div className="pt-16">
-              <RiddleCard
-                riddle={allRiddles[currentRiddleIndex]}
-                riddleNumber={currentRiddleIndex + 1}
-                totalRiddles={allRiddles.length}
-                onAnswer={handleAnswer}
-                onNext={handleNext}
-                gameMode="competition"
-              />
-            </div>
-          </motion.div>
-        )}
-
-        {gameState === "result" && (
-          <motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <ResultScreen
-              score={score}
-              totalQuestions={allRiddles.length}
-              totalPoints={totalPoints}
-              maxPoints={maxPoints}
-              timeBonus={timeBonus}
-              rank={rank}
-              gameMode="competition"
-              onRestart={handleRestart}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
+type Priority = "high" | "medium" | "low";
+type Todo = {
+  id: string;
+  title: string;
+  description: string | null;
+  priority: Priority;
+  deadline: string | null;
+  completed: boolean;
+  created_at: string;
 };
 
-export default Index;
+type Profile = { name: string | null; email: string | null; profile_image: string | null };
+
+const priorityStyles: Record<Priority, { dot: string; label: string; badge: string }> = {
+  high:   { dot: "bg-[hsl(var(--priority-high))]",   label: "High",   badge: "bg-[hsl(var(--priority-high))]/10 text-[hsl(var(--priority-high))]" },
+  medium: { dot: "bg-[hsl(var(--priority-medium))]", label: "Medium", badge: "bg-[hsl(var(--priority-medium))]/10 text-[hsl(var(--priority-medium))]" },
+  low:    { dot: "bg-[hsl(var(--priority-low))]",    label: "Low",    badge: "bg-[hsl(var(--priority-low))]/10 text-[hsl(var(--priority-low))]" },
+};
+
+export default function Index() {
+  const navigate = useNavigate();
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<Todo | null>(null);
+
+  // Form state
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState<Priority>("medium");
+  const [deadline, setDeadline] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+      setSession(s);
+      if (!s) navigate("/auth", { replace: true });
+    });
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      if (!data.session) navigate("/auth", { replace: true });
+    });
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!session) return;
+    (async () => {
+      setLoading(true);
+      const [{ data: t }, { data: p }] = await Promise.all([
+        supabase.from("todos").select("*").order("completed").order("deadline", { ascending: true, nullsFirst: false }),
+        supabase.from("profiles").select("name, email, profile_image").eq("user_id", session.user.id).maybeSingle(),
+      ]);
+      setTodos((t as Todo[]) ?? []);
+      setProfile(p as Profile);
+      setLoading(false);
+    })();
+  }, [session]);
+
+  const resetForm = () => {
+    setTitle(""); setDescription(""); setPriority("medium"); setDeadline(""); setEditing(null);
+  };
+
+  const openNew = () => { resetForm(); setDialogOpen(true); };
+
+  const openEdit = (t: Todo) => {
+    setEditing(t);
+    setTitle(t.title);
+    setDescription(t.description ?? "");
+    setPriority(t.priority);
+    setDeadline(t.deadline ? format(new Date(t.deadline), "yyyy-MM-dd'T'HH:mm") : "");
+    setDialogOpen(true);
+  };
+
+  const saveTodo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session) return;
+    setSaving(true);
+    const payload = {
+      title: title.trim(),
+      description: description.trim() || null,
+      priority,
+      deadline: deadline ? new Date(deadline).toISOString() : null,
+    };
+    try {
+      if (editing) {
+        const { data, error } = await supabase.from("todos").update(payload).eq("id", editing.id).select().single();
+        if (error) throw error;
+        setTodos((prev) => prev.map((x) => (x.id === editing.id ? (data as Todo) : x)));
+        toast.success("Task updated");
+      } else {
+        const { data, error } = await supabase.from("todos").insert({ ...payload, user_id: session.user.id }).select().single();
+        if (error) throw error;
+        setTodos((prev) => [data as Todo, ...prev]);
+        toast.success("Task added");
+      }
+      setDialogOpen(false);
+      resetForm();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleComplete = async (t: Todo) => {
+    const next = !t.completed;
+    setTodos((prev) => prev.map((x) => (x.id === t.id ? { ...x, completed: next } : x)));
+    const { error } = await supabase.from("todos").update({ completed: next }).eq("id", t.id);
+    if (error) {
+      toast.error("Couldn't update");
+      setTodos((prev) => prev.map((x) => (x.id === t.id ? { ...x, completed: !next } : x)));
+    }
+  };
+
+  const removeTodo = async (id: string) => {
+    const prev = todos;
+    setTodos((p) => p.filter((x) => x.id !== id));
+    const { error } = await supabase.from("todos").delete().eq("id", id);
+    if (error) { toast.error("Couldn't delete"); setTodos(prev); }
+    else toast.success("Task deleted");
+  };
+
+  const signOut = async () => { await supabase.auth.signOut(); };
+
+  const active = todos.filter((t) => !t.completed);
+  const done = todos.filter((t) => t.completed);
+  const displayName = profile?.name || session?.user.email?.split("@")[0] || "there";
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
+      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            {profile?.profile_image ? (
+              <img src={profile.profile_image} alt="" className="w-9 h-9 rounded-full object-cover" />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-[image:var(--gradient-primary)] flex items-center justify-center text-primary-foreground font-semibold text-sm">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Hello,</p>
+              <p className="font-semibold truncate">{displayName}</p>
+            </div>
+          </div>
+          <Button variant="ghost" size="icon" onClick={signOut} aria-label="Sign out">
+            <LogOut className="w-5 h-5" />
+          </Button>
+        </div>
+      </header>
+
+      <main className="max-w-2xl mx-auto px-4 pt-6 pb-32">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <ListTodo className="w-7 h-7 text-primary" /> Your tasks
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            {active.length} active · {done.length} done
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+        ) : todos.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="w-16 h-16 rounded-2xl bg-muted mx-auto flex items-center justify-center mb-4">
+              <CheckCircle2 className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="font-semibold text-lg">No tasks yet</h3>
+            <p className="text-muted-foreground text-sm mt-1">Tap the + button to add your first task.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {active.map((t) => <TodoItem key={t.id} todo={t} onToggle={toggleComplete} onEdit={openEdit} onDelete={removeTodo} />)}
+            {done.length > 0 && (
+              <>
+                <h2 className="text-xs uppercase tracking-wider text-muted-foreground mt-8 mb-2 px-1">Completed</h2>
+                {done.map((t) => <TodoItem key={t.id} todo={t} onToggle={toggleComplete} onEdit={openEdit} onDelete={removeTodo} />)}
+              </>
+            )}
+          </div>
+        )}
+      </main>
+
+      <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
+        <DialogTrigger asChild>
+          <Button
+            onClick={openNew}
+            size="icon"
+            className="fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-[var(--shadow-soft)] bg-[image:var(--gradient-primary)] hover:opacity-90"
+            aria-label="New task"
+          >
+            <Plus className="w-6 h-6" />
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Edit task" : "New task"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={saveTodo} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="title">Title</Label>
+              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="What needs doing?" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="description">Description</Label>
+              <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional details" rows={3} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Priority</Label>
+                <Select value={priority} onValueChange={(v) => setPriority(v as Priority)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="high"><span className="inline-flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[hsl(var(--priority-high))]" />High</span></SelectItem>
+                    <SelectItem value="medium"><span className="inline-flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[hsl(var(--priority-medium))]" />Medium</span></SelectItem>
+                    <SelectItem value="low"><span className="inline-flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[hsl(var(--priority-low))]" />Low</span></SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="deadline">Deadline</Label>
+                <Input id="deadline" type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-2">
+              <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={saving || !title.trim()}>
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : editing ? "Save changes" : "Add task"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function TodoItem({
+  todo, onToggle, onEdit, onDelete,
+}: {
+  todo: Todo;
+  onToggle: (t: Todo) => void;
+  onEdit: (t: Todo) => void;
+  onDelete: (id: string) => void;
+}) {
+  const ps = priorityStyles[todo.priority];
+  const deadlineDate = todo.deadline ? new Date(todo.deadline) : null;
+  const overdue = !todo.completed && deadlineDate && isPast(deadlineDate) && !isToday(deadlineDate);
+
+  return (
+    <div className={cn(
+      "group bg-card border rounded-xl p-3 flex items-start gap-3 transition-all hover:shadow-md",
+      todo.completed && "opacity-60"
+    )}>
+      <Checkbox checked={todo.completed} onCheckedChange={() => onToggle(todo)} className="mt-1" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className={cn("font-medium leading-tight", todo.completed && "line-through")}>{todo.title}</h3>
+          <span className={cn("text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full whitespace-nowrap", ps.badge)}>
+            {ps.label}
+          </span>
+        </div>
+        {todo.description && <p className="text-sm text-muted-foreground mt-1 break-words">{todo.description}</p>}
+        {deadlineDate && (
+          <div className={cn("flex items-center gap-1 text-xs mt-2", overdue ? "text-destructive" : "text-muted-foreground")}>
+            <CalendarClock className="w-3.5 h-3.5" />
+            {format(deadlineDate, "MMM d, yyyy · h:mm a")}
+            {overdue && <span className="font-semibold">· Overdue</span>}
+          </div>
+        )}
+        <div className="flex gap-1 mt-2 -ml-2">
+          <Button size="sm" variant="ghost" onClick={() => onEdit(todo)} className="h-7 px-2 text-xs">
+            <Pencil className="w-3 h-3 mr-1" /> Edit
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => onDelete(todo.id)} className="h-7 px-2 text-xs text-destructive hover:text-destructive">
+            <Trash2 className="w-3 h-3 mr-1" /> Delete
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
