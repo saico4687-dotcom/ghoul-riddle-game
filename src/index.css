@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Tajawal:wght@500;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,315 +6,85 @@
 
 @layer base {
   :root {
-    --background: 250 60% 12%;
-    --foreground: 48 100% 96%;
+    --background: 220 25% 98%;
+    --foreground: 222 47% 11%;
 
-    --card: 252 45% 18%;
-    --card-foreground: 48 100% 96%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
 
-    --popover: 252 45% 16%;
-    --popover-foreground: 48 100% 96%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 45 100% 55%;
-    --primary-foreground: 252 60% 12%;
+    --primary: 252 83% 60%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 268 83% 70%;
 
-    --secondary: 270 50% 30%;
-    --secondary-foreground: 48 100% 96%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 252 30% 25%;
-    --muted-foreground: 48 30% 80%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
 
-    --accent: 320 85% 60%;
+    --accent: 268 83% 70%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 270 40% 35%;
-    --input: 252 40% 22%;
-    --ring: 45 100% 55%;
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
 
-    --radius: 0.75rem;
+    --priority-high: 0 84% 60%;
+    --priority-medium: 38 92% 50%;
+    --priority-low: 142 71% 45%;
 
-    --horror-blood: 45 100% 55%;
-    --horror-glow: 45 100% 65%;
-    --horror-dark: 252 60% 10%;
-    --horror-fog: 270 40% 40%;
-    --horror-eerie: 180 60% 40%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 252 83% 60%;
 
-    --sidebar-background: 252 45% 16%;
-    --sidebar-foreground: 48 100% 90%;
-    --sidebar-primary: 45 100% 55%;
-    --sidebar-primary-foreground: 252 60% 12%;
-    --sidebar-accent: 270 50% 30%;
-    --sidebar-accent-foreground: 48 100% 96%;
-    --sidebar-border: 270 40% 35%;
-    --sidebar-ring: 45 100% 55%;
+    --radius: 0.875rem;
+
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --shadow-soft: 0 4px 20px -4px hsl(var(--primary) / 0.15);
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 252 83% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 252 83% 60%;
   }
 
   .dark {
-    --background: 250 60% 12%;
-    --foreground: 48 100% 96%;
-    --card: 252 45% 18%;
-    --card-foreground: 48 100% 96%;
-    --popover: 252 45% 16%;
-    --popover-foreground: 48 100% 96%;
-    --primary: 45 100% 55%;
-    --primary-foreground: 252 60% 12%;
-    --secondary: 270 50% 30%;
-    --secondary-foreground: 48 100% 96%;
-    --muted: 252 30% 25%;
-    --muted-foreground: 48 30% 80%;
-    --accent: 320 85% 60%;
+    --background: 222 47% 7%;
+    --foreground: 220 14% 96%;
+    --card: 222 47% 11%;
+    --card-foreground: 220 14% 96%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 220 14% 96%;
+    --primary: 252 83% 65%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 268 83% 75%;
+    --secondary: 222 30% 18%;
+    --secondary-foreground: 220 14% 96%;
+    --muted: 222 30% 18%;
+    --muted-foreground: 220 9% 65%;
+    --accent: 268 83% 70%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 270 40% 35%;
-    --input: 252 40% 22%;
-    --ring: 45 100% 55%;
+    --border: 222 30% 20%;
+    --input: 222 30% 20%;
+    --ring: 252 83% 65%;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-
+  * { @apply border-border; }
   body {
-    @apply bg-background text-foreground;
-    font-family: 'Tajawal', 'Cairo', sans-serif;
-    font-weight: 700;
-  }
-}
-
-@layer components {
-  .font-horror {
-    font-family: 'Cairo', sans-serif;
-    font-weight: 900;
-    letter-spacing: 0.02em;
-  }
-
-  .font-typewriter {
-    font-family: 'Tajawal', sans-serif;
-    font-weight: 700;
-  }
-
-  .text-blood {
-    color: hsl(var(--horror-blood));
-    text-shadow: 0 0 10px hsl(var(--horror-glow) / 0.5);
-  }
-
-  .text-glow {
-    text-shadow: 
-      0 0 10px hsl(var(--horror-glow) / 0.8),
-      0 0 20px hsl(var(--horror-glow) / 0.6),
-      0 0 30px hsl(var(--horror-glow) / 0.4);
-  }
-
-  .bg-horror-gradient {
-    background: linear-gradient(
-      135deg,
-      hsl(252 60% 15%) 0%,
-      hsl(270 55% 22%) 50%,
-      hsl(320 60% 25%) 100%
-    );
-  }
-
-  .card-horror {
-    @apply bg-card border border-border rounded-lg;
-    box-shadow: 
-      0 0 20px hsl(var(--horror-blood) / 0.2),
-      inset 0 0 50px hsl(var(--horror-dark) / 0.5);
-  }
-
-  .btn-horror {
-    @apply px-6 py-3 rounded-lg font-horror text-lg transition-all duration-300;
-    background: linear-gradient(135deg, hsl(var(--horror-blood)), hsl(0 60% 25%));
-    color: hsl(var(--primary-foreground));
-    box-shadow: 0 0 15px hsl(var(--horror-glow) / 0.4);
-  }
-
-  .btn-horror:hover {
-    box-shadow: 0 0 30px hsl(var(--horror-glow) / 0.8);
-    transform: scale(1.05);
-  }
-
-  .option-horror {
-    @apply p-4 rounded-lg border border-border bg-secondary cursor-pointer transition-all duration-300;
-  }
-
-  .option-horror:hover {
-    @apply border-primary;
-    box-shadow: 0 0 15px hsl(var(--horror-glow) / 0.3);
-  }
-
-  .option-horror.selected {
-    @apply border-primary bg-accent;
-    box-shadow: 0 0 20px hsl(var(--horror-glow) / 0.5);
-  }
-
-  .option-horror.correct {
-    @apply border-green-500 bg-green-900/30;
-    box-shadow: 0 0 20px hsl(120 60% 40% / 0.5);
-  }
-
-  .option-horror.wrong {
-    @apply border-red-500 bg-red-900/30;
-    box-shadow: 0 0 20px hsl(0 60% 40% / 0.5);
-    animation: shake 0.5s ease-in-out;
-  }
-
-  .image-horror {
-    @apply rounded-lg overflow-hidden;
-    box-shadow: 
-      0 0 30px hsl(var(--horror-blood) / 0.3),
-      0 0 60px hsl(var(--horror-dark) / 0.8);
-  }
-
-  .vortex-container {
-    @apply relative rounded-lg overflow-hidden;
-    box-shadow: 
-      0 0 30px hsl(var(--horror-blood) / 0.3),
-      0 0 60px hsl(var(--horror-dark) / 0.8);
-  }
-
-  .vortex-image {
-    animation: vortexSpin 8s ease-in-out infinite;
-    transform-origin: center center;
-    filter: saturate(1.2) contrast(1.1);
-  }
-
-  .vortex-overlay {
-    @apply absolute inset-0;
-    background: 
-      radial-gradient(
-        circle at center,
-        transparent 0%,
-        hsl(270 50% 15% / 0.2) 30%,
-        hsl(250 60% 10% / 0.5) 60%,
-        hsl(240 70% 5% / 0.7) 100%
-      ),
-      conic-gradient(
-        from 0deg at 50% 50%,
-        hsl(280 60% 30% / 0.3) 0deg,
-        hsl(200 70% 40% / 0.2) 90deg,
-        hsl(280 60% 30% / 0.3) 180deg,
-        hsl(200 70% 40% / 0.2) 270deg,
-        hsl(280 60% 30% / 0.3) 360deg
-      );
-    animation: vortexPulse 3s ease-in-out infinite, vortexSpin 12s linear infinite reverse;
-  }
-
-  .vortex-glow {
-    @apply absolute inset-0 pointer-events-none;
-    background: 
-      radial-gradient(
-        circle at center,
-        hsl(200 80% 60% / 0.25) 0%,
-        hsl(270 60% 50% / 0.15) 25%,
-        transparent 50%
-      );
-    animation: vortexGlow 2s ease-in-out infinite;
-    mix-blend-mode: screen;
-  }
-
-  .flicker {
-    animation: flicker 3s infinite;
-  }
-
-  .pulse-blood {
-    animation: pulseBlood 2s infinite;
-  }
-
-  .fog-overlay {
-    @apply pointer-events-none fixed inset-0;
-    background: 
-      radial-gradient(ellipse at center, transparent 0%, hsl(var(--horror-dark) / 0.3) 100%);
-  }
-
-  .vignette {
-    @apply pointer-events-none fixed inset-0;
-    background: radial-gradient(ellipse at center, transparent 40%, hsl(var(--horror-dark)) 100%);
-  }
-}
-
-@layer utilities {
-  @keyframes flicker {
-    0%, 100% { opacity: 1; }
-    10% { opacity: 0.8; }
-    20% { opacity: 1; }
-    30% { opacity: 0.9; }
-    50% { opacity: 0.85; }
-    70% { opacity: 1; }
-    80% { opacity: 0.7; }
-    90% { opacity: 1; }
-  }
-
-  @keyframes pulseBlood {
-    0%, 100% { 
-      text-shadow: 0 0 10px hsl(var(--horror-glow) / 0.5);
-    }
-    50% { 
-      text-shadow: 
-        0 0 20px hsl(var(--horror-glow) / 0.8),
-        0 0 40px hsl(var(--horror-glow) / 0.6);
-    }
-  }
-
-  @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-    20%, 40%, 60%, 80% { transform: translateX(5px); }
-  }
-
-  @keyframes typewriter {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  @keyframes bloodDrip {
-    0% { transform: translateY(-100%); opacity: 0; }
-    10% { opacity: 1; }
-    100% { transform: translateY(100vh); opacity: 0; }
-  }
-
-  @keyframes vortexSpin {
-    0% { transform: scale(1.3) rotate(0deg); }
-    50% { transform: scale(1.4) rotate(180deg); }
-    100% { transform: scale(1.3) rotate(360deg); }
-  }
-
-  @keyframes vortexPulse {
-    0%, 100% { opacity: 0.4; transform: scale(1); }
-    50% { opacity: 0.7; transform: scale(1.02); }
-  }
-
-  @keyframes vortexGlow {
-    0% { opacity: 0.2; transform: scale(0.9); }
-    50% { opacity: 0.5; transform: scale(1.1); }
-    100% { opacity: 0.2; transform: scale(0.9); }
-  }
-
-  @keyframes vortexSpiral {
-    0% { 
-      background-position: 0% 50%;
-      filter: hue-rotate(0deg);
-    }
-    50% { 
-      background-position: 100% 50%;
-      filter: hue-rotate(30deg);
-    }
-    100% { 
-      background-position: 0% 50%;
-      filter: hue-rotate(0deg);
-    }
-  }
-
-  .animate-typewriter {
-    animation: typewriter 0.1s ease-out forwards;
-  }
-
-  .animate-blood-drip {
-    animation: bloodDrip 3s ease-in infinite;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
   }
 }
