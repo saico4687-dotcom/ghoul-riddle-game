@@ -11,6 +11,7 @@ import Terms from "./pages/Terms";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
+import DeleteAccount from "./pages/DeleteAccount";
 import SplashScreen from "./components/SplashScreen";
 import AdsConsentDialog from "./components/AdsConsentDialog";
 import { initAdMob, showAppOpenAdIfDue } from "./lib/ads";
@@ -43,6 +44,7 @@ const App = () => {
             <Route path="/terms" element={<Terms />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/delete-account" element={<DeleteAccount />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
