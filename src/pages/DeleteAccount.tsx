@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 
+const CONTACT_EMAIL = "support@ghoul-riddle-game.com";
+
 export default function DeleteAccount() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,11 +30,11 @@ export default function DeleteAccount() {
         const { error } = await supabase.functions.invoke("delete-account");
         if (error) throw error;
         await supabase.auth.signOut();
-        toast({ title: "تم حذف حسابك وجميع بياناتك بنجاح" });
+        toast({ title: "تم استلام طلب حذف حسابك", description: "سيتم حذف جميع بياناتك نهائيًا خلال 30 يومًا." });
       } else {
         toast({
           title: "تم استلام طلبك",
-          description: `سيتم حذف حساب ${email} وجميع بياناته خلال 7 أيام.`,
+          description: `سيتم حذف حساب ${email} وجميع بياناته خلال 30 يومًا.`,
         });
       }
       setEmail("");
@@ -46,10 +48,24 @@ export default function DeleteAccount() {
   return (
     <div className="min-h-screen bg-background text-foreground p-6 flex flex-col items-center" dir="rtl">
       <div className="max-w-xl w-full space-y-6">
-        <h1 className="text-3xl font-bold">حذف الحساب</h1>
+        <h1 className="text-3xl font-bold">حذف الحساب وبياناتك</h1>
         <p className="text-muted-foreground">
-          من خلال هذه الصفحة يمكنك طلب حذف حسابك في تطبيق <strong>ربح - تحدّي الألغاز الذهنية</strong> وجميع البيانات المرتبطة به.
+          تطبيق <strong>ربح - تحدّي الألغاز الذهنية</strong> يحترم خصوصيتك. يمكنك من خلال هذه الصفحة طلب حذف حسابك وجميع البيانات المرتبطة به نهائيًا.
         </p>
+
+        <section className="space-y-2">
+          <h2 className="text-xl font-semibold">كيفية تقديم طلب الحذف</h2>
+          <ol className="list-decimal pr-6 space-y-1 text-sm">
+            <li>أدخل بريدك الإلكتروني المسجّل في الخانة بالأسفل ثم اضغط على زر "حذف حسابي نهائيًا".</li>
+            <li>
+              أو راسلنا مباشرة على البريد:{" "}
+              <a href={`mailto:${CONTACT_EMAIL}?subject=طلب حذف حساب`} className="text-primary underline">
+                {CONTACT_EMAIL}
+              </a>{" "}
+              من نفس البريد المسجّل في التطبيق وأرفق طلب الحذف.
+            </li>
+          </ol>
+        </section>
 
         <section className="space-y-2">
           <h2 className="text-xl font-semibold">البيانات التي سيتم حذفها</h2>
@@ -57,14 +73,21 @@ export default function DeleteAccount() {
             <li>بيانات الحساب (الاسم، البريد الإلكتروني، الصورة).</li>
             <li>نتائج الألغاز ونقاطك في المسابقات.</li>
             <li>بيانات المشاركة في السحب وإثباتات الدفع.</li>
-            <li>أي بيانات أخرى مرتبطة بحسابك.</li>
+            <li>أي بيانات أخرى مرتبطة بحسابك داخل التطبيق.</li>
           </ul>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-xl font-semibold">مدة الحذف</h2>
+          <p className="text-sm">
+            سيتم حذف جميع بياناتك المرتبطة بحسابك نهائيًا خلال مدة أقصاها <strong>30 يومًا</strong> من تاريخ استلام الطلب، ولا يمكن استرجاعها بعد ذلك.
+          </p>
         </section>
 
         <section className="space-y-2">
           <h2 className="text-xl font-semibold">البيانات المحتفظ بها</h2>
           <p className="text-sm">
-            قد نحتفظ ببعض السجلات المالية أو القانونية لمدة قد تصل إلى 90 يومًا للامتثال للقوانين المعمول بها، ثم يتم حذفها نهائيًا.
+            قد نحتفظ ببعض السجلات المالية أو القانونية للفترة التي يفرضها القانون فقط، ثم يتم حذفها بشكل دائم.
           </p>
         </section>
 
@@ -81,7 +104,10 @@ export default function DeleteAccount() {
             {loading ? "جارٍ المعالجة..." : "حذف حسابي نهائيًا"}
           </Button>
           <p className="text-xs text-muted-foreground">
-            بعد الضغط على الزر، لا يمكن استرجاع بياناتك.
+            للاستفسار أو المتابعة، تواصل معنا على:{" "}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary underline">
+              {CONTACT_EMAIL}
+            </a>
           </p>
         </section>
 
