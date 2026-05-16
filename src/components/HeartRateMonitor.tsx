@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Heart } from "lucide-react";
 
 interface HeartRateMonitorProps {
@@ -6,7 +6,7 @@ interface HeartRateMonitorProps {
   bpm?: number;
 }
 
-// Single ECG waveform cycle (PQRST), normalized in a 200x100 viewBox segment
+// Single ECG waveform cycle (PQRST), 200 wide
 const ECG_SEGMENT =
   "M0,50 L20,50 L28,48 L36,52 L44,50 L60,50 L66,20 L72,80 L78,30 L84,50 L110,50 L118,55 L126,45 L134,50 L200,50";
 const FLATLINE = "M0,50 L200,50";
@@ -43,85 +43,34 @@ const HeartRateMonitor = ({ status, bpm = 78 }: HeartRateMonitorProps) => {
           >
             <Heart className={`w-4 h-4 ${isFlat ? "fill-red-500/40" : "fill-emerald-400"}`} />
           </motion.div>
-          <span className="tabular-nums">
-            {isFlat ? "-- BPM" : `${bpm} BPM`}
-          </span>
+          <span className="tabular-nums">{isFlat ? "-- BPM" : `${bpm} BPM`}</span>
         </div>
       </div>
 
       {/* ECG trace */}
-      <svg
-        viewBox="0 0 800 200"
-        preserveAspectRatio="none"
-        className="absolute inset-0 w-full h-full"
-      >
-        <defs>
-          <linearGradient id="ecgGlow" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor={isFlat ? "#ef4444" : "#10b981"} stopOpacity="0" />
-            <stop offset="50%" stopColor={isFlat ? "#ef4444" : "#34d399"} stopOpacity="1" />
-            <stop offset="100%" stopColor={isFlat ? "#ef4444" : "#10b981"} stopOpacity="0" />
-          </linearGradient>
-          <filter id="ecgBlur">
-            <feGaussianBlur stdDeviation="2" />
-          </filter>
-        </defs>
-
-        {/* Repeated ECG segments forming the trace */}
+      <svg viewBox="0 0 800 200" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
         <g transform="translate(0, 50)">
-          {isFlat ? (
-            <motion.path
-              key="flat"
-              d="M0,50 L800,50"
-              fill="none"
-              stroke="#ef4444"
-              strokeWidth="2.5"
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: 1 }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-              filter="url(#ecgBlur)"
-            />
-          ) : (
-            <motion.g
-              key="alive"
-              animate={{ x: [0, -200] }}
-              transition={{ duration: 60 / bpm, repeat: Infinity, ease: "linear" }}
-            >
-              {[0, 1, 2, 3, 4].map((i) => (
-                <path
-                  key={i}
-                  d={ECG_SEGMENT}
-                  transform={`translate(${i * 200}, 0)`}
-                  fill="none"
-                  stroke="#34d399"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              ))}
-            </motion.g>
-          )}
+          <motion.g
+            animate={{ x: [0, -200] }}
+            transition={{ duration: 60 / bpm, repeat: Infinity, ease: "linear" }}
+          >
+            {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+              <motion.path
+                key={i}
+                initial={false}
+                animate={{ d: isFlat && i >= 2 ? FLATLINE : ECG_SEGMENT }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                transform={`translate(${i * 200}, 0)`}
+                fill="none"
+                stroke={isFlat ? "#ef4444" : "#34d399"}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ))}
+          </motion.g>
         </g>
       </svg>
-
-      {/* Flatline overlay */}
-      <AnimatePresence>
-        {isFlat && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-          >
-            <motion.div
-              animate={{ opacity: [1, 0.3, 1] }}
-              transition={{ duration: 0.8, repeat: Infinity }}
-              className="font-horror text-3xl md:text-5xl text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.9)] tracking-widest"
-            >
-              ✕ توقّف القلب
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Scanline */}
       {!isFlat && (
