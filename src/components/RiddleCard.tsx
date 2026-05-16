@@ -10,6 +10,7 @@ import { useHorrorSounds } from "@/hooks/useHorrorSounds";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
 import { showRewarded } from "@/lib/ads";
 import moneyBg from "@/assets/money-bg.jpg";
+import HeartRateMonitor from "./HeartRateMonitor";
 import { supabase } from "@/integrations/supabase/client";
 
 interface RiddleCardProps {
@@ -240,24 +241,16 @@ const RiddleCard = ({
         </div>
       </motion.div>
 
-      {/* Image */}
+      {/* Heart Rate Monitor */}
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className={`mb-8 relative aspect-video ${gameMode === "fun" ? "vortex-container" : "image-horror"}`}
+        className="mb-8"
       >
-        <img
-          src={riddle.image}
-          alt="صورة اللغز"
-          className={`w-full h-full object-cover ${gameMode === "fun" ? "vortex-image" : ""}`}
+        <HeartRateMonitor
+          status={showResult && selectedOption !== riddle.correctIndex ? "flatline" : "alive"}
+          bpm={78}
         />
-        {gameMode === "fun" && (
-          <>
-            <div className="vortex-overlay" />
-            <div className="vortex-glow" />
-          </>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
       </motion.div>
 
       {/* Question */}
