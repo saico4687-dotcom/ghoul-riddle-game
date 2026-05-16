@@ -51,21 +51,22 @@ const HeartRateMonitor = ({ status, bpm = 78 }: HeartRateMonitorProps) => {
       <svg viewBox="0 0 800 200" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
         <g transform="translate(0, 50)">
           <motion.g
-            animate={{ x: [0, -200] }}
-            transition={{ duration: 60 / bpm, repeat: Infinity, ease: "linear" }}
+            animate={{ x: [0, -1000] }}
+            transition={{ duration: (60 / bpm) * 5, repeat: Infinity, ease: "linear" }}
           >
-            {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+            {Array.from({ length: 12 }).map((_, i) => (
               <motion.path
                 key={i}
                 initial={false}
-                animate={{ d: isFlat && i >= 2 ? FLATLINE : ECG_SEGMENT }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
+                animate={{ d: isFlat && i >= 3 ? FLATLINE : ECG_SEGMENT }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
                 transform={`translate(${i * 200}, 0)`}
                 fill="none"
-                stroke={isFlat ? "#ef4444" : "#34d399"}
+                stroke={isFlat && i >= 3 ? "#ef4444" : "#34d399"}
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                style={{ filter: `drop-shadow(0 0 4px ${isFlat && i >= 3 ? "#ef4444" : "#34d399"})` }}
               />
             ))}
           </motion.g>
