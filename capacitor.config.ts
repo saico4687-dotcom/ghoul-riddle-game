@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'app.lovable.e0c2beb0a826419c887f0db86053f7ed',
-  appName: 'ربح',
+  appName: 'Come Bound',
   webDir: 'dist',
   // NOTE: For production builds (Google Play / App Store) keep `server` removed
   // so the app loads the local bundle. Re-enable only for live-reload dev.

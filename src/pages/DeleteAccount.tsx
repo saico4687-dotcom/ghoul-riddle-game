@@ -50,7 +50,7 @@ export default function DeleteAccount() {
       <div className="max-w-xl w-full space-y-6">
         <h1 className="text-3xl font-bold">حذف الحساب وبياناتك</h1>
         <p className="text-muted-foreground">
-          تطبيق <strong>ربح - تحدّي الألغاز الذهنية</strong> يحترم خصوصيتك. يمكنك من خلال هذه الصفحة طلب حذف حسابك وجميع البيانات المرتبطة به نهائيًا.
+          تطبيق <strong>Come Bound — Mind Riddles</strong> يحترم خصوصيتك. يمكنك من خلال هذه الصفحة طلب حذف حسابك وجميع البيانات المرتبطة به نهائيًا.
         </p>
 
         <section className="space-y-2">
