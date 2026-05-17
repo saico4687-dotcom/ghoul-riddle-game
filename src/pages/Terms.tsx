@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 
-const APP_NAME = "ربح";
+const APP_NAME = "Come Bound";
 const CONTACT_EMAIL = "support@rebh-app.com";
 const LAST_UPDATED = "6 مايو 2026";
 

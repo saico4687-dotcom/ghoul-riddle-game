@@ -116,7 +116,7 @@ const Settings = () => {
             <h2 className="font-horror text-lg text-primary">عن التطبيق</h2>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed mb-2">
-            ربح — تطبيق ألغاز عربي ممتع يحفّز العقل وينمّي مهارات التفكير.
+            Come Bound — تطبيق ألغاز عربي ممتع يحفّز العقل وينمّي مهارات التفكير.
             حلّ الألغاز، اجمع النقاط، وارتقِ بترتيبك.
           </p>
           <p className="text-xs text-muted-foreground/70" dir="ltr">

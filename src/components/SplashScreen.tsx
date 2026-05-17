@@ -18,7 +18,7 @@ const SplashScreen = () => {
 
       <motion.img
         src={appIcon}
-        alt="ربح - تطبيق الألغاز"
+        alt="Come Bound - تطبيق الألغاز"
         width={180}
         height={180}
         initial={{ scale: 0.6, opacity: 0, filter: "blur(20px)" }}

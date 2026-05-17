@@ -47,7 +47,7 @@ export default function InstallPrompt() {
       className="fixed bottom-4 inset-x-4 z-50 rounded-2xl border border-primary/30 bg-background/95 backdrop-blur-md p-4 shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-4"
     >
       <div className="flex-1">
-        <p className="font-bold text-sm">ثبّت تطبيق ربح على جهازك</p>
+        <p className="font-bold text-sm">ثبّت Come Bound app على جهازك</p>
         <p className="text-xs text-muted-foreground">للوصول السريع واللعب بدون متصفح</p>
       </div>
       <Button size="sm" onClick={onInstall} className="gap-1">
