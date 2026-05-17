@@ -56,8 +56,8 @@ const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
             <Brain className="w-24 h-24 mx-auto text-primary drop-shadow-[0_0_20px_hsl(var(--primary)/0.7)]" />
           </motion.div>
 
-          <h1 className="font-horror text-6xl sm:text-7xl md:text-9xl text-primary mb-6 drop-shadow-[0_4px_20px_hsl(var(--primary)/0.5)]">
-            ربح
+          <h1 className="font-horror text-5xl sm:text-6xl md:text-8xl text-primary mb-6 drop-shadow-[0_4px_20px_hsl(var(--primary)/0.5)]">
+            Come Bound
           </h1>
 
           <p className="font-typewriter text-xl md:text-2xl text-foreground mb-4">

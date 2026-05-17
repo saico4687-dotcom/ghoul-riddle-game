@@ -32,10 +32,10 @@ const SplashScreen = () => {
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4, duration: 1, ease: "easeOut" }}
-        className="font-horror text-6xl md:text-8xl text-primary relative z-10 text-center px-6 mt-6"
+        className="font-horror text-5xl md:text-7xl text-primary relative z-10 text-center px-6 mt-6"
         style={{ textShadow: "0 0 40px hsl(var(--primary) / 0.8)" }}
       >
-        ربح
+        Come Bound
       </motion.h1>
 
       <motion.p
