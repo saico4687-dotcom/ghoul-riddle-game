@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Trophy, LogIn, ArrowRight } from "lucide-react";
-import { lovable } from "@/integrations/lovable/index";
+import { googleLogin } from "@/lib/medianAuth";
 import { useState } from "react";
 
 interface GoogleLoginScreenProps {
@@ -13,19 +13,7 @@ const GoogleLoginScreen = ({ onBack }: GoogleLoginScreenProps) => {
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
-      });
-
-      if (result.error) {
-        console.error("Login error:", result.error);
-        setLoading(false);
-        return;
-      }
-
-      if (result.redirected) {
-        return;
-      }
+      await googleLogin(window.location.origin);
     } catch (err) {
       console.error("Login failed:", err);
       setLoading(false);
