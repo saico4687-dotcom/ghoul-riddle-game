@@ -2,12 +2,13 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5" />
-    <meta name="theme-color" content="#1e1b4b" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5, viewport-fit=cover" />
+    <meta name="theme-color" content="#3b1466" />
 
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="manifest" href="/manifest.json" />
+    <link rel="preload" as="image" href="/icon-192.png" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -30,10 +31,69 @@
     <meta name="twitter:title" content="Come Bound — Mind Riddles" />
     <meta name="twitter:description" content="لعبة ألغاز عربية ممتعة تحفّز العقل وتنمّي مهارات التفكير." />
     <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0ef92e06-8c82-4706-a4b2-3c1d9d0e470c/id-preview-72734c6d--0d22f410-c21f-4150-9eb1-67c9de5adf76.lovable.app-1770490931884.png" />
+
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        background: linear-gradient(160deg, #3b1466 0%, #5b1f8a 45%, #2a0d4a 100%);
+      }
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(160deg, #3b1466 0%, #5b1f8a 45%, #2a0d4a 100%);
+        animation: boot-fade-in 0.5s ease-out;
+      }
+      #boot-splash img {
+        width: 160px;
+        height: 160px;
+        border-radius: 28px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.45), 0 0 60px rgba(255, 200, 60, 0.25);
+        animation: boot-pop 0.9s cubic-bezier(.2,.8,.2,1) both;
+      }
+      #boot-splash h1 {
+        margin: 24px 0 8px;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-weight: 800;
+        font-size: clamp(40px, 9vw, 64px);
+        color: #ffc83d;
+        text-shadow: 0 0 30px rgba(255, 200, 60, 0.55);
+        letter-spacing: 0.5px;
+        animation: boot-fade-up 0.8s 0.2s ease-out both;
+      }
+      #boot-splash p {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+        color: rgba(255,255,255,0.9);
+        font-size: clamp(14px, 4vw, 18px);
+        animation: boot-fade-up 0.8s 0.4s ease-out both;
+      }
+      @keyframes boot-fade-in { from { opacity: 0 } to { opacity: 1 } }
+      @keyframes boot-pop {
+        from { opacity: 0; transform: scale(0.7); filter: blur(8px); }
+        to   { opacity: 1; transform: scale(1);   filter: blur(0); }
+      }
+      @keyframes boot-fade-up {
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+    </style>
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot-splash" dir="rtl">
+        <img src="/icon-192.png" alt="Come Bound" />
+        <h1>Come Bound</h1>
+        <p>استعد لتحدّي عقلك...</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
