@@ -154,6 +154,32 @@ const Privacy = () => {
           </p>
         </Section>
 
+        <Section title="12. حذف الحساب / تسجيل الخروج">
+          <p>
+            يمكنك حذف حسابك أو تسجيل الخروج في أي وقت من خلال الأزرار التالية:
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 mt-4">
+            <Link
+              to="/delete-account"
+              className="inline-flex items-center justify-center px-5 py-3 rounded-md bg-destructive text-destructive-foreground hover:opacity-90 transition font-typewriter"
+            >
+              Delete My Account
+            </Link>
+            <button
+              onClick={async () => {
+                const { supabase } = await import("@/integrations/supabase/client");
+                await supabase.auth.signOut();
+                window.location.href = "/";
+              }}
+              className="inline-flex items-center justify-center px-5 py-3 rounded-md border border-border bg-card text-foreground hover:bg-muted transition font-typewriter"
+            >
+              Log Out
+            </button>
+          </div>
+        </Section>
+
+
+
         <div className="mt-10 pt-6 border-t border-border/40 text-center">
           <Link
             to="/"
