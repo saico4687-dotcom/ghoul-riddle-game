@@ -113,20 +113,27 @@ const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.8 }}
-            className="mt-8 flex items-center justify-center gap-6"
+            className="mt-8 flex items-center justify-center gap-4 flex-wrap"
           >
             <Link
               to="/settings"
-              className="font-typewriter text-base text-foreground hover:text-primary transition-colors"
+              className="font-typewriter text-sm text-foreground hover:text-primary transition-colors"
             >
               الإعدادات
             </Link>
             <span className="text-foreground/40">|</span>
             <Link
               to="/privacy"
-              className="font-typewriter text-base text-foreground hover:text-primary transition-colors"
+              className="font-typewriter text-sm text-foreground hover:text-primary transition-colors"
             >
               سياسة الخصوصية
+            </Link>
+            <span className="text-foreground/40">|</span>
+            <Link
+              to="/delete-account"
+              className="font-typewriter text-sm text-destructive hover:text-destructive/80 transition-colors"
+            >
+              حذف الحساب
             </Link>
           </motion.div>
         </motion.div>
