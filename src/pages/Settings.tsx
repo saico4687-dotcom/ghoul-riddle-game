@@ -102,6 +102,8 @@ const Settings = () => {
               </div>
               <ArrowRight className="w-4 h-4 text-muted-foreground" />
             </Link>
+          </div>
+        </section>
 
         <section className="card-horror p-5">
           <h2 className="font-horror text-lg text-primary mb-4">الدعم والتواصل</h2>
