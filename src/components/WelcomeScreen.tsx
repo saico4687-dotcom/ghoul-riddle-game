@@ -57,7 +57,7 @@ const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
           </motion.div>
 
           <h1 className="font-horror text-5xl sm:text-6xl md:text-8xl text-primary mb-6 drop-shadow-[0_4px_20px_hsl(var(--primary)/0.5)]">
-            Come Bound
+            ربح
           </h1>
 
           <p className="font-typewriter text-xl md:text-2xl text-foreground mb-4">
