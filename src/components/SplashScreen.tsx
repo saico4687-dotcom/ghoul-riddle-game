@@ -34,7 +34,7 @@ const SplashScreen = () => {
 
       <motion.img
         src={appIcon}
-        alt="Come Bound"
+        alt="ربح"
         width={180}
         height={180}
         initial={{ scale: 0.7, opacity: 0, filter: "blur(16px)" }}
@@ -59,7 +59,7 @@ const SplashScreen = () => {
           letterSpacing: "0.5px",
         }}
       >
-        Come Bound
+        ربح
       </motion.h1>
 
       <motion.p
