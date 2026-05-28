@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Brain, Lightbulb, Sparkles, Trophy, Settings as SettingsIcon } from "lucide-react";
 import heroImage from "@/assets/hero-horror.jpg";
 
-export type GameMode = "competition";
+export type GameMode = "fun";
 
 interface WelcomeScreenProps {
   onStart: (mode: GameMode) => void;
@@ -86,7 +86,7 @@ const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
           <div className="flex justify-center mb-8">
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <button
-                onClick={() => onStart("competition")}
+                onClick={() => onStart("fun")}
                 className="w-full sm:w-auto flex items-center justify-center gap-3 px-12 py-5 bg-gradient-to-r from-primary via-yellow-400 to-primary text-primary-foreground font-horror text-2xl rounded-xl border-2 border-primary shadow-[0_8px_30px_hsl(var(--primary)/0.5)] hover:shadow-[0_8px_40px_hsl(var(--primary)/0.8)] transition-all duration-300"
               >
                 <Trophy className="w-7 h-7" />

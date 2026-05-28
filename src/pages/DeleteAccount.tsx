@@ -16,7 +16,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { ArrowRight, LogOut, Trash2, User as UserIcon, Mail } from "lucide-react";
 
-const CONTACT_EMAIL = "support@comebound-app.com";
+const CONTACT_EMAIL = "support@rebh-app.com";
 
 export default function DeleteAccount() {
   const navigate = useNavigate();
@@ -142,8 +142,8 @@ export default function DeleteAccount() {
               </p>
               <ul className="list-disc pr-6 space-y-1 text-sm text-muted-foreground">
                 <li>بيانات الحساب والملف الشخصي.</li>
-                <li>نتائج الألغاز ونقاطك في المسابقات.</li>
-                <li>بيانات المشاركة في السحب.</li>
+                <li>نتائج الألغاز وتقدمك المحفوظ.</li>
+                <li>أي بيانات إضافية مرتبطة باستخدامك للتطبيق.</li>
               </ul>
 
               <AlertDialog>

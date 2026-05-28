@@ -54,7 +54,7 @@ const ParticipantInfoForm = ({ userId, defaults, onSaved }: Props) => {
         <div className="text-center">
           <h1 className="font-horror text-3xl text-primary mb-2">بيانات المشاركة</h1>
           <p className="font-typewriter text-sm text-muted-foreground">
-            مطلوبة لاستلام الجائزة في حال فوزك بالسحب الأسبوعي.
+            اختيارية لتحسين تجربتك وحفظ بياناتك داخل التطبيق.
           </p>
         </div>
 
@@ -103,7 +103,7 @@ const ParticipantInfoForm = ({ userId, defaults, onSaved }: Props) => {
         </HorrorButton>
 
         <p className="text-[11px] text-muted-foreground/80 font-typewriter text-center">
-          بياناتك محفوظة بأمان ولن تُستخدم إلا للتواصل معك في حال الفوز.
+          بياناتك محفوظة بأمان ولن تُستخدم إلا لتشغيل التطبيق وتحسين تجربتك.
         </p>
       </motion.div>
     </div>

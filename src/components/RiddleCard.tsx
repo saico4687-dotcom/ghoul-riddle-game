@@ -99,13 +99,11 @@ const RiddleCard = ({
   };
 
   const handleTimeUp = () => {
-    if (!showResult && selectedOption === null) {
-      // Auto-submit as wrong when time is up
+      if (!showResult && selectedOption === null) {
       setShowResult(true);
       playSound("wrong");
       onAnswer(false, null);
-      
-      // In competition mode, auto-advance after time up
+
       if (gameMode === "competition") {
         setTimeout(() => {
           onNext();
@@ -128,7 +126,6 @@ const RiddleCard = ({
     playSound(isCorrect ? "correct" : "wrong");
     onAnswer(isCorrect, selectedOption);
 
-    // Log fastest answer time on correct competition answers
     if (isCorrect && gameMode === "competition" && startTime !== null) {
       const elapsed = Date.now() - startTime;
       try {
@@ -146,11 +143,10 @@ const RiddleCard = ({
       }
     }
 
-    // In competition mode, auto-advance after wrong answer
     if (gameMode === "competition" && !isCorrect) {
       setTimeout(() => {
         onNext();
-      }, 1500); // Short delay to show "خطأ!" message
+      }, 1500);
     }
   };
 
@@ -187,8 +183,7 @@ const RiddleCard = ({
           extraTime={extraTime}
         />
 
-        {/* Lifelines (Competition mode only) */}
-        {gameMode === "competition" && (
+        {gameMode === "fun" && (
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -212,7 +207,7 @@ const RiddleCard = ({
             </button>
           </div>
         )}
-        {gameMode === "competition" && lifelineUsed && (
+        {lifelineUsed && (
           <p className="text-xs text-muted-foreground font-typewriter">
             تم استخدام أداة المساعدة لهذا السؤال
           </p>
@@ -299,7 +294,7 @@ const RiddleCard = ({
                   isCorrect={index === riddle.correctIndex}
                   onClick={() => handleOptionClick(index)}
                   disabled={showResult}
-                  hideCorrectInCompetition={gameMode === "competition" && selectedOption !== riddle.correctIndex}
+                  hideCorrectInCompetition={false}
                 />
               );
             })}
@@ -318,11 +313,9 @@ const RiddleCard = ({
             <h3 className="font-horror text-2xl mb-3 text-primary">
               {selectedOption === riddle.correctIndex ? "🎉 أحسنت!" : "💡 إجابة غير صحيحة"}
             </h3>
-            {(gameMode === "fun" || selectedOption === riddle.correctIndex) && (
-              <p className="font-typewriter text-foreground text-lg leading-relaxed">
-                {riddle.explanation}
-              </p>
-            )}
+            <p className="font-typewriter text-foreground text-lg leading-relaxed">
+              {riddle.explanation}
+            </p>
             {gameMode === "competition" && selectedOption !== riddle.correctIndex && (
               <p className="font-typewriter text-foreground/80 text-lg">
                 لا بأس... ركّز أكثر في اللغز التالي!
@@ -331,20 +324,6 @@ const RiddleCard = ({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Competition notice */}
-      {gameMode === "competition" && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-center mb-4"
-        >
-          <p className="inline-block bg-black/80 border border-white/20 rounded-lg px-4 py-2 text-sm md:text-base font-bold text-white shadow-[0_0_15px_rgba(255,255,255,0.3)] leading-relaxed">
-            فوق أو تحت 50% — أسرع إجابة صحيحة تفوز 🏆 | إعلان الفائز أسبوعياً
-          </p>
-        </motion.div>
-      )}
 
       {/* Actions */}
       <div className="flex justify-center gap-4">

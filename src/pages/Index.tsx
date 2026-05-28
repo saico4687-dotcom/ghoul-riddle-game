@@ -1,16 +1,14 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import WelcomeScreen, { GameMode } from "@/components/WelcomeScreen";
 import RiddleCard from "@/components/RiddleCard";
 import ResultScreen from "@/components/ResultScreen";
-import GoogleLoginScreen from "@/components/EmailAuthScreen";
 import { riddles } from "@/data/riddles";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { showInterstitial } from "@/lib/ads";
-import ParticipantInfoForm from "@/components/ParticipantInfoForm";
 
-type GameState = "welcome" | "login" | "info" | "playing" | "result";
+type GameState = "welcome" | "playing" | "result";
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>("welcome");
@@ -19,7 +17,6 @@ const Index = () => {
   const [totalPoints, setTotalPoints] = useState(0);
   const [timeBonus, setTimeBonus] = useState(0);
   const [answeredCount, setAnsweredCount] = useState(0);
-  const [profileData, setProfileData] = useState<{ full_name: string | null; phone: string | null; address: string | null } | null>(null);
   const { user } = useAuth();
 
   const allRiddles = useMemo(() => riddles.slice(0, 400), []);
@@ -28,7 +25,7 @@ const Index = () => {
     if (!user) return null;
     const { data } = await supabase
       .from("profiles")
-      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus, full_name, phone, address")
+      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
       .eq("user_id", user.id)
       .single();
     if (data) return data;
@@ -40,10 +37,19 @@ const Index = () => {
         name: user.user_metadata?.full_name || user.user_metadata?.name || "",
         profile_image: user.user_metadata?.avatar_url || user.user_metadata?.picture || "",
       })
-      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus, full_name, phone, address")
+      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
       .single();
     return newProfile;
   }, [user]);
+
+  const startFreshGame = useCallback(() => {
+    setCurrentRiddleIndex(0);
+    setScore(0);
+    setTotalPoints(0);
+    setTimeBonus(0);
+    setAnsweredCount(0);
+    setGameState("playing");
+  }, []);
 
   const saveProgress = useCallback(
     async (newIndex: number, newScore: number, newTotalPoints: number, newTimeBonus: number) => {
@@ -63,6 +69,11 @@ const Index = () => {
   );
 
   const startFromProfile = useCallback(async () => {
+    if (!user) {
+      startFreshGame();
+      return;
+    }
+
     const data = await ensureProfile();
     const startIndex = data?.last_puzzle_index ?? 0;
     const savedScore = data?.saved_score ?? 0;
@@ -72,17 +83,7 @@ const Index = () => {
     setScore(savedScore);
     setTotalPoints(savedPoints);
     setTimeBonus(savedBonus);
-    setProfileData({
-      full_name: data?.full_name ?? null,
-      phone: data?.phone ?? null,
-      address: data?.address ?? null,
-    });
-
-    const hasInfo = !!(data?.full_name && data?.phone && data?.address);
-    if (!hasInfo) {
-      setGameState("info");
-      return;
-    }
+    setAnsweredCount(0);
 
     if (startIndex >= allRiddles.length) {
       setCurrentRiddleIndex(allRiddles.length);
@@ -91,19 +92,9 @@ const Index = () => {
       setCurrentRiddleIndex(startIndex);
       setGameState("playing");
     }
-  }, [ensureProfile, allRiddles.length]);
-
-  useEffect(() => {
-    if (gameState === "login" && user) {
-      startFromProfile();
-    }
-  }, [user, gameState, startFromProfile]);
+  }, [ensureProfile, allRiddles.length, startFreshGame, user]);
 
   const handleStart = async (_mode: GameMode) => {
-    if (!user) {
-      setGameState("login");
-      return;
-    }
     await startFromProfile();
   };
 
@@ -187,22 +178,6 @@ const Index = () => {
           </motion.div>
         )}
 
-        {gameState === "login" && (
-          <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <GoogleLoginScreen onBack={() => setGameState("welcome")} />
-          </motion.div>
-        )}
-
-        {gameState === "info" && user && (
-          <motion.div key="info" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <ParticipantInfoForm
-              userId={user.id}
-              defaults={profileData ?? undefined}
-              onSaved={() => startFromProfile()}
-            />
-          </motion.div>
-        )}
-
         {gameState === "playing" && (
           <motion.div
             key="playing"
@@ -266,7 +241,7 @@ const Index = () => {
                 totalRiddles={allRiddles.length}
                 onAnswer={handleAnswer}
                 onNext={handleNext}
-                gameMode="competition"
+                gameMode="fun"
               />
             </div>
           </motion.div>
@@ -281,7 +256,6 @@ const Index = () => {
               maxPoints={maxPoints}
               timeBonus={timeBonus}
               rank={rank}
-              gameMode="competition"
               onRestart={handleRestart}
             />
           </motion.div>
