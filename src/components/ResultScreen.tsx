@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import HorrorButton from "./HorrorButton";
 import { Brain, Trophy, Sparkles, Star, Calendar, Hourglass } from "lucide-react";
-import { GameMode } from "./WelcomeScreen";
 
 interface ResultScreenProps {
   score: number;
@@ -10,7 +9,6 @@ interface ResultScreenProps {
   maxPoints: number;
   timeBonus: number;
   rank: { title: string; color: string };
-  gameMode: GameMode;
   onRestart: () => void;
 }
 

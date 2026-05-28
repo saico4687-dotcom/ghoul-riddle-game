@@ -256,7 +256,6 @@ const Index = () => {
               maxPoints={maxPoints}
               timeBonus={timeBonus}
               rank={rank}
-              gameMode="fun"
               onRestart={handleRestart}
             />
           </motion.div>
