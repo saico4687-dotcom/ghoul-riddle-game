@@ -56,7 +56,7 @@ const ResultScreen = ({
           className="card-horror p-3 mb-6 inline-flex items-center gap-2 border-primary/40"
         >
           <Calendar className="w-5 h-5 text-primary" />
-          <span className="font-horror text-primary">المسابقة الأسبوعية</span>
+          <span className="font-horror text-primary">إنجازك في الألغاز</span>
         </motion.div>
 
         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.8 }}>
@@ -121,11 +121,11 @@ const ResultScreen = ({
         >
           <div className="flex items-center gap-2 mb-2 justify-center">
             <Hourglass className="w-5 h-5 text-primary" />
-            <h3 className="font-horror text-xl text-primary">جارِ فرز الإجابات</h3>
+            <h3 className="font-horror text-xl text-primary">ملخّص تقدمك</h3>
           </div>
           <p className="font-typewriter text-sm text-foreground leading-relaxed">
-            شكراً لمشاركتك! يتم فرز إجابات جميع المتسابقين حسب السرعة والدقة.
-            يُعلَن الفائز أسبوعياً وتُسلَّم الجوائز شهرياً.
+            أنهيت هذه الجولة بنجاح. يمكنك العودة للرئيسية ثم البدء من جديد
+            إذا أردت إعادة حلّ الألغاز وتحسين نتيجتك.
           </p>
           <p className="font-typewriter text-xs text-foreground/70 mt-2 text-center">
             بالتوفيق 🌟
@@ -139,7 +139,7 @@ const ResultScreen = ({
           className="card-horror p-4 mb-6 border-primary/40"
         >
           <p className="font-typewriter text-sm text-foreground leading-relaxed">
-            ✅ اكتملت المسابقة الأسبوعية على هذا الحساب. تابعنا لمسابقة الأسبوع القادم!
+            ✅ أكملت مجموعة الألغاز الحالية على هذا الحساب.
           </p>
         </motion.div>
 

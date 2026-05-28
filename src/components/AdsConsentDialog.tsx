@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, ShieldCheck, Gift, Trophy } from "lucide-react";
+import { Sparkles, ShieldCheck, Gift } from "lucide-react";
 
 const CONSENT_KEY = "ads_consent_v1";
 
@@ -75,10 +75,10 @@ const AdsConsentDialog = ({ onAccepted }: Props) => {
                 </span>
               </div>
               <div className="flex items-start gap-2">
-                <Trophy className="w-4 h-4 text-primary mt-1 shrink-0" />
+                <Sparkles className="w-4 h-4 text-primary mt-1 shrink-0" />
                 <span>
-                  يدخل السحب كل من حقّق أكثر أو أقل من 50% — بشرط سرعة الإجابة
-                  الصحيحة. يُعلَن الفائز أسبوعياً وتُسلَّم الجوائز شهرياً.
+                  يمكنك مشاهدة إعلان اختياري للحصول على أداة مساعدة داخل اللغز
+                  بدون أي رسوم أو اشتراكات.
                 </span>
               </div>
             </div>
