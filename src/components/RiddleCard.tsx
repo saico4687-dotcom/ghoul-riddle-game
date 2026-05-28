@@ -183,7 +183,7 @@ const RiddleCard = ({
           extraTime={extraTime}
         />
 
-        {(gameMode === "competition" || gameMode === "fun") && (
+        {gameMode === "fun" && (
           <div className="flex items-center gap-3">
             <button
               type="button"
