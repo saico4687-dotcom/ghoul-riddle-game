@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.boundcome.app',
+  appId: 'com.rebh.app',
   appName: 'ربح',
   webDir: 'dist',
   // NOTE: For production builds (Google Play / App Store) keep `server` removed
