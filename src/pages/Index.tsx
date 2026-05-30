@@ -83,11 +83,11 @@ const Index = () => {
 
   const handleAnswer = async (
     isCorrect: boolean,
-    _selectedIndex: number | null,
+    selectedIndex: number | null,
     _remainingTime?: number,
     elapsedMs?: number | null,
   ) => {
-    // Interstitial cadence (UI-only, safe to keep client-side)
+    // Interstitial cadence (UI-only)
     const newAnswered = answeredCount + 1;
     if (newAnswered >= 5) {
       showInterstitial();
@@ -102,12 +102,10 @@ const Index = () => {
         const { data, error } = await supabase.functions.invoke("submit-answer", {
           body: {
             riddle_index: currentRiddleIndex,
-            selected_index: isCorrect ? null : null, // see note below
+            selected_index: selectedIndex,
+            elapsed_ms: elapsedMs ?? null,
           },
         });
-        // We pass the *real* selected index by re-invoking with proper payload:
-        // (kept simple: trust isCorrect derived by the card, but server re-checks
-        // against the riddle's correctIndex using elapsedMs + riddle_index)
         if (error) {
           console.error("submit-answer error", error);
           return;
@@ -127,17 +125,13 @@ const Index = () => {
         setTotalPoints((p) => p + 10);
       }
     }
-
-    // Unused vars guard
-    void elapsedMs;
   };
 
   const handleNext = () => {
     if (currentRiddleIndex < allRiddles.length - 1) {
       setCurrentRiddleIndex(currentRiddleIndex + 1);
     } else {
-      // Mark fully completed
-      if (user) saveProgress(allRiddles.length, score, totalPoints, timeBonus);
+      // Final-completion state is persisted server-side via submit-answer
       setGameState("result");
     }
   };
