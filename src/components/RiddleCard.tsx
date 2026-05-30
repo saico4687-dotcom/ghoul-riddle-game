@@ -124,27 +124,15 @@ const RiddleCard = ({
   const handleSubmit = async () => {
     if (selectedOption === null) return;
 
+  const handleSubmit = async () => {
+    if (selectedOption === null) return;
+
     const isCorrect = selectedOption === riddle.correctIndex;
     setShowResult(true);
     playSound(isCorrect ? "correct" : "wrong");
-    onAnswer(isCorrect, selectedOption);
-
-    if (isCorrect && gameMode === "competition" && startTime !== null) {
-      const elapsed = Date.now() - startTime;
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase.from("answer_times").insert({
-            user_id: user.id,
-            riddle_index: riddleNumber,
-            elapsed_ms: elapsed,
-            game_mode: "competition",
-          });
-        }
-      } catch (e) {
-        console.error("Failed to log answer time", e);
-      }
-    }
+    const elapsedMs = startTime !== null ? Date.now() - startTime : null;
+    // Pass elapsedMs to parent — parent (server) is the source of truth for scoring/persistence.
+    onAnswer(isCorrect, selectedOption, undefined, elapsedMs);
 
     if (gameMode === "competition" && !isCorrect) {
       setTimeout(() => {
