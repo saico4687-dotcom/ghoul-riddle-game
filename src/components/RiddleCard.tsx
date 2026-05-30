@@ -11,13 +11,16 @@ import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
 import { showRewarded } from "@/lib/ads";
 import moneyBg from "@/assets/money-bg.jpg";
 import HeartRateMonitor from "./HeartRateMonitor";
-import { supabase } from "@/integrations/supabase/client";
-
 interface RiddleCardProps {
   riddle: Riddle;
   riddleNumber: number;
   totalRiddles: number;
-  onAnswer: (isCorrect: boolean, selectedIndex: number | null) => void;
+  onAnswer: (
+    isCorrect: boolean,
+    selectedIndex: number | null,
+    remainingTime?: number,
+    elapsedMs?: number | null,
+  ) => void;
   onNext: () => void;
   gameMode: "fun" | "competition";
 }
