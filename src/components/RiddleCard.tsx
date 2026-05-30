@@ -124,9 +124,6 @@ const RiddleCard = ({
   const handleSubmit = async () => {
     if (selectedOption === null) return;
 
-  const handleSubmit = async () => {
-    if (selectedOption === null) return;
-
     const isCorrect = selectedOption === riddle.correctIndex;
     setShowResult(true);
     playSound(isCorrect ? "correct" : "wrong");
