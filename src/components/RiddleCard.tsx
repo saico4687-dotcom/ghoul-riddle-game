@@ -11,13 +11,16 @@ import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
 import { showRewarded } from "@/lib/ads";
 import moneyBg from "@/assets/money-bg.jpg";
 import HeartRateMonitor from "./HeartRateMonitor";
-import { supabase } from "@/integrations/supabase/client";
-
 interface RiddleCardProps {
   riddle: Riddle;
   riddleNumber: number;
   totalRiddles: number;
-  onAnswer: (isCorrect: boolean, selectedIndex: number | null) => void;
+  onAnswer: (
+    isCorrect: boolean,
+    selectedIndex: number | null,
+    remainingTime?: number,
+    elapsedMs?: number | null,
+  ) => void;
   onNext: () => void;
   gameMode: "fun" | "competition";
 }
@@ -124,24 +127,9 @@ const RiddleCard = ({
     const isCorrect = selectedOption === riddle.correctIndex;
     setShowResult(true);
     playSound(isCorrect ? "correct" : "wrong");
-    onAnswer(isCorrect, selectedOption);
-
-    if (isCorrect && gameMode === "competition" && startTime !== null) {
-      const elapsed = Date.now() - startTime;
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase.from("answer_times").insert({
-            user_id: user.id,
-            riddle_index: riddleNumber,
-            elapsed_ms: elapsed,
-            game_mode: "competition",
-          });
-        }
-      } catch (e) {
-        console.error("Failed to log answer time", e);
-      }
-    }
+    const elapsedMs = startTime !== null ? Date.now() - startTime : null;
+    // Pass elapsedMs to parent — parent (server) is the source of truth for scoring/persistence.
+    onAnswer(isCorrect, selectedOption, undefined, elapsedMs);
 
     if (gameMode === "competition" && !isCorrect) {
       setTimeout(() => {
