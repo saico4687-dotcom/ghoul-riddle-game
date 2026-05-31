@@ -10,6 +10,31 @@ import { showInterstitial } from "@/lib/ads";
 
 type GameState = "welcome" | "playing" | "result";
 
+const GUEST_STORAGE_KEY = "rabh_guest_progress_v1";
+
+type GuestProgress = {
+  currentRiddleIndex: number;
+  score: number;
+  totalPoints: number;
+  timeBonus: number;
+};
+
+const loadGuestProgress = (): GuestProgress | null => {
+  try {
+    const raw = localStorage.getItem(GUEST_STORAGE_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (typeof p?.currentRiddleIndex !== "number") return null;
+    return p;
+  } catch {
+    return null;
+  }
+};
+
+const saveGuestProgress = (p: GuestProgress) => {
+  try { localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(p)); } catch {}
+};
+
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>("welcome");
   const [currentRiddleIndex, setCurrentRiddleIndex] = useState(0);
@@ -20,6 +45,7 @@ const Index = () => {
   const { user } = useAuth();
 
   const allRiddles = useMemo(() => riddles.slice(0, 400), []);
+
 
   const ensureProfile = useCallback(async () => {
     if (!user) return null;
