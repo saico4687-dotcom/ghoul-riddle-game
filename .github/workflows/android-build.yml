@@ -35,10 +35,7 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Add Capacitor Android (if needed)
-      run: npx cap add android || echo "Already exists"
-
-    - name: Sync Capacitor
+    - name: Sync Capacitor (copies web assets & plugins into committed android/)
       run: npx cap sync android
 
     - name: Build Release AAB
