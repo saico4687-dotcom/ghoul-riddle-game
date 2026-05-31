@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ربح</string>
+    <string name="title_activity_main">ربح</string>
+    <string name="package_name">com.rebh.app</string>
+    <string name="custom_url_scheme">com.rebh.app</string>
+</resources>
