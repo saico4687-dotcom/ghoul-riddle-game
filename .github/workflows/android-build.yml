@@ -14,7 +14,10 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
+
+      - name: Check Node Version
+        run: node -v
 
       - name: Install Dependencies
         run: npm install
@@ -32,7 +35,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '17'
 
       - name: Grant Gradle Permission
         run: chmod +x android/gradlew
