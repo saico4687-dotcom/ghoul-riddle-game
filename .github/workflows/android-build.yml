@@ -1,4 +1,4 @@
-name: Build Android AAB NEW
+name: Build Android AAB
 
 on:
   workflow_dispatch:
@@ -7,21 +7,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    env:
-      NODE_OPTIONS: --max-old-space-size=4096
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node 22
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
 
-      - name: Verify Versions
+      - name: Verify Node
         run: |
-          which node
           node -v
           npm -v
 
@@ -31,10 +27,10 @@ jobs:
       - name: Build Web
         run: npm run build
 
-      - name: Fail If Android Folder Missing
+      - name: Check Android Folder
         run: |
           if [ ! -d "android" ]; then
-            echo "ANDROID_FOLDER_MISSING"
+            echo "ANDROID FOLDER NOT FOUND"
             exit 1
           fi
 
@@ -47,7 +43,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Grant Gradle Permission
+      - name: Grant Permission
         run: chmod +x android/gradlew
 
       - name: Build AAB
