@@ -1,58 +1,55 @@
-name: Build Android AAB
+name: Android Build & Release AAB
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+    - name: Setup Node.js 22
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: 'npm'
 
-      - name: Verify Node
-        run: |
-          node -v
-          npm -v
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
 
-      - name: Install Dependencies
-        run: npm install
+    - name: Build Web Assets
+      run: npm run build
 
-      - name: Build Web
-        run: npm run build
+    - name: Setup JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
 
-      - name: Check Android Folder
-        run: |
-          if [ ! -d "android" ]; then
-            echo "ANDROID FOLDER NOT FOUND"
-            exit 1
-          fi
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
 
-      - name: Sync Capacitor
-        run: npx cap sync android
+    - name: Add Capacitor Android (if needed)
+      run: npx cap add android || echo "Already exists"
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
+    - name: Sync Capacitor
+      run: npx cap sync android
 
-      - name: Grant Permission
-        run: chmod +x android/gradlew
+    - name: Build Release AAB
+      run: |
+        cd android
+        chmod +x ./gradlew
+        ./gradlew bundleRelease --stacktrace
 
-      - name: Build AAB
-        run: |
-          cd android
-          ./gradlew bundleRelease
-
-      - name: Upload AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-aab
-          path: android/app/build/outputs/bundle/release/*.aab
+    - name: Upload AAB Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release.aab
+        path: android/app/build/outputs/bundle/release/app-release.aab
+        if-no-files-found: error
