@@ -10,6 +10,31 @@ import { showInterstitial } from "@/lib/ads";
 
 type GameState = "welcome" | "playing" | "result";
 
+const GUEST_STORAGE_KEY = "rabh_guest_progress_v1";
+
+type GuestProgress = {
+  currentRiddleIndex: number;
+  score: number;
+  totalPoints: number;
+  timeBonus: number;
+};
+
+const loadGuestProgress = (): GuestProgress | null => {
+  try {
+    const raw = localStorage.getItem(GUEST_STORAGE_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (typeof p?.currentRiddleIndex !== "number") return null;
+    return p;
+  } catch {
+    return null;
+  }
+};
+
+const saveGuestProgress = (p: GuestProgress) => {
+  try { localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(p)); } catch {}
+};
+
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>("welcome");
   const [currentRiddleIndex, setCurrentRiddleIndex] = useState(0);
@@ -20,6 +45,7 @@ const Index = () => {
   const { user } = useAuth();
 
   const allRiddles = useMemo(() => riddles.slice(0, 400), []);
+
 
   const ensureProfile = useCallback(async () => {
     if (!user) return null;
@@ -77,7 +103,30 @@ const Index = () => {
     }
   }, [ensureProfile, allRiddles.length, startFreshGame, user]);
 
+  const startAsGuest = useCallback(() => {
+    const p = loadGuestProgress();
+    if (p) {
+      setScore(p.score);
+      setTotalPoints(p.totalPoints);
+      setTimeBonus(p.timeBonus);
+      setAnsweredCount(0);
+      if (p.currentRiddleIndex >= allRiddles.length) {
+        setCurrentRiddleIndex(allRiddles.length);
+        setGameState("result");
+      } else {
+        setCurrentRiddleIndex(p.currentRiddleIndex);
+        setGameState("playing");
+      }
+    } else {
+      startFreshGame();
+    }
+  }, [allRiddles.length, startFreshGame]);
+
   const handleStart = async (_mode: GameMode) => {
+    if (!user) {
+      startAsGuest();
+      return;
+    }
     await startFromProfile();
   };
 
@@ -95,6 +144,7 @@ const Index = () => {
     } else {
       setAnsweredCount(newAnswered);
     }
+
 
     if (user) {
       // SERVER-SIDE validation & scoring. Client values are display-only.
@@ -119,20 +169,46 @@ const Index = () => {
         console.error("submit-answer failed", e);
       }
     } else {
-      // Guest mode: local-only scoring for UX, never persisted.
+      // Guest mode: local-only scoring + persistence in localStorage.
+      const newScore = isCorrect ? score + 1 : score;
+      const newPoints = isCorrect ? totalPoints + 10 : totalPoints;
       if (isCorrect) {
-        setScore((s) => s + 1);
-        setTotalPoints((p) => p + 10);
+        setScore(newScore);
+        setTotalPoints(newPoints);
       }
+      saveGuestProgress({
+        currentRiddleIndex,
+        score: newScore,
+        totalPoints: newPoints,
+        timeBonus,
+      });
     }
   };
 
   const handleNext = () => {
     if (currentRiddleIndex < allRiddles.length - 1) {
-      setCurrentRiddleIndex(currentRiddleIndex + 1);
+      const next = currentRiddleIndex + 1;
+      setCurrentRiddleIndex(next);
+      if (!user) {
+        saveGuestProgress({
+          currentRiddleIndex: next,
+          score,
+          totalPoints,
+          timeBonus,
+        });
+      }
     } else {
+      if (!user) {
+        saveGuestProgress({
+          currentRiddleIndex: allRiddles.length,
+          score,
+          totalPoints,
+          timeBonus,
+        });
+      }
       // Final-completion state is persisted server-side via submit-answer
       setGameState("result");
+
     }
   };
 
