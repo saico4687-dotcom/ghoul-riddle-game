@@ -103,7 +103,30 @@ const Index = () => {
     }
   }, [ensureProfile, allRiddles.length, startFreshGame, user]);
 
+  const startAsGuest = useCallback(() => {
+    const p = loadGuestProgress();
+    if (p) {
+      setScore(p.score);
+      setTotalPoints(p.totalPoints);
+      setTimeBonus(p.timeBonus);
+      setAnsweredCount(0);
+      if (p.currentRiddleIndex >= allRiddles.length) {
+        setCurrentRiddleIndex(allRiddles.length);
+        setGameState("result");
+      } else {
+        setCurrentRiddleIndex(p.currentRiddleIndex);
+        setGameState("playing");
+      }
+    } else {
+      startFreshGame();
+    }
+  }, [allRiddles.length, startFreshGame]);
+
   const handleStart = async (_mode: GameMode) => {
+    if (!user) {
+      startAsGuest();
+      return;
+    }
     await startFromProfile();
   };
 
@@ -121,6 +144,7 @@ const Index = () => {
     } else {
       setAnsweredCount(newAnswered);
     }
+
 
     if (user) {
       // SERVER-SIDE validation & scoring. Client values are display-only.
