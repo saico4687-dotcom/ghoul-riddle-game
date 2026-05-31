@@ -28,10 +28,18 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Grant Gradle Permission
+        run: chmod +x android/gradlew
+
       - name: Build AAB
         run: |
           cd android
-          chmod +x gradlew
           ./gradlew bundleRelease
 
       - name: Upload AAB
