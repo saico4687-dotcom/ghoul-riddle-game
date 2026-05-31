@@ -169,20 +169,46 @@ const Index = () => {
         console.error("submit-answer failed", e);
       }
     } else {
-      // Guest mode: local-only scoring for UX, never persisted.
+      // Guest mode: local-only scoring + persistence in localStorage.
+      const newScore = isCorrect ? score + 1 : score;
+      const newPoints = isCorrect ? totalPoints + 10 : totalPoints;
       if (isCorrect) {
-        setScore((s) => s + 1);
-        setTotalPoints((p) => p + 10);
+        setScore(newScore);
+        setTotalPoints(newPoints);
       }
+      saveGuestProgress({
+        currentRiddleIndex,
+        score: newScore,
+        totalPoints: newPoints,
+        timeBonus,
+      });
     }
   };
 
   const handleNext = () => {
     if (currentRiddleIndex < allRiddles.length - 1) {
-      setCurrentRiddleIndex(currentRiddleIndex + 1);
+      const next = currentRiddleIndex + 1;
+      setCurrentRiddleIndex(next);
+      if (!user) {
+        saveGuestProgress({
+          currentRiddleIndex: next,
+          score,
+          totalPoints,
+          timeBonus,
+        });
+      }
     } else {
+      if (!user) {
+        saveGuestProgress({
+          currentRiddleIndex: allRiddles.length,
+          score,
+          totalPoints,
+          timeBonus,
+        });
+      }
       // Final-completion state is persisted server-side via submit-answer
       setGameState("result");
+
     }
   };
 
