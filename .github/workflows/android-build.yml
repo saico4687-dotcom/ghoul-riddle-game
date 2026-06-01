@@ -1,4 +1,4 @@
-name: Android Build (AAB)
+name: Build Android AAB
 
 on:
   workflow_dispatch:
@@ -8,46 +8,100 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      # Node.js 22
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
-      - name: Install dependencies
-        run: npm ci --legacy-peer-deps
-
-      - name: Build web app
-        run: npm run build
-
-      - name: Install Capacitor CLI
-        run: npm install -g @capacitor/cli
-
-      - name: Sync Capacitor Android
-        run: npx cap sync android
-
+      # Java
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      # Install dependencies
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
 
-      - name: Grant Gradle permission
-        run: chmod +x android/gradlew
+      # Build web app
+      - name: Build web
+        run: npm run build
 
-      - name: Build Android AAB
+      # Capacitor Sync
+      - name: Capacitor Sync
+        run: npx cap sync android
+
+      # Generate keystore automatically
+      - name: Generate Keystore
+        run: |
+          mkdir -p android/app
+          
+          keytool -genkeypair \
+            -v \
+            -storetype PKCS12 \
+            -keystore android/app/release.keystore \
+            -alias ${{ secrets.KEY_ALIAS }} \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass ${{ secrets.KEYSTORE_PASSWORD }} \
+            -keypass ${{ secrets.KEY_PASSWORD }} \
+            -dname "CN=Android,O=Android,C=EG"
+
+      # Create signing config
+      - name: Create signing.properties
+        run: |
+          echo "storeFile=release.keystore" > android/signing.properties
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/signing.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/signing.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/signing.properties
+
+      # Modify build.gradle automatically
+      - name: Configure signing
+        run: |
+          cat <<'EOF' >> android/app/build.gradle
+
+          def signingProperties = new Properties()
+          def signingPropertiesFile = rootProject.file("signing.properties")
+
+          if (signingPropertiesFile.exists()) {
+              signingProperties.load(new FileInputStream(signingPropertiesFile))
+          }
+
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file(signingProperties['storeFile'])
+                      storePassword signingProperties['storePassword']
+                      keyAlias signingProperties['keyAlias']
+                      keyPassword signingProperties['keyPassword']
+                  }
+              }
+
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+              }
+          }
+          EOF
+
+      # Build AAB
+      - name: Build Release AAB
         run: |
           cd android
-          ./gradlew clean
-          ./gradlew bundleRelease --no-daemon
+          chmod +x gradlew
+          ./gradlew bundleRelease
 
+      # Upload AAB
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-aab
+          name: app-release
           path: android/app/build/outputs/bundle/release/*.aab
