@@ -11,37 +11,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Node.js 22
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
-      # Java
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 17
 
-      # Install dependencies
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      # Build web app
       - name: Build web
         run: npm run build
 
-      # Capacitor Sync
       - name: Capacitor Sync
         run: npx cap sync android
 
-      # Generate keystore automatically
       - name: Generate Keystore
         run: |
-          mkdir -p android/app
-          
           keytool -genkeypair \
             -v \
             -storetype PKCS12 \
@@ -54,52 +45,16 @@ jobs:
             -keypass ${{ secrets.KEY_PASSWORD }} \
             -dname "CN=Android,O=Android,C=EG"
 
-      # Create signing config
-      - name: Create signing.properties
-        run: |
-          echo "storeFile=release.keystore" > android/signing.properties
-          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/signing.properties
-          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/signing.properties
-          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/signing.properties
-
-      # Modify build.gradle automatically
-      - name: Configure signing
-        run: |
-          cat <<'EOF' >> android/app/build.gradle
-
-          def signingProperties = new Properties()
-          def signingPropertiesFile = rootProject.file("signing.properties")
-
-          if (signingPropertiesFile.exists()) {
-              signingProperties.load(new FileInputStream(signingPropertiesFile))
-          }
-
-          android {
-              signingConfigs {
-                  release {
-                      storeFile file(signingProperties['storeFile'])
-                      storePassword signingProperties['storePassword']
-                      keyAlias signingProperties['keyAlias']
-                      keyPassword signingProperties['keyPassword']
-                  }
-              }
-
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.release
-                  }
-              }
-          }
-          EOF
-
-      # Build AAB
       - name: Build Release AAB
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           cd android
           chmod +x gradlew
           ./gradlew bundleRelease
 
-      # Upload AAB
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
