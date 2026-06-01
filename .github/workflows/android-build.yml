@@ -15,13 +15,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      - name: Install dependencies (fix lock issues)
-        run: npm install --legacy-peer-deps
+      - name: Clean install dependencies
+        run: |
+          rm -rf node_modules package-lock.json
+          npm cache clean --force
+          npm install --legacy-peer-deps
 
       - name: Build web app
         run: npm run build
+
+      - name: Install Capacitor CLI
+        run: npm install -g @capacitor/cli
 
       - name: Sync Capacitor Android
         run: npx cap sync android
@@ -35,13 +40,14 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Make Gradlew executable
+      - name: Fix Gradle permissions
         run: chmod +x android/gradlew
 
       - name: Build Android AAB
         run: |
           cd android
-          ./gradlew bundleRelease
+          ./gradlew clean
+          ./gradlew bundleRelease --no-daemon
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
