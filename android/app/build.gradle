@@ -17,12 +17,10 @@ android {
         }
     }
     signingConfigs {
-        release {
-            def ksFile = System.getenv("ANDROID_KEYSTORE_PATH") ?: "release.keystore"
-            storeFile file(ksFile)
-            storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""
-            keyAlias System.getenv("KEY_ALIAS") ?: ""
-            keyPassword System.getenv("KEY_PASSWORD") ?: ""
+        release {storeFile file(System.getenv("ANDROID_KEYSTORE_PATH"))
+storePassword System.getenv("KEYSTORE_PASSWORD")
+keyAlias System.getenv("KEY_ALIAS")
+keyPassword System.getenv("KEY_PASSWORD")
         }
     }
     buildTypes {
