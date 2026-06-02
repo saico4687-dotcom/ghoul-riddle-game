@@ -1,55 +1,57 @@
 name: Android Release
 
 on:
-  workflow_dispatch:
+workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+build:
+runs-on: ubuntu-latest
 
-    env:
-      ANDROID_KEYSTORE_PATH: android/app/release.keystore
-      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+```
+env:
+  ANDROID_KEYSTORE_PATH: android/app/release.keystore
+  KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+  KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+  KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-    steps:
-      - uses: actions/checkout@v4
+steps:
+  - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
+  - uses: actions/setup-node@v4
+    with:
+      node-version: 22
 
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
+  - uses: actions/setup-java@v4
+    with:
+      distribution: temurin
+      java-version: 21
 
-      - name: Install dependencies
-        run: npm install --legacy-peer-deps
+  - name: Install dependencies
+    run: npm install --legacy-peer-deps
 
-      - name: Build web
-        run: npm run build
+  - name: Build web
+    run: npm run build
 
-      - name: Capacitor sync
-        run: npx cap sync android
+  - name: Capacitor sync
+    run: npx cap sync android
 
-      - name: Decode keystore
-        run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+  - name: Decode keystore
+    run: |
+      echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
 
-      - name: Verify keystore
-        run: |
-          ls -la android/app
+  - name: Verify keystore
+    run: |
+      ls -la android/app
 
-      - name: Build Signed AAB
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew :app:bundleRelease --stacktrace
+  - name: Build Signed AAB
+    run: |
+      cd android
+      chmod +x gradlew
+      ./gradlew :app:bundleRelease --stacktrace
 
-      - name: Upload AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: signed-aab
-          path: android/app/build/outputs/bundle/release/*.aab
+  - name: Upload AAB
+    uses: actions/upload-artifact@v4
+    with:
+      name: signed-aab
+      path: android/app/build/outputs/bundle/release/*.aab
+```
