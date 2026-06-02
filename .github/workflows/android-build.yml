@@ -1,4 +1,4 @@
-name: Build Android AAB
+name: Android Release
 
 on:
   workflow_dispatch:
@@ -7,17 +7,20 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    env:
+      ANDROID_KEYSTORE_PATH: android/app/release.keystore
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
@@ -25,30 +28,28 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Build Web
+      - name: Build web
         run: npm run build
 
-      - name: Capacitor Sync
+      - name: Capacitor sync
         run: npx cap sync android
 
-      - name: Decode Keystore
+      - name: Decode keystore
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" > keystore.base64
-          base64 -d keystore.base64 > android/app/release.keystore
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
 
-      - name: Build Release AAB
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          ANDROID_KEYSTORE_PATH: release.keystore
+      - name: Verify keystore
+        run: |
+          ls -la android/app
+
+      - name: Build Signed AAB
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew bundleRelease
+          ./gradlew :app:bundleRelease --stacktrace
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: signed-aab
           path: android/app/build/outputs/bundle/release/*.aab
