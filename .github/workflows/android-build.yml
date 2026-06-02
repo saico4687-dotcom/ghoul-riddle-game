@@ -2,6 +2,8 @@ name: Build Android AAB
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 
 jobs:
   build:
@@ -23,7 +25,7 @@ jobs:
           java-version: 17
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm install --legacy-peer-deps --no-audit --no-fund
 
       - name: Build web
         run: npm run build
@@ -31,32 +33,28 @@ jobs:
       - name: Capacitor Sync
         run: npx cap sync android
 
-      - name: Generate Keystore
+      - name: Decode Keystore
         run: |
-          keytool -genkeypair \
-            -v \
-            -storetype PKCS12 \
-            -keystore android/app/release.keystore \
-            -alias ${{ secrets.KEY_ALIAS }} \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass ${{ secrets.KEYSTORE_PASSWORD }} \
-            -keypass ${{ secrets.KEY_PASSWORD }} \
-            -dname "CN=Android,O=Android,C=EG"
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+          ls -la android/app/release.keystore
 
       - name: Build Release AAB
         env:
+          ANDROID_KEYSTORE_PATH: release.keystore
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew bundleRelease
+          ./gradlew bundleRelease --stacktrace
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: app-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
+
+      - name: Cleanup Keystore
+        if: always()
+        run: rm -f android/app/release.keystore
