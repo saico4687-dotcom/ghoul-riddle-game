@@ -4,6 +4,7 @@ import { Trophy, ArrowRight, Mail, Lock, LogIn, UserPlus, Shield } from "lucide-
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
+import { clearStaleAuth } from "@/lib/clearStaleAuth";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 
@@ -43,6 +44,8 @@ const EmailAuthScreen = ({ onBack }: EmailAuthScreenProps) => {
         });
         setMode("login");
       } else {
+        // Wipe any stale/broken session before logging in fresh
+        await clearStaleAuth();
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast({ title: "أهلاً بعودتك", description: "تم تسجيل الدخول" });
@@ -61,6 +64,8 @@ const EmailAuthScreen = ({ onBack }: EmailAuthScreenProps) => {
   const handleGoogle = async () => {
     setLoading(true);
     try {
+      // Wipe any stale/broken session before launching Google OAuth
+      await clearStaleAuth();
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
       });
