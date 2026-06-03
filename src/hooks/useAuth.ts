@@ -16,7 +16,25 @@ export const useAuth = () => {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        // Validate the session against the server. If the user was deleted,
+        // the local refresh token is stale and would break the next login —
+        // clear it locally now.
+        const { data, error } = await supabase.auth.getUser();
+        if (error || !data.user) {
+          try { await supabase.auth.signOut({ scope: "local" }); } catch {}
+          try {
+            Object.keys(localStorage)
+              .filter((k) => k.startsWith("sb-") || k.includes("supabase"))
+              .forEach((k) => localStorage.removeItem(k));
+          } catch {}
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+      }
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
