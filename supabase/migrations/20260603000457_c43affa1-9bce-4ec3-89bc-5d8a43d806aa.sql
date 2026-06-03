@@ -1,0 +1,1 @@
+UPDATE public.profiles SET last_puzzle_index = 394, saved_score = 200, saved_total_points = 3000, saved_time_bonus = 100, updated_at = now();
