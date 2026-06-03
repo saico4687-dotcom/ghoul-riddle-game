@@ -14,7 +14,9 @@ declare global {
  * - في المتصفح العادي: يستخدم OAuth العادي عبر Lovable Cloud
  */
 export function googleLogin(redirectPath: string = "/"): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
+    // Wipe any stale/broken session before attempting a fresh login
+    await clearStaleAuth();
     const median = typeof window !== "undefined" ? window.median : undefined;
 
     if (median && median.socialLogin && median.socialLogin.google) {
