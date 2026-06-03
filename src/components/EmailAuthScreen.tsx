@@ -4,6 +4,7 @@ import { Trophy, ArrowRight, Mail, Lock, LogIn, UserPlus, Shield } from "lucide-
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
+import { clearStaleAuth } from "@/lib/clearStaleAuth";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 
