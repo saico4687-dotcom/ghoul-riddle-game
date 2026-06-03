@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
+import { clearStaleAuth } from "@/lib/clearStaleAuth";
 
 declare global {
   interface Window {
