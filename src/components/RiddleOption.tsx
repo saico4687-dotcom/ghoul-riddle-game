@@ -23,10 +23,12 @@ const RiddleOption = ({
 }: RiddleOptionProps) => {
   const getOptionClass = () => {
     let base = "option-horror";
-    
+
     if (showResult) {
-      // In competition mode, don't highlight the correct answer if user was wrong
-      if (isCorrect && !hideCorrectInCompetition) {
+      // Only highlight the correct answer when the user actually picked it.
+      // Never reveal the right answer after a wrong pick — just mark the
+      // wrong choice in red.
+      if (selected && isCorrect) {
         base += " correct";
       } else if (selected && !isCorrect) {
         base += " wrong";
@@ -34,7 +36,7 @@ const RiddleOption = ({
     } else if (selected) {
       base += " selected";
     }
-    
+
     return base;
   };
 

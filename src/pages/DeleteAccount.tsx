@@ -48,7 +48,19 @@ export default function DeleteAccount() {
     try {
       const { error } = await supabase.functions.invoke("delete-account");
       if (error) throw error;
-      await supabase.auth.signOut();
+      // User no longer exists on the server — calling a server signOut would
+      // hit /logout with an invalid JWT (403) and leave a stale refresh token
+      // behind, which then breaks the next login. Clear local session only.
+      try {
+        await supabase.auth.signOut({ scope: "local" });
+      } catch {
+        // ignore — we'll force-clear storage below
+      }
+      try {
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith("sb-") || k.includes("supabase"))
+          .forEach((k) => localStorage.removeItem(k));
+      } catch {}
       toast({
         title: "تم حذف حسابك",
         description: "تم حذف جميع بياناتك نهائيًا.",
