@@ -64,6 +64,8 @@ const EmailAuthScreen = ({ onBack }: EmailAuthScreenProps) => {
   const handleGoogle = async () => {
     setLoading(true);
     try {
+      // Wipe any stale/broken session before launching Google OAuth
+      await clearStaleAuth();
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
       });
