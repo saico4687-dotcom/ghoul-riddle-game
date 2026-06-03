@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import WelcomeScreen, { GameMode } from "@/components/WelcomeScreen";
+import EmailAuthScreen from "@/components/EmailAuthScreen";
 import RiddleCard from "@/components/RiddleCard";
 import ResultScreen from "@/components/ResultScreen";
 import { riddles } from "@/data/riddles";
@@ -23,121 +24,96 @@ const loadGuestProgress = (): GuestProgress | null => {
   try {
     const raw = localStorage.getItem(GUEST_STORAGE_KEY);
     if (!raw) return null;
-    const p = JSON.parse(raw);
-    if (typeof p?.currentRiddleIndex !== "number") return null;
-    return p;
+    return JSON.parse(raw);
   } catch {
     return null;
   }
 };
 
 const saveGuestProgress = (p: GuestProgress) => {
-  try { localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(p)); } catch {}
+  try {
+    localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(p));
+  } catch {}
 };
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>("welcome");
+  const [showAuth, setShowAuth] = useState(false);
+
   const [currentRiddleIndex, setCurrentRiddleIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [totalPoints, setTotalPoints] = useState(0);
   const [timeBonus, setTimeBonus] = useState(0);
   const [answeredCount, setAnsweredCount] = useState(0);
+
   const { user } = useAuth();
 
   const allRiddles = useMemo(() => riddles.slice(0, 400), []);
 
-
   const ensureProfile = useCallback(async () => {
     if (!user) return null;
+
     const { data } = await supabase
       .from("profiles")
-      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
+      .select("last_puzzle_index,saved_score,saved_total_points,saved_time_bonus")
       .eq("user_id", user.id)
       .single();
-    if (data) return data;
-    const { data: newProfile } = await supabase
-      .from("profiles")
-      .insert({
-        user_id: user.id,
-        email: user.email,
-        name: user.user_metadata?.full_name || user.user_metadata?.name || "",
-        profile_image: user.user_metadata?.avatar_url || user.user_metadata?.picture || "",
-      })
-      .select("last_puzzle_index, saved_score, saved_total_points, saved_time_bonus")
-      .single();
-    return newProfile;
+
+    return data;
   }, [user]);
 
-  const startFreshGame = useCallback(() => {
+  const startFreshGame = () => {
     setCurrentRiddleIndex(0);
     setScore(0);
     setTotalPoints(0);
     setTimeBonus(0);
     setAnsweredCount(0);
     setGameState("playing");
-  }, []);
+  };
 
   const startFromProfile = useCallback(async () => {
-    if (!user) {
-      startFreshGame();
-      return;
-    }
+    if (!user) return;
 
     const data = await ensureProfile();
-    const startIndex = data?.last_puzzle_index ?? 0;
-    const savedScore = data?.saved_score ?? 0;
-    const savedPoints = data?.saved_total_points ?? 0;
-    const savedBonus = data?.saved_time_bonus ?? 0;
 
-    setScore(savedScore);
-    setTotalPoints(savedPoints);
-    setTimeBonus(savedBonus);
-    setAnsweredCount(0);
+    setScore(data?.saved_score ?? 0);
+    setTotalPoints(data?.saved_total_points ?? 0);
+    setTimeBonus(data?.saved_time_bonus ?? 0);
+    setCurrentRiddleIndex(data?.last_puzzle_index ?? 0);
 
-    if (startIndex >= allRiddles.length) {
-      setCurrentRiddleIndex(allRiddles.length);
-      setGameState("result");
-    } else {
-      setCurrentRiddleIndex(startIndex);
-      setGameState("playing");
-    }
-  }, [ensureProfile, allRiddles.length, startFreshGame, user]);
+    setShowAuth(false);
+    setGameState("playing");
+  }, [ensureProfile, user]);
 
-  const startAsGuest = useCallback(() => {
+  const startAsGuest = () => {
     const p = loadGuestProgress();
+
     if (p) {
       setScore(p.score);
       setTotalPoints(p.totalPoints);
       setTimeBonus(p.timeBonus);
-      setAnsweredCount(0);
-      if (p.currentRiddleIndex >= allRiddles.length) {
-        setCurrentRiddleIndex(allRiddles.length);
-        setGameState("result");
-      } else {
-        setCurrentRiddleIndex(p.currentRiddleIndex);
-        setGameState("playing");
-      }
-    } else {
-      startFreshGame();
+      setCurrentRiddleIndex(p.currentRiddleIndex);
     }
-  }, [allRiddles.length, startFreshGame]);
+
+    setShowAuth(false);
+    setGameState("playing");
+  };
 
   const handleStart = async (_mode: GameMode) => {
     if (!user) {
-      startAsGuest();
+      setShowAuth(true);
       return;
     }
+
     await startFromProfile();
   };
 
   const handleAnswer = async (
     isCorrect: boolean,
-    selectedIndex: number | null,
-    _remainingTime?: number,
-    elapsedMs?: number | null,
+    selectedIndex: number | null
   ) => {
-    // Interstitial cadence (UI-only)
     const newAnswered = answeredCount + 1;
+
     if (newAnswered >= 5) {
       showInterstitial();
       setAnsweredCount(0);
@@ -145,37 +121,15 @@ const Index = () => {
       setAnsweredCount(newAnswered);
     }
 
-
-    if (user) {
-      // SERVER-SIDE validation & scoring. Client values are display-only.
-      try {
-        const { data, error } = await supabase.functions.invoke("submit-answer", {
-          body: {
-            riddle_index: currentRiddleIndex,
-            selected_index: selectedIndex,
-            elapsed_ms: elapsedMs ?? null,
-          },
-        });
-        if (error) {
-          console.error("submit-answer error", error);
-          return;
-        }
-        if (data) {
-          setScore(data.score);
-          setTotalPoints(data.totalPoints);
-          setTimeBonus(data.timeBonus);
-        }
-      } catch (e) {
-        console.error("submit-answer failed", e);
-      }
-    } else {
-      // Guest mode: local-only scoring + persistence in localStorage.
+    if (!user) {
       const newScore = isCorrect ? score + 1 : score;
       const newPoints = isCorrect ? totalPoints + 10 : totalPoints;
+
       if (isCorrect) {
         setScore(newScore);
         setTotalPoints(newPoints);
       }
+
       saveGuestProgress({
         currentRiddleIndex,
         score: newScore,
@@ -187,148 +141,68 @@ const Index = () => {
 
   const handleNext = () => {
     if (currentRiddleIndex < allRiddles.length - 1) {
-      const next = currentRiddleIndex + 1;
-      setCurrentRiddleIndex(next);
-      if (!user) {
-        saveGuestProgress({
-          currentRiddleIndex: next,
-          score,
-          totalPoints,
-          timeBonus,
-        });
-      }
+      setCurrentRiddleIndex(currentRiddleIndex + 1);
     } else {
-      if (!user) {
-        saveGuestProgress({
-          currentRiddleIndex: allRiddles.length,
-          score,
-          totalPoints,
-          timeBonus,
-        });
-      }
-      // Final-completion state is persisted server-side via submit-answer
       setGameState("result");
-
     }
   };
 
   const handleRestart = () => {
-    // Locked: just go back to welcome (no reset of completed state)
     setGameState("welcome");
+    setShowAuth(false);
   };
-
-  const beginnerLabels = [
-    "في بداية الطريق 🌱",
-    "خطوة أولى نحو النور 🕯️",
-    "بذرة الذكاء 🌰",
-    "محقّق متدرّب 🧭",
-    "عقل يستيقظ 🌙",
-  ];
-
-  const getRank = (points: number, totalPossible: number, index: number) => {
-    const percentage = (points / totalPossible) * 100;
-    if (percentage >= 90) return { title: "أسطورة الذكاء 👑", color: "text-yellow-400" };
-    if (percentage >= 75) return { title: "سيد الألغاز 🏆", color: "text-purple-400" };
-    if (percentage >= 60) return { title: "محقق ماهر 🔍", color: "text-blue-400" };
-    if (percentage >= 45) return { title: "مفكّر شجاع ⚔️", color: "text-green-400" };
-    if (percentage >= 30) return { title: "مبتدئ واعد 📚", color: "text-orange-400" };
-    const slot = Math.floor(index / 100) % beginnerLabels.length;
-    return { title: beginnerLabels[slot], color: "text-pink-400" };
-  };
-
-  const maxPoints = allRiddles.length * 15;
-  const rank = getRank(totalPoints, maxPoints, currentRiddleIndex);
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <AnimatePresence mode="wait">
-        {gameState === "welcome" && (
-          <motion.div key="welcome" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+
+        {showAuth && (
+          <motion.div
+            key="auth"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <EmailAuthScreen
+              onBack={() => setShowAuth(false)}
+            />
+          </motion.div>
+        )}
+
+        {!showAuth && gameState === "welcome" && (
+          <motion.div
+            key="welcome"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
             <WelcomeScreen onStart={handleStart} />
           </motion.div>
         )}
 
         {gameState === "playing" && (
-          <motion.div
-            key="playing"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="min-h-screen bg-horror-gradient py-8"
-          >
-            <div className="vignette" />
-
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="fixed top-4 left-4 z-50 card-horror px-4 py-2"
-            >
-              <div className="flex items-center gap-4">
-                <div className="text-center">
-                  <p className="font-typewriter text-xs text-muted-foreground">النقاط</p>
-                  <p className="font-horror text-2xl text-primary">{totalPoints}</p>
-                </div>
-                <div className="w-px h-8 bg-primary/30" />
-                <div className="text-center">
-                  <p className="font-typewriter text-xs text-muted-foreground">الترتيب</p>
-                  <p className={`font-horror text-sm ${rank.color}`}>{rank.title}</p>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="fixed top-4 right-4 z-50 flex items-center gap-3"
-            >
-              {user && (
-                <div className="card-horror px-3 py-2 flex items-center gap-2">
-                  {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
-                    <img
-                      src={user.user_metadata.avatar_url || user.user_metadata.picture}
-                      alt="avatar"
-                      className="w-8 h-8 rounded-full border border-primary/50"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center font-horror text-sm text-primary-foreground">
-                      {(user.user_metadata?.full_name || user.user_metadata?.name || user.email || "?")[0]}
-                    </div>
-                  )}
-                  <span className="font-typewriter text-xs text-foreground max-w-[100px] truncate">
-                    {user.user_metadata?.full_name || user.user_metadata?.name || user.email}
-                  </span>
-                </div>
-              )}
-              <div className="px-4 py-2 rounded-lg font-horror text-sm bg-primary/20 text-primary border border-primary/50">
-                🏆 الألغاز
-              </div>
-            </motion.div>
-
-            <div className="pt-16">
-              <RiddleCard
-                riddle={allRiddles[currentRiddleIndex]}
-                riddleNumber={currentRiddleIndex + 1}
-                totalRiddles={allRiddles.length}
-                onAnswer={handleAnswer}
-                onNext={handleNext}
-                gameMode="fun"
-              />
-            </div>
+          <motion.div key="playing">
+            <RiddleCard
+              riddle={allRiddles[currentRiddleIndex]}
+              riddleNumber={currentRiddleIndex + 1}
+              totalRiddles={allRiddles.length}
+              onAnswer={handleAnswer}
+              onNext={handleNext}
+              gameMode="fun"
+            />
           </motion.div>
         )}
 
         {gameState === "result" && (
-          <motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <ResultScreen
-              score={score}
-              totalQuestions={allRiddles.length}
-              totalPoints={totalPoints}
-              maxPoints={maxPoints}
-              timeBonus={timeBonus}
-              rank={rank}
-              onRestart={handleRestart}
-            />
-          </motion.div>
+          <ResultScreen
+            score={score}
+            totalQuestions={allRiddles.length}
+            totalPoints={totalPoints}
+            maxPoints={allRiddles.length * 15}
+            timeBonus={timeBonus}
+            rank={{ title: "محقق ماهر 🔍", color: "text-blue-400" }}
+            onRestart={handleRestart}
+          />
         )}
       </AnimatePresence>
     </div>
