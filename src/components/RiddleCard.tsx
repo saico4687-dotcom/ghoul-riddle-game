@@ -298,16 +298,15 @@ const RiddleCard = ({
             animate={{ opacity: 1, scale: 1 }}
             className="card-horror p-6 mb-8 text-right"
           >
-            <h3 className="font-horror text-2xl mb-3 text-primary">
-              {selectedOption === riddle.correctIndex ? "🎉 أحسنت!" : "💡 إجابة غير صحيحة"}
-            </h3>
-            <p className="font-typewriter text-foreground text-lg leading-relaxed">
-              {riddle.explanation}
-            </p>
-            {gameMode === "competition" && selectedOption !== riddle.correctIndex && (
-              <p className="font-typewriter text-foreground/80 text-lg">
-                لا بأس... ركّز أكثر في اللغز التالي!
-              </p>
+            {selectedOption === riddle.correctIndex ? (
+              <>
+                <h3 className="font-horror text-2xl mb-3 text-primary">🎉 أحسنت!</h3>
+                <p className="font-typewriter text-foreground text-lg leading-relaxed">
+                  {riddle.explanation}
+                </p>
+              </>
+            ) : (
+              <h3 className="font-horror text-2xl text-primary">🍀 حظ أوفر في المرة القادمة</h3>
             )}
           </motion.div>
         )}
