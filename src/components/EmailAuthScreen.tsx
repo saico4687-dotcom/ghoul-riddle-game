@@ -44,6 +44,8 @@ const EmailAuthScreen = ({ onBack }: EmailAuthScreenProps) => {
         });
         setMode("login");
       } else {
+        // Wipe any stale/broken session before logging in fresh
+        await clearStaleAuth();
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast({ title: "أهلاً بعودتك", description: "تم تسجيل الدخول" });
