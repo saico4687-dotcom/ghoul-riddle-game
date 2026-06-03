@@ -22,12 +22,28 @@ const App = () => {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    const t = setTimeout(() => setShowSplash(false), 2500);
-    (async () => {
-      await initAdMob();
-      showAppOpenAdIfDue();
-    })();
-    return () => clearTimeout(t);
+    const splashTimer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2500);
+
+    // تأخير تشغيل الإعلانات لتجنب Crash عند بدء التطبيق
+    const adsTimer = setTimeout(async () => {
+      try {
+        console.log("Initializing AdMob...");
+
+        await initAdMob();
+        await showAppOpenAdIfDue();
+
+        console.log("AdMob initialized successfully");
+      } catch (error) {
+        console.error("AdMob startup error:", error);
+      }
+    }, 8000);
+
+    return () => {
+      clearTimeout(splashTimer);
+      clearTimeout(adsTimer);
+    };
   }, []);
 
   return (
@@ -35,8 +51,12 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <AnimatePresence>{showSplash && <SplashScreen />}</AnimatePresence>
+        <AnimatePresence>
+          {showSplash && <SplashScreen />}
+        </AnimatePresence>
+
         <AdsConsentDialog />
+
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
@@ -45,7 +65,6 @@ const App = () => {
             <Route path="/settings" element={<Settings />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/delete-account" element={<DeleteAccount />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
