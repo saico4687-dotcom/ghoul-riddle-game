@@ -2,6 +2,7 @@
 
 import { createLovableAuth } from "@lovable.dev/cloud-auth-js";
 import { supabase } from "../supabase/client";
+
 const lovableAuth = createLovableAuth();
 
 type SignInOptions = {
@@ -13,28 +14,45 @@ type SupportedOAuthProvider = "google" | "apple" | "microsoft";
 
 export const lovable = {
   auth: {
-    signInWithOAuth: async (provider: SupportedOAuthProvider, opts?: SignInOptions) => {
-      const result = await lovableAuth.signInWithOAuth(provider, {
-        redirect_uri: opts?.redirect_uri,
-        extraParams: {
-          ...opts?.extraParams,
-        },
-      });
-
-      if (result.redirected) {
-        return result;
-      }
-
-      if (result.error) {
-        return result;
-      }
-
+    signInWithOAuth: async (
+      provider: SupportedOAuthProvider,
+      opts?: SignInOptions
+    ) => {
       try {
-        await supabase.auth.setSession(result.tokens);
+        // 🔥 مهم: نضمن redirect صحيح دائمًا
+        const redirectUri =
+          opts?.redirect_uri ||
+          `${window.location.origin}/auth/callback`;
+
+        const result = await lovableAuth.signInWithOAuth(provider, {
+          redirect_uri: redirectUri,
+          extraParams: {
+            ...opts?.extraParams,
+          },
+        });
+
+        if (result?.error) {
+          console.error("OAuth Error:", result.error);
+          return { error: result.error };
+        }
+
+        // لو فيه redirect طبيعي من المزود
+        if (result?.redirected) {
+          return result;
+        }
+
+        // 🔥 حفظ session بشكل آمن
+        if (result?.tokens) {
+          await supabase.auth.setSession(result.tokens);
+        }
+
+        return result;
       } catch (e) {
-        return { error: e instanceof Error ? e : new Error(String(e)) };
+        console.error("OAuth Exception:", e);
+        return {
+          error: e instanceof Error ? e : new Error(String(e)),
+        };
       }
-      return result;
     },
   },
 };
