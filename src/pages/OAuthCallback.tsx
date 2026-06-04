@@ -10,22 +10,19 @@ const OAuthCallback = () => {
 
     const handleCallback = async () => {
       try {
-        // 🔥 مهم: نخلي Supabase يلتقط session من URL
+        // ندي Supabase وقت يقرأ الـ URL ويعمل session
         const { error } = await supabase.auth.getSession();
 
         if (error) {
           console.error("OAuth session error:", error);
         }
 
-        // ⏳ ندي وقت بسيط للتأكد إن session اتسجل
         await new Promise((r) => setTimeout(r, 500));
-
       } catch (e) {
         console.error("OAuth callback error:", e);
       }
 
       if (!cancelled) {
-        // 🔥 بعد النجاح نرجع للهوم
         navigate("/", { replace: true });
       }
     };
@@ -42,4 +39,12 @@ const OAuthCallback = () => {
       dir="rtl"
       className="min-h-screen flex items-center justify-center bg-background text-foreground font-typewriter"
     >
-      <div className="text
+      <div className="text-center">
+        <div className="w-10 h-10 mx-auto mb-4 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <p>جارٍ إكمال تسجيل الدخول...</p>
+      </div>
+    </div>
+  );
+};
+
+export default OAuthCallback;
