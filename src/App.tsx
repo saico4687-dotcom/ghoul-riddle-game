@@ -16,6 +16,8 @@ import OAuthCallback from "./pages/OAuthCallback";
 import SplashScreen from "./components/SplashScreen";
 import AdsConsentDialog from "./components/AdsConsentDialog";
 import { initAdMob, showAppOpenAdIfDue } from "./lib/ads";
+import { isNativePlatform } from "./lib/isNative";
+import { registerNativeGoogleAuth } from "./lib/nativeGoogleAuth";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +25,10 @@ const App = () => {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
+    if (isNativePlatform()) {
+      void registerNativeGoogleAuth();
+    }
+
     const splashTimer = setTimeout(() => {
       setShowSplash(false);
     }, 2500);
