@@ -12,6 +12,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import DeleteAccount from "./pages/DeleteAccount";
+import OAuthCallback from "./pages/OAuthCallback";
 import SplashScreen from "./components/SplashScreen";
 import AdsConsentDialog from "./components/AdsConsentDialog";
 import { initAdMob, showAppOpenAdIfDue } from "./lib/ads";
@@ -65,6 +66,8 @@ const App = () => {
             <Route path="/settings" element={<Settings />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/delete-account" element={<DeleteAccount />} />
+            <Route path="/auth/callback" element={<OAuthCallback />} />
+            <Route path="/~oauth/callback" element={<OAuthCallback />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

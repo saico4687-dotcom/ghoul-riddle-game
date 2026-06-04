@@ -5,8 +5,11 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { clearStaleAuth } from "@/lib/clearStaleAuth";
+import { isNativePlatform } from "@/lib/isNative";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+
+const PUBLISHED_URL = "https://ghoul-riddle-game.lovable.app";
 
 
 interface EmailAuthScreenProps {
