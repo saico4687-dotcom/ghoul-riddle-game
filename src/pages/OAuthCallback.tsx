@@ -2,26 +2,36 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
-/**
- * Catches any stray OAuth landings (e.g. /auth/callback or /~oauth/callback
- * that for some reason weren't intercepted by the Lovable proxy). Waits for
- * the SDK to finish processing the URL fragment, then bounces home.
- */
 const OAuthCallback = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      // Give the SDK a tick to consume the URL fragment
-      await new Promise((r) => setTimeout(r, 300));
+
+    const handleCallback = async () => {
       try {
-        await supabase.auth.getSession();
-      } catch {
-        /* ignore */
+        // 🔥 مهم: نخلي Supabase يلتقط session من URL
+        const { error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error("OAuth session error:", error);
+        }
+
+        // ⏳ ندي وقت بسيط للتأكد إن session اتسجل
+        await new Promise((r) => setTimeout(r, 500));
+
+      } catch (e) {
+        console.error("OAuth callback error:", e);
       }
-      if (!cancelled) navigate("/", { replace: true });
-    })();
+
+      if (!cancelled) {
+        // 🔥 بعد النجاح نرجع للهوم
+        navigate("/", { replace: true });
+      }
+    };
+
+    handleCallback();
+
     return () => {
       cancelled = true;
     };
@@ -32,12 +42,4 @@ const OAuthCallback = () => {
       dir="rtl"
       className="min-h-screen flex items-center justify-center bg-background text-foreground font-typewriter"
     >
-      <div className="text-center">
-        <div className="w-10 h-10 mx-auto mb-4 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        <p>جارٍ إكمال تسجيل الدخول…</p>
-      </div>
-    </div>
-  );
-};
-
-export default OAuthCallback;
+      <div className="text
