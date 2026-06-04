@@ -75,8 +75,8 @@ const EmailAuthScreen = ({ onBack }: EmailAuthScreenProps) => {
       }
 
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
-      });
+  redirect_uri: "https://ghoul-riddle-game.lovable.app/auth/callback",
+});
       if (result.error) {
         toast({ title: "تعذّر تسجيل دخول Google", description: String(result.error), variant: "destructive" });
         setLoading(false);
