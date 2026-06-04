@@ -6,10 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { clearStaleAuth } from "@/lib/clearStaleAuth";
 import { isNativePlatform } from "@/lib/isNative";
+import { startNativeGoogleSignIn } from "@/lib/nativeGoogleAuth";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
-
-const PUBLISHED_URL = "https://ghoul-riddle-game.lovable.app";
 
 
 interface EmailAuthScreenProps {
@@ -70,15 +69,13 @@ const EmailAuthScreen = ({ onBack }: EmailAuthScreenProps) => {
       // Wipe any stale/broken session before launching Google OAuth
       await clearStaleAuth();
 
-      // On Capacitor (Android/iOS) the app runs from https://localhost — the
-      // Lovable OAuth proxy at /~oauth/* does not exist there, so the only
-      // working redirect target is our published web origin.
-      const redirectUri = isNativePlatform()
-        ? PUBLISHED_URL
-        : window.location.origin;
+      if (isNativePlatform()) {
+        await startNativeGoogleSignIn();
+        return;
+      }
 
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: redirectUri,
+        redirect_uri: window.location.origin,
       });
       if (result.error) {
         toast({ title: "تعذّر تسجيل دخول Google", description: String(result.error), variant: "destructive" });
