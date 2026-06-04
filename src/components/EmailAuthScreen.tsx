@@ -9,7 +9,7 @@ import { isNativePlatform } from "@/lib/isNative";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 
-const PUBLISHED_URL = "https://ghoul-riddle-game.lovable.app";
+const NATIVE_OAUTH_REDIRECT_URI = "com.rebh.app://oauth/callback";
 
 
 interface EmailAuthScreenProps {
@@ -70,11 +70,10 @@ const EmailAuthScreen = ({ onBack }: EmailAuthScreenProps) => {
       // Wipe any stale/broken session before launching Google OAuth
       await clearStaleAuth();
 
-      // On Capacitor (Android/iOS) the app runs from https://localhost — the
-      // Lovable OAuth proxy at /~oauth/* does not exist there, so the only
-      // working redirect target is our published web origin.
+      // Native builds must return to the app through a custom deep link so
+      // the OAuth result can be completed inside the Android/iOS shell.
       const redirectUri = isNativePlatform()
-        ? PUBLISHED_URL
+        ? NATIVE_OAUTH_REDIRECT_URI
         : window.location.origin;
 
       const result = await lovable.auth.signInWithOAuth("google", {
