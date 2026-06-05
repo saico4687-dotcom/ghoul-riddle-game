@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Users insert own answer times" ON public.answer_times;
