@@ -84,6 +84,21 @@ const Index = () => {
     }
     (async () => {
       const data = await ensureProfile();
+
+      // If user already completed all riddles → straight to final result, no more play
+      if (data?.completed) {
+        setCompleted(true);
+        setScore(data?.saved_score ?? 0);
+        setTotalPoints(data?.saved_total_points ?? 0);
+        setTimeBonus(data?.saved_time_bonus ?? 0);
+        totalTimeMsRef.current = Number(data?.total_time_ms ?? 0);
+        setNeedsInfo(false);
+        setShowAuth(false);
+        setGameState("result");
+        autoResumedRef.current = true;
+        return;
+      }
+
       const missingInfo = !data?.full_name || !data?.phone || !data?.address;
       if (missingInfo) {
         setProfileDefaults({
@@ -112,6 +127,7 @@ const Index = () => {
       setScore(data?.saved_score ?? 0);
       setTotalPoints(data?.saved_total_points ?? 0);
       setTimeBonus(data?.saved_time_bonus ?? 0);
+      totalTimeMsRef.current = Number(data?.total_time_ms ?? 0);
       setCurrentRiddleIndex(resumeIdx);
       setShowAuth(false);
       setGameState("playing");
