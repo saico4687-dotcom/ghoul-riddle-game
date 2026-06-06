@@ -438,7 +438,7 @@ const Index = () => {
           </motion.div>
         )}
 
-        {gameState === "playing" && (
+        {gameState === "playing" && !completed && (
           <motion.div key="playing">
             <RiddleCard
               riddle={allRiddles[currentRiddleIndex]}
@@ -459,6 +459,7 @@ const Index = () => {
             maxPoints={allRiddles.length * 15}
             timeBonus={timeBonus}
             rank={{ title: "محقق ماهر 🔍", color: "text-blue-400" }}
+            completed={completed}
             onRestart={handleRestart}
           />
         )}
