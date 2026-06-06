@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import HorrorButton from "./HorrorButton";
-import { Brain, Trophy, Sparkles, Star, Calendar, Hourglass } from "lucide-react";
+import { Brain, Trophy, Sparkles, Star, Calendar, Hourglass, LogOut } from "lucide-react";
 
 interface ResultScreenProps {
   score: number;
@@ -22,6 +22,7 @@ const ResultScreen = ({
   rank,
   completed = false,
   onRestart,
+  onLogout,
 }: ResultScreenProps) => {
   const percentage = totalQuestions ? (score / totalQuestions) * 100 : 0;
   const pointsPercentage = maxPoints ? (totalPoints / maxPoints) * 100 : 0;
@@ -156,7 +157,18 @@ const ResultScreen = ({
           )}
         </motion.div>
 
-        {!completed && <HorrorButton onClick={onRestart}>العودة للقائمة الرئيسية</HorrorButton>}
+        <div className="flex flex-col gap-3 items-center">
+          <HorrorButton onClick={onRestart}>العودة للقائمة الرئيسية</HorrorButton>
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="inline-flex items-center gap-2 font-typewriter text-foreground/70 hover:text-primary transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              العودة بحساب آخر
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
