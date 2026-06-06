@@ -40,6 +40,12 @@ const saveGuestProgress = (p: GuestProgress) => {
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>("welcome");
   const [showAuth, setShowAuth] = useState(false);
+  const [needsInfo, setNeedsInfo] = useState(false);
+  const [profileDefaults, setProfileDefaults] = useState<{
+    full_name?: string | null;
+    phone?: string | null;
+    address?: string | null;
+  }>({});
 
   const [currentRiddleIndex, setCurrentRiddleIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -56,12 +62,32 @@ const Index = () => {
 
     const { data } = await supabase
       .from("profiles")
-      .select("last_puzzle_index,saved_score,saved_total_points,saved_time_bonus")
+      .select("last_puzzle_index,saved_score,saved_total_points,saved_time_bonus,full_name,phone,address")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     return data;
   }, [user]);
+
+  // After Google/email login, check if user needs to fill profile info
+  useEffect(() => {
+    if (!user) {
+      setNeedsInfo(false);
+      return;
+    }
+    (async () => {
+      const data = await ensureProfile();
+      if (!data?.full_name || !data?.phone || !data?.address) {
+        setProfileDefaults({
+          full_name: data?.full_name ?? "",
+          phone: data?.phone ?? "",
+          address: data?.address ?? "",
+        });
+        setNeedsInfo(true);
+        setShowAuth(false);
+      }
+    })();
+  }, [user, ensureProfile]);
 
   const startFreshGame = () => {
     setCurrentRiddleIndex(0);
