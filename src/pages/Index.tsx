@@ -72,15 +72,18 @@ const Index = () => {
     return data;
   }, [user]);
 
-  // After Google/email login, check if user needs to fill profile info
+  // After Google/email login: check profile, then auto-resume to last puzzle
+  const autoResumedRef = useRef(false);
   useEffect(() => {
     if (!user) {
       setNeedsInfo(false);
+      autoResumedRef.current = false;
       return;
     }
     (async () => {
       const data = await ensureProfile();
-      if (!data?.full_name || !data?.phone || !data?.address) {
+      const missingInfo = !data?.full_name || !data?.phone || !data?.address;
+      if (missingInfo) {
         setProfileDefaults({
           full_name: data?.full_name ?? "",
           phone: data?.phone ?? "",
@@ -88,8 +91,30 @@ const Index = () => {
         });
         setNeedsInfo(true);
         setShowAuth(false);
+        return;
       }
+
+      // Auto-resume only once per session and only if no ?puzzle= override
+      if (autoResumedRef.current) return;
+      const urlHasPuzzle = new URLSearchParams(window.location.search).has("puzzle");
+      if (urlHasPuzzle) return;
+
+      autoResumedRef.current = true;
+      const serverIdx = data?.last_puzzle_index ?? 0;
+      const localIdx = parseInt(localStorage.getItem(LAST_PUZZLE_KEY) || "", 10);
+      const resumeIdx = Math.max(
+        0,
+        Math.min(allRiddles.length - 1, Math.max(serverIdx, isNaN(localIdx) ? 0 : localIdx))
+      );
+
+      setScore(data?.saved_score ?? 0);
+      setTotalPoints(data?.saved_total_points ?? 0);
+      setTimeBonus(data?.saved_time_bonus ?? 0);
+      setCurrentRiddleIndex(resumeIdx);
+      setShowAuth(false);
+      setGameState("playing");
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, ensureProfile]);
 
   // On mount: if ?puzzle=N in URL, jump directly to that puzzle
