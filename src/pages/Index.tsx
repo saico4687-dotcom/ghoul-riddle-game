@@ -211,7 +211,7 @@ const Index = () => {
           </motion.div>
         )}
 
-        {!showAuth && gameState === "welcome" && (
+        {!needsInfo && !showAuth && gameState === "welcome" && (
           <motion.div
             key="welcome"
             initial={{ opacity: 0 }}
