@@ -1,7 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 
 // AdMob IDs الحقيقية لتطبيق "ربح"
-export const ADMOB_APP_ID = "ca-app-pub-4098736191122679~XXXXXXXXXX"; // TODO: استبدل بعد ما المستخدم يبعت App ID
+export const ADMOB_APP_ID = "ca-app-pub-4098736191122679~4275235624";
 export const APP_OPEN_AD_ID = "ca-app-pub-4098736191122679/7200781863";
 export const INTERSTITIAL_AD_ID = "ca-app-pub-4098736191122679/7153504814";
 export const REWARDED_AD_ID = "ca-app-pub-4098736191122679/2165516995";
