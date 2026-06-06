@@ -89,6 +89,8 @@ export type Database = {
       profiles: {
         Row: {
           address: string | null
+          completed: boolean
+          completed_at: string | null
           created_at: string
           email: string | null
           full_name: string | null
@@ -100,11 +102,14 @@ export type Database = {
           saved_score: number
           saved_time_bonus: number
           saved_total_points: number
+          total_time_ms: number
           updated_at: string
           user_id: string
         }
         Insert: {
           address?: string | null
+          completed?: boolean
+          completed_at?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -116,11 +121,14 @@ export type Database = {
           saved_score?: number
           saved_time_bonus?: number
           saved_total_points?: number
+          total_time_ms?: number
           updated_at?: string
           user_id: string
         }
         Update: {
           address?: string | null
+          completed?: boolean
+          completed_at?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -132,6 +140,7 @@ export type Database = {
           saved_score?: number
           saved_time_bonus?: number
           saved_total_points?: number
+          total_time_ms?: number
           updated_at?: string
           user_id?: string
         }
