@@ -63,22 +63,24 @@ const App = () => {
         <AdsConsentDialog />
 
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/delete-account" element={<DeleteAccount />} />
+          <DesktopFrame>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="/delete-account" element={<DeleteAccount />} />
 
-            {/* OAuth callbacks */}
-            <Route path="/auth/callback" element={<OAuthCallback />} />
-            <Route path="/~oauth/callback" element={<OAuthCallback />} />
-            <Route path="/auth/*" element={<OAuthCallback />} />
+              {/* OAuth callbacks */}
+              <Route path="/auth/callback" element={<OAuthCallback />} />
+              <Route path="/~oauth/callback" element={<OAuthCallback />} />
+              <Route path="/auth/*" element={<OAuthCallback />} />
 
-            {/* بدل 404 — رجّع للصفحة الرئيسية */}
-            <Route path="*" element={<Index />} />
-          </Routes>
+              {/* بدل 404 — رجّع للصفحة الرئيسية */}
+              <Route path="*" element={<Index />} />
+            </Routes>
+          </DesktopFrame>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
