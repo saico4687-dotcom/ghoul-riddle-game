@@ -55,6 +55,8 @@ const Index = () => {
   const [totalPoints, setTotalPoints] = useState(0);
   const [timeBonus, setTimeBonus] = useState(0);
   const [answeredCount, setAnsweredCount] = useState(0);
+  const [completed, setCompleted] = useState(false);
+  const totalTimeMsRef = useRef(0);
 
   const { user } = useAuth();
 
@@ -65,7 +67,7 @@ const Index = () => {
 
     const { data } = await supabase
       .from("profiles")
-      .select("last_puzzle_index,saved_score,saved_total_points,saved_time_bonus,full_name,phone,address")
+      .select("last_puzzle_index,saved_score,saved_total_points,saved_time_bonus,full_name,phone,address,completed,total_time_ms")
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -82,6 +84,21 @@ const Index = () => {
     }
     (async () => {
       const data = await ensureProfile();
+
+      // If user already completed all riddles → straight to final result, no more play
+      if (data?.completed) {
+        setCompleted(true);
+        setScore(data?.saved_score ?? 0);
+        setTotalPoints(data?.saved_total_points ?? 0);
+        setTimeBonus(data?.saved_time_bonus ?? 0);
+        totalTimeMsRef.current = Number(data?.total_time_ms ?? 0);
+        setNeedsInfo(false);
+        setShowAuth(false);
+        setGameState("result");
+        autoResumedRef.current = true;
+        return;
+      }
+
       const missingInfo = !data?.full_name || !data?.phone || !data?.address;
       if (missingInfo) {
         setProfileDefaults({
@@ -110,6 +127,7 @@ const Index = () => {
       setScore(data?.saved_score ?? 0);
       setTotalPoints(data?.saved_total_points ?? 0);
       setTimeBonus(data?.saved_time_bonus ?? 0);
+      totalTimeMsRef.current = Number(data?.total_time_ms ?? 0);
       setCurrentRiddleIndex(resumeIdx);
       setShowAuth(false);
       setGameState("playing");
@@ -286,7 +304,9 @@ const Index = () => {
 
   const handleAnswer = async (
     isCorrect: boolean,
-    selectedIndex: number | null
+    selectedIndex: number | null,
+    _remainingTime?: number,
+    elapsedMs?: number | null,
   ) => {
     const newAnswered = answeredCount + 1;
 
@@ -295,6 +315,24 @@ const Index = () => {
       setAnsweredCount(0);
     } else {
       setAnsweredCount(newAnswered);
+    }
+
+    // Accumulate total time for ranking (default to full timer if missing)
+    const addMs = typeof elapsedMs === "number" && elapsedMs > 0 ? elapsedMs : 60000;
+    totalTimeMsRef.current += addMs;
+
+    // Persist per-answer timing for the authenticated user (used to pick winners)
+    if (user) {
+      try {
+        await supabase.from("answer_times").insert({
+          user_id: user.id,
+          riddle_index: currentRiddleIndex,
+          elapsed_ms: addMs,
+          game_mode: "fun",
+        });
+      } catch (e) {
+        console.error("answer_times insert failed", e);
+      }
     }
 
     if (!user) {
@@ -315,17 +353,43 @@ const Index = () => {
     }
   };
 
+  const markCompletedOnServer = useCallback(async () => {
+    if (!user) return;
+    try {
+      await supabase
+        .from("profiles")
+        .update({
+          completed: true,
+          completed_at: new Date().toISOString(),
+          total_time_ms: totalTimeMsRef.current,
+          last_puzzle_index: allRiddles.length - 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", user.id);
+    } catch (e) {
+      console.error("mark completed failed", e);
+    }
+  }, [user, allRiddles.length]);
+
   const handleNext = () => {
     if (currentRiddleIndex < allRiddles.length - 1) {
       const nextIdx = currentRiddleIndex + 1;
       setCurrentRiddleIndex(nextIdx);
       void persistLastPuzzleIndex(nextIdx);
     } else {
+      // Finished the last riddle (e.g. #400) → lock account and show final result
+      setCompleted(true);
+      void markCompletedOnServer();
       setGameState("result");
     }
   };
 
   const handleRestart = () => {
+    if (completed) {
+      // Account is locked after completion — stay on the final result screen
+      setGameState("result");
+      return;
+    }
     setGameState("welcome");
     setShowAuth(false);
   };
@@ -374,7 +438,7 @@ const Index = () => {
           </motion.div>
         )}
 
-        {gameState === "playing" && (
+        {gameState === "playing" && !completed && (
           <motion.div key="playing">
             <RiddleCard
               riddle={allRiddles[currentRiddleIndex]}
@@ -395,6 +459,7 @@ const Index = () => {
             maxPoints={allRiddles.length * 15}
             timeBonus={timeBonus}
             rank={{ title: "محقق ماهر 🔍", color: "text-blue-400" }}
+            completed={completed}
             onRestart={handleRestart}
           />
         )}
