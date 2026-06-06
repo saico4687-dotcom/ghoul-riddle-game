@@ -1,9 +1,10 @@
 import { Capacitor } from "@capacitor/core";
 
-export const ADMOB_APP_ID = "ca-app-pub-4098736191122679~4275235624";
-export const APP_OPEN_AD_ID = "ca-app-pub-4098736191122679/7200781863";
-export const INTERSTITIAL_AD_ID = "ca-app-pub-4098736191122679/2275758241";
-export const REWARDED_AD_ID = "ca-app-pub-4098736191122679/6048921683";
+// Test IDs من Google (مؤقتة — نرجع للحقيقية بعد موافقة AdMob)
+export const ADMOB_APP_ID = "ca-app-pub-3940256099942544~3347511713";
+export const APP_OPEN_AD_ID = "ca-app-pub-3940256099942544/9257395921";
+export const INTERSTITIAL_AD_ID = "ca-app-pub-3940256099942544/1033173712";
+export const REWARDED_AD_ID = "ca-app-pub-3940256099942544/5224354917";
 
 const FIVE_HOURS = 5 * 60 * 60 * 1000;
 const LAST_APP_OPEN_KEY = "last_app_open_ad";
