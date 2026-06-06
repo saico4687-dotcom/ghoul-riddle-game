@@ -50,9 +50,11 @@ export const startNativeGoogleSignIn = async (): Promise<boolean> => {
   try {
     if (!initialized) await registerNativeGoogleAuth();
 
+    // ملاحظة: لا نمرر scopes هنا لأن إضافتها تتطلب تعديل MainActivity
+    // الإيميل والبروفايل يأتيان افتراضياً مع تسجيل الدخول بجوجل.
     const res = await SocialLogin.login({
       provider: "google",
-      options: { scopes: ["email", "profile"] },
+      options: {},
     });
 
     // النوع المُعاد متغيّر حسب المزود — نتعامل مع google بأمان
