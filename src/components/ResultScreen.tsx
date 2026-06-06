@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import HorrorButton from "./HorrorButton";
-import { Brain, Trophy, Sparkles, Star, Calendar, Hourglass, LogOut } from "lucide-react";
+import { Brain, Trophy, Sparkles, Star, Calendar, Hourglass, LogOut, Home } from "lucide-react";
 
 interface ResultScreenProps {
   score: number;
@@ -157,12 +157,15 @@ const ResultScreen = ({
           )}
         </motion.div>
 
-        <div className="flex flex-col gap-3 items-center">
-          <HorrorButton onClick={onRestart}>العودة للقائمة الرئيسية</HorrorButton>
+        <div className="flex flex-col gap-3">
+          <HorrorButton onClick={onRestart}>
+            <Home className="w-5 h-5 ml-2 inline" />
+            العودة للقائمة الرئيسية
+          </HorrorButton>
           {onLogout && (
             <button
               onClick={onLogout}
-              className="inline-flex items-center gap-2 font-typewriter text-foreground/70 hover:text-primary transition-colors"
+              className="font-typewriter text-sm text-primary/80 hover:text-primary underline-offset-4 hover:underline inline-flex items-center justify-center gap-2 py-2"
             >
               <LogOut className="w-4 h-4" />
               العودة بحساب آخر

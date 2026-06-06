@@ -385,23 +385,21 @@ const Index = () => {
   };
 
   const handleRestart = () => {
-    if (completed) {
-      // Account is locked after completion — stay on the final result screen
-      setGameState("result");
-      return;
-    }
     setGameState("welcome");
     setShowAuth(false);
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    // Clear any local guest progress so the next user starts fresh
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("signOut failed", e);
+    }
     try {
       localStorage.removeItem(GUEST_STORAGE_KEY);
       localStorage.removeItem(LAST_PUZZLE_KEY);
     } catch {}
-    window.location.reload();
+    window.location.href = "/";
   };
 
   return (
