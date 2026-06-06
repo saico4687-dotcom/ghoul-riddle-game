@@ -394,6 +394,16 @@ const Index = () => {
     setShowAuth(false);
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    // Clear any local guest progress so the next user starts fresh
+    try {
+      localStorage.removeItem(GUEST_STORAGE_KEY);
+      localStorage.removeItem(LAST_PUZZLE_KEY);
+    } catch {}
+    window.location.reload();
+  };
+
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <UserHeader />
