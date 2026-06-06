@@ -471,6 +471,7 @@ const Index = () => {
             rank={{ title: "محقق ماهر 🔍", color: "text-blue-400" }}
             completed={completed}
             onRestart={handleRestart}
+            onLogout={handleLogout}
           />
         )}
       </AnimatePresence>
