@@ -239,6 +239,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
+      <UserHeader />
       <AnimatePresence mode="wait">
 
         {user && needsInfo && (
