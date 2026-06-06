@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import WelcomeScreen, { GameMode } from "@/components/WelcomeScreen";
 import EmailAuthScreen from "@/components/EmailAuthScreen";
@@ -161,24 +161,75 @@ const Index = () => {
     }
   };
 
-  // Persist last_puzzle_index to Supabase + localStorage
+  // Persist last_puzzle_index to Supabase + localStorage (debounced + dedup)
+  const lastSyncedIndexRef = useRef<number | null>(null);
+  const pendingIndexRef = useRef<number | null>(null);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inFlightRef = useRef(false);
+
+  const flushSync = useCallback(async () => {
+    if (!user) return;
+    if (inFlightRef.current) return;
+    const target = pendingIndexRef.current;
+    if (target === null || target === lastSyncedIndexRef.current) return;
+    inFlightRef.current = true;
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ last_puzzle_index: target, updated_at: new Date().toISOString() })
+        .eq("user_id", user.id);
+      if (!error) {
+        lastSyncedIndexRef.current = target;
+      } else {
+        console.error("Progress sync failed:", error);
+      }
+    } catch (e) {
+      console.error("Progress sync error:", e);
+    } finally {
+      inFlightRef.current = false;
+      // If more updates queued during request, schedule another flush
+      if (pendingIndexRef.current !== lastSyncedIndexRef.current) {
+        if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = setTimeout(() => void flushSync(), 600);
+      }
+    }
+  }, [user]);
+
   const persistLastPuzzleIndex = useCallback(
-    async (index: number) => {
+    (index: number) => {
+      // 1) Local fallback — instant
       try {
         localStorage.setItem(LAST_PUZZLE_KEY, String(index));
       } catch {}
       if (!user) return;
-      try {
-        await supabase
-          .from("profiles")
-          .update({ last_puzzle_index: index, updated_at: new Date().toISOString() })
-          .eq("user_id", user.id);
-      } catch (e) {
-        console.error("Failed to sync progress", e);
-      }
+      // 2) Debounced server sync
+      pendingIndexRef.current = index;
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = setTimeout(() => void flushSync(), 600);
     },
-    [user]
+    [user, flushSync]
   );
+
+  // Flush pending progress on tab hide / unload so we never lose a write
+  useEffect(() => {
+    const flush = () => {
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = null;
+      }
+      void flushSync();
+    };
+    const onVis = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [flushSync]);
+
 
   const handleStart = async (_mode: GameMode) => {
     // URL param takes priority for debugging/jump
