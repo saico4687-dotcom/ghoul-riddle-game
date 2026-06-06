@@ -102,22 +102,20 @@ const RiddleCard = ({
   };
 
   const handleTimeUp = () => {
-      if (!showResult && selectedOption === null) {
+    if (!showResult && selectedOption === null) {
       setShowResult(true);
       playSound("wrong");
       onAnswer(false, null);
-
-      if (gameMode === "competition") {
-        setTimeout(() => {
-          onNext();
-        }, 1500);
-      }
+      // Auto-advance after time up (all modes)
+      setTimeout(() => {
+        onNext();
+      }, 1800);
     }
   };
 
   const handleOptionClick = (index: number) => {
     if (showResult || !isTypingComplete) return;
-    
+
     setSelectedOption(index);
   };
 
@@ -128,13 +126,13 @@ const RiddleCard = ({
     setShowResult(true);
     playSound(isCorrect ? "correct" : "wrong");
     const elapsedMs = startTime !== null ? Date.now() - startTime : null;
-    // Pass elapsedMs to parent — parent (server) is the source of truth for scoring/persistence.
     onAnswer(isCorrect, selectedOption, undefined, elapsedMs);
 
-    if (gameMode === "competition" && !isCorrect) {
+    // Wrong answer → auto-advance. Correct answer → wait for user to press "اللغز التالي".
+    if (!isCorrect) {
       setTimeout(() => {
         onNext();
-      }, 1500);
+      }, 1800);
     }
   };
 
