@@ -1,10 +1,10 @@
 import { Capacitor } from "@capacitor/core";
 
-// Test IDs من Google (مؤقتة — نرجع للحقيقية بعد موافقة AdMob)
-export const ADMOB_APP_ID = "ca-app-pub-3940256099942544~3347511713";
-export const APP_OPEN_AD_ID = "ca-app-pub-3940256099942544/9257395921";
-export const INTERSTITIAL_AD_ID = "ca-app-pub-3940256099942544/1033173712";
-export const REWARDED_AD_ID = "ca-app-pub-3940256099942544/5224354917";
+// AdMob IDs الحقيقية لتطبيق "ربح"
+export const ADMOB_APP_ID = "ca-app-pub-4098736191122679~XXXXXXXXXX"; // TODO: استبدل بعد ما المستخدم يبعت App ID
+export const APP_OPEN_AD_ID = "ca-app-pub-4098736191122679/7200781863";
+export const INTERSTITIAL_AD_ID = "ca-app-pub-4098736191122679/7153504814";
+export const REWARDED_AD_ID = "ca-app-pub-4098736191122679/2165516995";
 
 const FIVE_HOURS = 5 * 60 * 60 * 1000;
 const LAST_APP_OPEN_KEY = "last_app_open_ad";
