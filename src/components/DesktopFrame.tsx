@@ -22,7 +22,7 @@ const DesktopFrame = ({ children }: { children: ReactNode }) => {
             </div>
             <div className="flex-1 mx-2 sm:mx-4">
               <div className="mx-auto max-w-md text-center text-[10px] sm:text-xs font-typewriter text-foreground/70 bg-black/50 border border-primary/20 rounded-md px-3 py-1 truncate">
-                rabh-alghoul://الألغاز-المرعبة
+                rabh-alghoul://الألغاز
               </div>
             </div>
             <span className="hidden sm:inline text-[10px] font-typewriter text-foreground/50">
