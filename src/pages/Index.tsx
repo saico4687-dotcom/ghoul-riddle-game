@@ -40,16 +40,6 @@ const saveGuestProgress = (p: GuestProgress) => {
   } catch {}
 };
 
-const readLocalPuzzleIndex = () => {
-  try {
-    const raw = localStorage.getItem(LAST_PUZZLE_KEY);
-    const parsed = Number.parseInt(raw || "", 10);
-    return Number.isNaN(parsed) ? null : parsed;
-  } catch {
-    return null;
-  }
-};
-
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>("welcome");
   const [showAuth, setShowAuth] = useState(false);
@@ -176,21 +166,14 @@ const Index = () => {
 
     const data = await ensureProfile();
 
-    const localIdx = readLocalPuzzleIndex();
-    const profileIdx = data?.last_puzzle_index ?? 0;
-    const resumeIdx = Math.max(
-      0,
-      Math.min(allRiddles.length - 1, Math.max(profileIdx, localIdx ?? 0))
-    );
-
     setScore(data?.saved_score ?? 0);
     setTotalPoints(data?.saved_total_points ?? 0);
     setTimeBonus(data?.saved_time_bonus ?? 0);
-    setCurrentRiddleIndex(resumeIdx);
+    setCurrentRiddleIndex(data?.last_puzzle_index ?? 0);
 
     setShowAuth(false);
     setGameState("playing");
-  }, [allRiddles.length, ensureProfile, user]);
+  }, [ensureProfile, user]);
 
   const startAsGuest = () => {
     const p = loadGuestProgress();
@@ -304,11 +287,8 @@ const Index = () => {
     if (!user) {
       // Restore guest progress from localStorage if exists
       const p = loadGuestProgress();
-      const localIdx = readLocalPuzzleIndex();
-      const idx = Math.max(
-        0,
-        Math.min(allRiddles.length - 1, Math.max(localIdx ?? 0, p?.currentRiddleIndex ?? 0))
-      );
+      const localIdx = parseInt(localStorage.getItem(LAST_PUZZLE_KEY) || "", 10);
+      const idx = !isNaN(localIdx) ? localIdx : p?.currentRiddleIndex ?? 0;
       if (p) {
         setScore(p.score);
         setTotalPoints(p.totalPoints);
