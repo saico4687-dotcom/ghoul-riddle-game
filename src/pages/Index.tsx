@@ -92,6 +92,23 @@ const Index = () => {
     })();
   }, [user, ensureProfile]);
 
+  // On mount: if ?puzzle=N in URL, jump directly to that puzzle
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get("puzzle");
+      if (!raw) return;
+      const n = parseInt(raw, 10);
+      if (isNaN(n)) return;
+      const idx = Math.max(0, Math.min(allRiddles.length - 1, n - 1));
+      setCurrentRiddleIndex(idx);
+      setGameState("playing");
+      setShowAuth(false);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
   const startFreshGame = () => {
     setCurrentRiddleIndex(0);
     setScore(0);
