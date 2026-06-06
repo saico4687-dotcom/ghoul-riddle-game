@@ -11,7 +11,7 @@
  *    و SHA-1 الخاص بمفتاح توقيع Google Play
  */
 export const GOOGLE_WEB_CLIENT_ID =
-  "REPLACE_WITH_YOUR_WEB_CLIENT_ID.apps.googleusercontent.com";
+  "65418662258-ma4162j21g4baqnospdcja169fv4h70m.apps.googleusercontent.com";
 
 export const isGoogleConfigured = () =>
   GOOGLE_WEB_CLIENT_ID.startsWith("REPLACE_") === false &&
