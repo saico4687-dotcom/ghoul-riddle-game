@@ -376,6 +376,14 @@ const Index = () => {
       const nextIdx = currentRiddleIndex + 1;
       setCurrentRiddleIndex(nextIdx);
       void persistLastPuzzleIndex(nextIdx);
+      if (!user) {
+        saveGuestProgress({
+          currentRiddleIndex: nextIdx,
+          score,
+          totalPoints,
+          timeBonus,
+        });
+      }
     } else {
       // Finished the last riddle (e.g. #400) → lock account and show final result
       setCompleted(true);
@@ -384,10 +392,26 @@ const Index = () => {
     }
   };
 
+  const handleExitToHome = () => {
+    // Persist current position so the user resumes here next time
+    void persistLastPuzzleIndex(currentRiddleIndex);
+    if (!user) {
+      saveGuestProgress({
+        currentRiddleIndex,
+        score,
+        totalPoints,
+        timeBonus,
+      });
+    }
+    setGameState("welcome");
+    setShowAuth(false);
+  };
+
   const handleRestart = () => {
     setGameState("welcome");
     setShowAuth(false);
   };
+
 
   const handleLogout = async () => {
     try {
