@@ -55,6 +55,8 @@ const Index = () => {
   const [totalPoints, setTotalPoints] = useState(0);
   const [timeBonus, setTimeBonus] = useState(0);
   const [answeredCount, setAnsweredCount] = useState(0);
+  const [completed, setCompleted] = useState(false);
+  const totalTimeMsRef = useRef(0);
 
   const { user } = useAuth();
 
@@ -65,7 +67,7 @@ const Index = () => {
 
     const { data } = await supabase
       .from("profiles")
-      .select("last_puzzle_index,saved_score,saved_total_points,saved_time_bonus,full_name,phone,address")
+      .select("last_puzzle_index,saved_score,saved_total_points,saved_time_bonus,full_name,phone,address,completed,total_time_ms")
       .eq("user_id", user.id)
       .maybeSingle();
 
