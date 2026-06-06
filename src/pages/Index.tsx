@@ -60,11 +60,6 @@ const Index = () => {
 
   const { user } = useAuth();
 
-  useEffect(() => {
-    if (!user) return;
-    setShowAuth(false);
-  }, [user]);
-
   const allRiddles = useMemo(() => riddles.slice(0, 400), []);
 
   const ensureProfile = useCallback(async () => {

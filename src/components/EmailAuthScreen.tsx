@@ -15,37 +15,6 @@ interface EmailAuthScreenProps {
   onBack: () => void;
 }
 
-const isStandaloneWebApp = () => {
-  try {
-    return (
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-    );
-  } catch {
-    return false;
-  }
-};
-
-const isMobileWeb = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-const isPreviewAuthContext = () => {
-  try {
-    const inIframe = window.self !== window.top;
-    const host = window.location.hostname;
-    return inIframe || host.includes("lovableproject.com") || host.includes("id-preview--");
-  } catch {
-    return true;
-  }
-};
-
-const getGoogleRedirectUri = () => {
-  const origin = window.location.origin;
-  if (isStandaloneWebApp() || isMobileWeb()) {
-    return origin;
-  }
-  return `${origin}/auth/callback`;
-};
-
 const EmailAuthScreen = ({ onBack }: EmailAuthScreenProps) => {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
@@ -107,30 +76,14 @@ const EmailAuthScreen = ({ onBack }: EmailAuthScreenProps) => {
         return;
       }
 
-      if (isPreviewAuthContext()) {
-        toast({
-          title: "Google لا يكتمل داخل المعاينة",
-          description: "افتح التطبيق من الرابط المنشور أو من تبويب جديد ثم جرّب مرة أخرى",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
       // Web → Lovable Managed OAuth
-      // في Android PWA/WebAPK نستخدم redirect للجذر بدل callback فرعي
-      // لأن بعض المتصفحات/الـ WebAPK لا تُكمل popup/callback الفرعي بشكل ثابت.
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: getGoogleRedirectUri(),
-        extraParams: isMobileWeb() ? { prompt: "select_account" } : undefined,
+        redirect_uri: `${window.location.origin}/auth/callback`,
       });
-      if (result?.redirected) {
-        return;
-      }
       if (result?.error) {
         toast({
           title: "تعذّر تسجيل دخول Google",
-          description: result.error.message || String(result.error),
+          description: String(result.error),
           variant: "destructive",
         });
         setLoading(false);
