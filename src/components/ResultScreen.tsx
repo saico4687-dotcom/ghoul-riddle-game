@@ -22,6 +22,7 @@ const ResultScreen = ({
   rank,
   completed = false,
   onRestart,
+  onLogout,
 }: ResultScreenProps) => {
   const percentage = totalQuestions ? (score / totalQuestions) * 100 : 0;
   const pointsPercentage = maxPoints ? (totalPoints / maxPoints) * 100 : 0;
