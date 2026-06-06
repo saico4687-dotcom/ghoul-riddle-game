@@ -22,8 +22,10 @@ interface RiddleCardProps {
     elapsedMs?: number | null,
   ) => void;
   onNext: () => void;
+  onExitToHome?: () => void;
   gameMode: "fun" | "competition";
 }
+
 
 const RiddleCard = ({
   riddle,
