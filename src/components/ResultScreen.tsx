@@ -157,7 +157,21 @@ const ResultScreen = ({
           )}
         </motion.div>
 
-        {!completed && <HorrorButton onClick={onRestart}>العودة للقائمة الرئيسية</HorrorButton>}
+        <div className="flex flex-col gap-3">
+          <HorrorButton onClick={onRestart}>
+            <Home className="w-5 h-5 ml-2 inline" />
+            العودة للقائمة الرئيسية
+          </HorrorButton>
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="font-typewriter text-sm text-primary/80 hover:text-primary underline-offset-4 hover:underline inline-flex items-center justify-center gap-2 py-2"
+            >
+              <LogOut className="w-4 h-4" />
+              العودة بحساب آخر
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
