@@ -85,6 +85,7 @@ export const showInterstitial = async () => {
 };
 
 export const showRewarded = async (): Promise<boolean> => {
+  // على الويب: امنح المكافأة مباشرة
   if (!Capacitor.isNativePlatform()) return true;
 
   try {
@@ -101,14 +102,23 @@ export const showRewarded = async (): Promise<boolean> => {
       }
     );
 
-    await AdMob.prepareRewardVideoAd({ adId: REWARDED_AD_ID });
-    await AdMob.showRewardVideoAd();
+    try {
+      await AdMob.prepareRewardVideoAd({ adId: REWARDED_AD_ID });
+      await AdMob.showRewardVideoAd();
+    } catch (innerErr) {
+      console.warn("[AdMob] rewarded prepare/show failed, granting reward anyway", innerErr);
+      listener.remove();
+      // الإعلان فشل (No fill / الحساب لسه قيد المراجعة) — امنح الأداة عشان المستخدم ميتعطلش
+      return true;
+    }
 
     listener.remove();
 
-    return earned;
+    // لو شغّال لكن المستخدم قفله قبل ما يخلص — امنحه برضه (تجربة أحسن)
+    return earned || true;
   } catch (e) {
     console.warn("[AdMob] rewarded failed", e);
-    return false;
+    // Fallback: امنح المكافأة عشان الأزرار تشتغل دايماً
+    return true;
   }
 };
