@@ -9,6 +9,7 @@ interface ResultScreenProps {
   maxPoints: number;
   timeBonus: number;
   rank: { title: string; color: string };
+  completed?: boolean;
   onRestart: () => void;
 }
 
@@ -18,6 +19,7 @@ const ResultScreen = ({
   totalPoints,
   maxPoints,
   rank,
+  completed = false,
   onRestart,
 }: ResultScreenProps) => {
   const percentage = totalQuestions ? (score / totalQuestions) * 100 : 0;
