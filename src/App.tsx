@@ -15,6 +15,7 @@ import DeleteAccount from "./pages/DeleteAccount";
 import OAuthCallback from "./pages/OAuthCallback";
 import SplashScreen from "./components/SplashScreen";
 import AdsConsentDialog from "./components/AdsConsentDialog";
+import DesktopFrame from "./components/DesktopFrame";
 
 import { initAdMob, showAppOpenAdIfDue } from "./lib/ads";
 import { isNativePlatform } from "./lib/isNative";
