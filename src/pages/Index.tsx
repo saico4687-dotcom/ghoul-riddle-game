@@ -304,7 +304,9 @@ const Index = () => {
 
   const handleAnswer = async (
     isCorrect: boolean,
-    selectedIndex: number | null
+    selectedIndex: number | null,
+    _remainingTime?: number,
+    elapsedMs?: number | null,
   ) => {
     const newAnswered = answeredCount + 1;
 
@@ -313,6 +315,24 @@ const Index = () => {
       setAnsweredCount(0);
     } else {
       setAnsweredCount(newAnswered);
+    }
+
+    // Accumulate total time for ranking (default to full timer if missing)
+    const addMs = typeof elapsedMs === "number" && elapsedMs > 0 ? elapsedMs : 60000;
+    totalTimeMsRef.current += addMs;
+
+    // Persist per-answer timing for the authenticated user (used to pick winners)
+    if (user) {
+      try {
+        await supabase.from("answer_times").insert({
+          user_id: user.id,
+          riddle_index: currentRiddleIndex,
+          elapsed_ms: addMs,
+          game_mode: "fun",
+        });
+      } catch (e) {
+        console.error("answer_times insert failed", e);
+      }
     }
 
     if (!user) {
@@ -333,17 +353,43 @@ const Index = () => {
     }
   };
 
+  const markCompletedOnServer = useCallback(async () => {
+    if (!user) return;
+    try {
+      await supabase
+        .from("profiles")
+        .update({
+          completed: true,
+          completed_at: new Date().toISOString(),
+          total_time_ms: totalTimeMsRef.current,
+          last_puzzle_index: allRiddles.length - 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", user.id);
+    } catch (e) {
+      console.error("mark completed failed", e);
+    }
+  }, [user, allRiddles.length]);
+
   const handleNext = () => {
     if (currentRiddleIndex < allRiddles.length - 1) {
       const nextIdx = currentRiddleIndex + 1;
       setCurrentRiddleIndex(nextIdx);
       void persistLastPuzzleIndex(nextIdx);
     } else {
+      // Finished the last riddle (e.g. #400) → lock account and show final result
+      setCompleted(true);
+      void markCompletedOnServer();
       setGameState("result");
     }
   };
 
   const handleRestart = () => {
+    if (completed) {
+      // Account is locked after completion — stay on the final result screen
+      setGameState("result");
+      return;
+    }
     setGameState("welcome");
     setShowAuth(false);
   };
