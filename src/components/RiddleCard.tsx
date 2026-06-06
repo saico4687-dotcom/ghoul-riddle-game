@@ -329,6 +329,20 @@ const RiddleCard = ({
           </HorrorButton>
         )}
       </div>
+
+      {/* Return to main menu */}
+      {onExitToHome && (
+        <div className="flex justify-center mt-6 mb-8">
+          <button
+            type="button"
+            onClick={onExitToHome}
+            className="px-5 py-2 rounded-lg border border-primary/40 bg-secondary/60 text-primary font-typewriter text-sm hover:bg-accent transition-colors"
+          >
+            🏠 العودة إلى القائمة الرئيسية
+          </button>
+        </div>
+      )}
+
     </div>
   );
 };
