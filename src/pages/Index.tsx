@@ -478,10 +478,12 @@ const Index = () => {
               totalRiddles={allRiddles.length}
               onAnswer={handleAnswer}
               onNext={handleNext}
+              onExitToHome={handleExitToHome}
               gameMode="fun"
             />
           </motion.div>
         )}
+
 
         {gameState === "result" && (
           <ResultScreen
