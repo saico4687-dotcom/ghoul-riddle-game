@@ -33,8 +33,10 @@ const RiddleCard = ({
   totalRiddles,
   onAnswer,
   onNext,
+  onExitToHome,
   gameMode,
 }: RiddleCardProps) => {
+
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [isTypingComplete, setIsTypingComplete] = useState(false);
