@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import HorrorButton from "./HorrorButton";
-import { Brain, Trophy, Sparkles, Star, Calendar, Hourglass } from "lucide-react";
+import { Brain, Trophy, Sparkles, Star, Calendar, Hourglass, LogOut, Home } from "lucide-react";
 
 interface ResultScreenProps {
   score: number;
