@@ -138,12 +138,24 @@ const ResultScreen = ({
           transition={{ delay: 1 }}
           className="card-horror p-4 mb-6 border-primary/40"
         >
-          <p className="font-typewriter text-sm text-foreground leading-relaxed">
-            ✅ أكملت مجموعة الألغاز الحالية على هذا الحساب.
-          </p>
+          {completed ? (
+            <>
+              <p className="font-horror text-2xl text-primary mb-3 text-center">
+                🏆 تم إكمال جميع الألغاز بنجاح
+              </p>
+              <p className="font-typewriter text-sm text-foreground leading-relaxed text-center">
+                الفائزون يتم اختيارهم بناءً على أسرع إجابة صحيحة، ويتم إعلان
+                الفائزين والتواصل معهم أسبوعياً.
+              </p>
+            </>
+          ) : (
+            <p className="font-typewriter text-sm text-foreground leading-relaxed">
+              ✅ أكملت مجموعة الألغاز الحالية على هذا الحساب.
+            </p>
+          )}
         </motion.div>
 
-        <HorrorButton onClick={onRestart}>العودة للقائمة الرئيسية</HorrorButton>
+        {!completed && <HorrorButton onClick={onRestart}>العودة للقائمة الرئيسية</HorrorButton>}
       </div>
     </div>
   );
