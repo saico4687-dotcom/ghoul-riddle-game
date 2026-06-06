@@ -183,7 +183,22 @@ const Index = () => {
     <div className="min-h-screen bg-background" dir="rtl">
       <AnimatePresence mode="wait">
 
-        {showAuth && (
+        {user && needsInfo && (
+          <motion.div
+            key="info"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <ParticipantInfoForm
+              userId={user.id}
+              defaults={profileDefaults}
+              onSaved={() => setNeedsInfo(false)}
+            />
+          </motion.div>
+        )}
+
+        {!needsInfo && showAuth && (
           <motion.div
             key="auth"
             initial={{ opacity: 0 }}
