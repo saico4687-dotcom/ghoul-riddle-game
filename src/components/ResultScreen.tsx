@@ -11,6 +11,7 @@ interface ResultScreenProps {
   rank: { title: string; color: string };
   completed?: boolean;
   onRestart: () => void;
+  onLogout?: () => void;
 }
 
 const ResultScreen = ({
