@@ -33,16 +33,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Deep Link (Google OAuth callback) -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="com.rebh.app"
-                    android:host="oauth"
-                    android:pathPrefix="/callback" />
-            </intent-filter>
+            <!-- Native Google Sign-In يتعامل مع callback داخلياً، لا يحتاج deep link -->
 
         </activity>
 

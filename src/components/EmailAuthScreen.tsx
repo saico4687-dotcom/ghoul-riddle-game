@@ -66,23 +66,34 @@ const EmailAuthScreen = ({ onBack }: EmailAuthScreenProps) => {
   const handleGoogle = async () => {
     setLoading(true);
     try {
-      // Wipe any stale/broken session before launching Google OAuth
+      // امسح أي جلسة قديمة قبل البدء
       await clearStaleAuth();
 
+      // Android / iOS → Native Google Sign-In
       if (isNativePlatform()) {
         await startNativeGoogleSignIn();
+        setLoading(false);
         return;
       }
 
+      // Web → Lovable Managed OAuth
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: `${window.location.origin}/auth/callback`,
       });
-      if (result.error) {
-        toast({ title: "تعذّر تسجيل دخول Google", description: String(result.error), variant: "destructive" });
+      if (result?.error) {
+        toast({
+          title: "تعذّر تسجيل دخول Google",
+          description: String(result.error),
+          variant: "destructive",
+        });
         setLoading(false);
       }
     } catch (err: any) {
-      toast({ title: "خطأ", description: err?.message, variant: "destructive" });
+      toast({
+        title: "خطأ غير متوقع",
+        description: err?.message || String(err),
+        variant: "destructive",
+      });
       setLoading(false);
     }
   };

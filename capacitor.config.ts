@@ -14,6 +14,9 @@ const config: CapacitorConfig = {
     AdMob: {
       appId: 'ca-app-pub-4098736191122679~4275235624',
     },
+    SocialLogin: {
+      // قيم runtime تأتي من src/lib/nativeGoogleAuth.ts عبر initialize()
+    },
   },
 };
 
