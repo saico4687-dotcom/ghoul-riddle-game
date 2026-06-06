@@ -5,10 +5,13 @@ import EmailAuthScreen from "@/components/EmailAuthScreen";
 import ParticipantInfoForm from "@/components/ParticipantInfoForm";
 import RiddleCard from "@/components/RiddleCard";
 import ResultScreen from "@/components/ResultScreen";
+import UserHeader from "@/components/UserHeader";
 import { riddles } from "@/data/riddles";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { showInterstitial } from "@/lib/ads";
+
+const LAST_PUZZLE_KEY = "rabh_last_puzzle_index_v1";
 
 type GameState = "welcome" | "playing" | "result";
 
@@ -89,6 +92,23 @@ const Index = () => {
     })();
   }, [user, ensureProfile]);
 
+  // On mount: if ?puzzle=N in URL, jump directly to that puzzle
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get("puzzle");
+      if (!raw) return;
+      const n = parseInt(raw, 10);
+      if (isNaN(n)) return;
+      const idx = Math.max(0, Math.min(allRiddles.length - 1, n - 1));
+      setCurrentRiddleIndex(idx);
+      setGameState("playing");
+      setShowAuth(false);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
   const startFreshGame = () => {
     setCurrentRiddleIndex(0);
     setScore(0);
@@ -126,8 +146,61 @@ const Index = () => {
     setGameState("playing");
   };
 
+  // Read ?puzzle=N from URL (1-based for users)
+  const getPuzzleParam = (): number | null => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get("puzzle");
+      if (!raw) return null;
+      const n = parseInt(raw, 10);
+      if (isNaN(n)) return null;
+      const idx = Math.max(0, Math.min(allRiddles.length - 1, n - 1));
+      return idx;
+    } catch {
+      return null;
+    }
+  };
+
+  // Persist last_puzzle_index to Supabase + localStorage
+  const persistLastPuzzleIndex = useCallback(
+    async (index: number) => {
+      try {
+        localStorage.setItem(LAST_PUZZLE_KEY, String(index));
+      } catch {}
+      if (!user) return;
+      try {
+        await supabase
+          .from("profiles")
+          .update({ last_puzzle_index: index, updated_at: new Date().toISOString() })
+          .eq("user_id", user.id);
+      } catch (e) {
+        console.error("Failed to sync progress", e);
+      }
+    },
+    [user]
+  );
+
   const handleStart = async (_mode: GameMode) => {
+    // URL param takes priority for debugging/jump
+    const urlIdx = getPuzzleParam();
+    if (urlIdx !== null) {
+      setCurrentRiddleIndex(urlIdx);
+      setShowAuth(false);
+      setGameState("playing");
+      return;
+    }
+
     if (!user) {
+      // Restore guest progress from localStorage if exists
+      const p = loadGuestProgress();
+      const localIdx = parseInt(localStorage.getItem(LAST_PUZZLE_KEY) || "", 10);
+      const idx = !isNaN(localIdx) ? localIdx : p?.currentRiddleIndex ?? 0;
+      if (p) {
+        setScore(p.score);
+        setTotalPoints(p.totalPoints);
+        setTimeBonus(p.timeBonus);
+      }
+      setCurrentRiddleIndex(idx);
       setShowAuth(true);
       return;
     }
@@ -168,7 +241,9 @@ const Index = () => {
 
   const handleNext = () => {
     if (currentRiddleIndex < allRiddles.length - 1) {
-      setCurrentRiddleIndex(currentRiddleIndex + 1);
+      const nextIdx = currentRiddleIndex + 1;
+      setCurrentRiddleIndex(nextIdx);
+      void persistLastPuzzleIndex(nextIdx);
     } else {
       setGameState("result");
     }
@@ -181,6 +256,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
+      <UserHeader />
       <AnimatePresence mode="wait">
 
         {user && needsInfo && (
