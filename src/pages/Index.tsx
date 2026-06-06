@@ -1,7 +1,8 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import WelcomeScreen, { GameMode } from "@/components/WelcomeScreen";
 import EmailAuthScreen from "@/components/EmailAuthScreen";
+import ParticipantInfoForm from "@/components/ParticipantInfoForm";
 import RiddleCard from "@/components/RiddleCard";
 import ResultScreen from "@/components/ResultScreen";
 import { riddles } from "@/data/riddles";
