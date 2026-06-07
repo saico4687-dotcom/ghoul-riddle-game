@@ -19,10 +19,10 @@ export const lovable = {
       opts?: SignInOptions
     ) => {
       try {
-        // 🔥 مهم: نضمن redirect صحيح دائمًا
-        const redirectUri =
-          opts?.redirect_uri ||
-          `${window.location.origin}/auth/callback`;
+        // ✅ المهم: Lovable Managed OAuth بيتعامل مع الـ redirect لوحده
+        // عبر /~oauth/callback. الافتراضى window.location.origin هو الصح.
+        // متبعتش /auth/callback لإن ده بيكسر الـ broker.
+        const redirectUri = opts?.redirect_uri || window.location.origin;
 
         const result = await lovableAuth.signInWithOAuth(provider, {
           redirect_uri: redirectUri,
@@ -36,12 +36,10 @@ export const lovable = {
           return { error: result.error };
         }
 
-        // لو فيه redirect طبيعي من المزود
         if (result?.redirected) {
           return result;
         }
 
-        // 🔥 حفظ session بشكل آمن
         if (result?.tokens) {
           await supabase.auth.setSession(result.tokens);
         }
