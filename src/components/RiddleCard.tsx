@@ -143,19 +143,15 @@ const RiddleCard = ({
   return (
     <div
       className="w-full max-w-4xl mx-auto px-4 relative"
-      style={
-        gameMode === "competition"
-          ? {
-              backgroundImage: `linear-gradient(rgba(0,0,0,0.78), rgba(0,0,0,0.85)), url(${moneyBg})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              backgroundAttachment: "fixed",
-              backgroundRepeat: "no-repeat",
-              borderRadius: "1rem",
-              padding: "1.5rem",
-            }
-          : undefined
-      }
+      style={{
+        backgroundImage: `linear-gradient(rgba(0,0,0,0.78), rgba(0,0,0,0.85)), url(${moneyBg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
+        backgroundRepeat: "no-repeat",
+        borderRadius: "1rem",
+        padding: "1.5rem",
+      }}
     >
       {/* Header with Clock */}
       <motion.div
