@@ -2,7 +2,6 @@
 
 import { createLovableAuth } from "@lovable.dev/cloud-auth-js";
 import { supabase } from "../supabase/client";
-
 const lovableAuth = createLovableAuth();
 
 type SignInOptions = {
@@ -10,47 +9,30 @@ type SignInOptions = {
   extraParams?: Record<string, string>;
 };
 
-type SupportedOAuthProvider = "google" | "apple" | "microsoft";
-
 export const lovable = {
   auth: {
-    signInWithOAuth: async (
-      provider: SupportedOAuthProvider,
-      opts?: SignInOptions
-    ) => {
-      try {
-        // ✅ المهم: Lovable Managed OAuth بيتعامل مع الـ redirect لوحده
-        // عبر /~oauth/callback. الافتراضى window.location.origin هو الصح.
-        // متبعتش /auth/callback لإن ده بيكسر الـ broker.
-        const redirectUri = opts?.redirect_uri || window.location.origin;
+    signInWithOAuth: async (provider: "google" | "apple" | "microsoft" | "lovable", opts?: SignInOptions) => {
+      const result = await lovableAuth.signInWithOAuth(provider, {
+        redirect_uri: opts?.redirect_uri,
+        extraParams: {
+          ...opts?.extraParams,
+        },
+      });
 
-        const result = await lovableAuth.signInWithOAuth(provider, {
-          redirect_uri: redirectUri,
-          extraParams: {
-            ...opts?.extraParams,
-          },
-        });
-
-        if (result?.error) {
-          console.error("OAuth Error:", result.error);
-          return { error: result.error };
-        }
-
-        if (result?.redirected) {
-          return result;
-        }
-
-        if (result?.tokens) {
-          await supabase.auth.setSession(result.tokens);
-        }
-
+      if (result.redirected) {
         return result;
-      } catch (e) {
-        console.error("OAuth Exception:", e);
-        return {
-          error: e instanceof Error ? e : new Error(String(e)),
-        };
       }
+
+      if (result.error) {
+        return result;
+      }
+
+      try {
+        await supabase.auth.setSession(result.tokens);
+      } catch (e) {
+        return { error: e instanceof Error ? e : new Error(String(e)) };
+      }
+      return result;
     },
   },
 };
