@@ -4,6 +4,9 @@ import { ArrowRight, Loader2, RefreshCw, Trophy, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AdminModeration from "@/components/AdminModeration";
+
 
 interface Score {
   id: string;
@@ -153,92 +156,105 @@ const Admin = () => {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-8">
-        {/* Weekly Fastest Answers */}
-        <section className="bg-card/60 border border-primary/30 rounded-xl p-4 backdrop-blur-sm">
-          <h2 className="font-horror text-xl text-blood mb-3 flex items-center gap-2">
-            <Zap className="w-5 h-5" />
-            أسرع إجابات صحيحة هذا الأسبوع
-          </h2>
-          {weeklyFastest.length === 0 ? (
-            <p className="text-sm text-muted-foreground font-typewriter">
-              لا توجد إجابات مسجّلة هذا الأسبوع بعد.
+        <Tabs defaultValue="scores">
+          <TabsList className="grid grid-cols-2 w-full max-w-md">
+            <TabsTrigger value="scores">النتائج</TabsTrigger>
+            <TabsTrigger value="moderation">الإشراف على الدردشة</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="moderation" className="mt-6">
+            <AdminModeration adminId={user!.id} />
+          </TabsContent>
+
+          <TabsContent value="scores" className="mt-6 space-y-8">
+            <section className="bg-card/60 border border-primary/30 rounded-xl p-4 backdrop-blur-sm">
+              <h2 className="font-horror text-xl text-blood mb-3 flex items-center gap-2">
+                <Zap className="w-5 h-5" />
+                أسرع إجابات صحيحة هذا الأسبوع
+              </h2>
+              {weeklyFastest.length === 0 ? (
+                <p className="text-sm text-muted-foreground font-typewriter">
+                  لا توجد إجابات مسجّلة هذا الأسبوع بعد.
+                </p>
+              ) : (
+                <ol className="space-y-2">
+                  {weeklyFastest.map((a, i) => (
+                    <li
+                      key={a.id}
+                      className="flex items-center justify-between gap-3 bg-background/40 rounded-lg px-3 py-2 text-sm font-typewriter"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="font-horror text-blood text-lg w-6 shrink-0">
+                          {i === 0 ? <Trophy className="w-5 h-5 inline" /> : `#${i + 1}`}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-foreground truncate">
+                            {a.full_name || "مستخدم"}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {a.email || "—"} · لغز #{a.riddle_index}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-blood font-bold whitespace-nowrap">
+                        {(a.elapsed_ms / 1000).toFixed(2)} ث
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </section>
+
+            <p className="font-typewriter text-muted-foreground text-sm">
+              إجمالي المشاركين: {scores.length}
             </p>
-          ) : (
-            <ol className="space-y-2">
-              {weeklyFastest.map((a, i) => (
-                <li
-                  key={a.id}
-                  className="flex items-center justify-between gap-3 bg-background/40 rounded-lg px-3 py-2 text-sm font-typewriter"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="font-horror text-blood text-lg w-6 shrink-0">
-                      {i === 0 ? <Trophy className="w-5 h-5 inline" /> : `#${i + 1}`}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-foreground truncate">
-                        {a.full_name || "مستخدم"}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {a.email || "—"} · لغز #{a.riddle_index}
-                      </p>
+
+            {loading ? (
+              <div className="flex justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : scores.length === 0 ? (
+              <p className="text-center text-muted-foreground font-typewriter py-20">
+                لا توجد نتائج بعد.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {scores.map((s, idx) => (
+                  <div
+                    key={s.id}
+                    className="bg-card/60 border border-border/40 rounded-xl p-4 backdrop-blur-sm"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                      <div>
+                        <h3 className="font-horror text-lg text-foreground">
+                          #{idx + 1} — {s.full_name || "مستخدم"}
+                        </h3>
+                        <p className="text-xs text-muted-foreground font-typewriter mt-1">
+                          {s.email || "—"} · {s.phone || "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm font-typewriter">
+                      <Field label="النقاط" value={s.total_points} highlight />
+                      <Field label="إجابات صحيحة" value={`${s.total_correct}/${s.total_questions}`} />
+                      <Field label="السرعة (مالك فقط)" value={s.time_bonus} highlight />
+                      <Field
+                        label="تاريخ التسجيل"
+                        value={new Date(s.created_at).toLocaleString("ar-EG")}
+                      />
                     </div>
                   </div>
-                  <span className="text-blood font-bold whitespace-nowrap">
-                    {(a.elapsed_ms / 1000).toFixed(2)} ث
-                  </span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
-
-        <p className="font-typewriter text-muted-foreground text-sm">
-          إجمالي المشاركين: {scores.length}
-        </p>
-
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        ) : scores.length === 0 ? (
-          <p className="text-center text-muted-foreground font-typewriter py-20">
-            لا توجد نتائج بعد.
-          </p>
-        ) : (
-          <div className="space-y-4">
-            {scores.map((s, idx) => (
-              <div
-                key={s.id}
-                className="bg-card/60 border border-border/40 rounded-xl p-4 backdrop-blur-sm"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-                  <div>
-                    <h3 className="font-horror text-lg text-foreground">
-                      #{idx + 1} — {s.full_name || "مستخدم"}
-                    </h3>
-                    <p className="text-xs text-muted-foreground font-typewriter mt-1">
-                      {s.email || "—"} · {s.phone || "—"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm font-typewriter">
-                  <Field label="النقاط" value={s.total_points} highlight />
-                  <Field label="إجابات صحيحة" value={`${s.total_correct}/${s.total_questions}`} />
-                  <Field label="السرعة (مالك فقط)" value={s.time_bonus} highlight />
-                  <Field
-                    label="تاريخ التسجيل"
-                    value={new Date(s.created_at).toLocaleString("ar-EG")}
-                  />
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )}
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
 };
+
 
 const Field = ({
   label,

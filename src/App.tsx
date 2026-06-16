@@ -16,6 +16,22 @@ import OAuthCallback from "./pages/OAuthCallback";
 import SplashScreen from "./components/SplashScreen";
 import AdsConsentDialog from "./components/AdsConsentDialog";
 import DesktopFrame from "./components/DesktopFrame";
+import RequireCompletion from "./components/RequireCompletion";
+
+// Chat pages
+import ChatLayout from "./pages/chat/ChatLayout";
+import ChatHome from "./pages/chat/ChatHome";
+import ChatSearch from "./pages/chat/ChatSearch";
+import ChatProfile from "./pages/chat/ChatProfile";
+import ChatConversation from "./pages/chat/ChatConversation";
+import ChatFriends from "./pages/chat/ChatFriends";
+import ChatNotifications from "./pages/chat/ChatNotifications";
+import ChatSettings from "./pages/chat/ChatSettings";
+import ChatSafety from "./pages/chat/ChatSafety";
+import ChatGuidelines from "./pages/chat/ChatGuidelines";
+import ChatPrivacy from "./pages/chat/ChatPrivacy";
+import UsernameSetup from "./pages/chat/UsernameSetup";
+
 
 import { initAdMob, showAppOpenAdIfDue } from "./lib/ads";
 import { isNativePlatform } from "./lib/isNative";
@@ -72,6 +88,21 @@ const App = () => {
               <Route path="/admin" element={<Admin />} />
               <Route path="/delete-account" element={<DeleteAccount />} />
 
+              {/* Chat — gated behind 400-riddles completion */}
+              <Route path="/chat/setup" element={<UsernameSetup />} />
+              <Route path="/chat" element={<RequireCompletion><ChatLayout /></RequireCompletion>}>
+                <Route index element={<ChatHome />} />
+                <Route path="search" element={<ChatSearch />} />
+                <Route path="friends" element={<ChatFriends />} />
+                <Route path="notifications" element={<ChatNotifications />} />
+                <Route path="settings" element={<ChatSettings />} />
+                <Route path="safety" element={<ChatSafety />} />
+                <Route path="guidelines" element={<ChatGuidelines />} />
+                <Route path="privacy" element={<ChatPrivacy />} />
+                <Route path="u/:username" element={<ChatProfile />} />
+                <Route path="c/:id" element={<ChatConversation />} />
+              </Route>
+
               {/* OAuth callbacks */}
               <Route path="/auth/callback" element={<OAuthCallback />} />
               <Route path="/~oauth/callback" element={<OAuthCallback />} />
@@ -79,6 +110,7 @@ const App = () => {
 
               {/* بدل 404 — رجّع للصفحة الرئيسية */}
               <Route path="*" element={<Index />} />
+
             </Routes>
           </DesktopFrame>
         </BrowserRouter>

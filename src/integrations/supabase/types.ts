@@ -41,6 +41,24 @@ export type Database = {
         }
         Relationships: []
       }
+      blocked_users: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       competition_scores: {
         Row: {
           created_at: string
@@ -86,63 +104,280 @@ export type Database = {
         }
         Relationships: []
       }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string | null
+          last_message_preview: string | null
+          user_a: string
+          user_b: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          user_a: string
+          user_b: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          user_a?: string
+          user_b?: string
+        }
+        Relationships: []
+      }
+      friend_requests: {
+        Row: {
+          created_at: string
+          from_user: string
+          id: string
+          responded_at: string | null
+          status: string
+          to_user: string
+        }
+        Insert: {
+          created_at?: string
+          from_user: string
+          id?: string
+          responded_at?: string | null
+          status?: string
+          to_user: string
+        }
+        Update: {
+          created_at?: string
+          from_user?: string
+          id?: string
+          responded_at?: string | null
+          status?: string
+          to_user?: string
+        }
+        Relationships: []
+      }
+      friends: {
+        Row: {
+          created_at: string
+          friend_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          friend_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          friend_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          body: string
+          conversation_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          read_at: string | null
+          sender_id: string
+        }
+        Insert: {
+          body: string
+          conversation_id: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          read_at?: string | null
+          sender_id: string
+        }
+        Update: {
+          body?: string
+          conversation_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          read_at?: string | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moderation_actions: {
+        Row: {
+          action: string
+          admin_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          target_user_id: string
+          until: string | null
+        }
+        Insert: {
+          action: string
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          target_user_id: string
+          until?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          target_user_id?: string
+          until?: string | null
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          payload: Json
+          read_at: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address: string | null
+          avatar_url: string | null
           completed: boolean
           completed_at: string | null
           created_at: string
           email: string | null
           full_name: string | null
           id: string
+          is_muted_until: string | null
+          is_suspended_until: string | null
           last_puzzle_index: number
+          last_seen_at: string | null
           name: string | null
           phone: string | null
           profile_image: string | null
+          riddles_completed_count: number
           saved_score: number
           saved_time_bonus: number
           saved_total_points: number
           total_time_ms: number
           updated_at: string
           user_id: string
+          username: string | null
         }
         Insert: {
           address?: string | null
+          avatar_url?: string | null
           completed?: boolean
           completed_at?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
           id?: string
+          is_muted_until?: string | null
+          is_suspended_until?: string | null
           last_puzzle_index?: number
+          last_seen_at?: string | null
           name?: string | null
           phone?: string | null
           profile_image?: string | null
+          riddles_completed_count?: number
           saved_score?: number
           saved_time_bonus?: number
           saved_total_points?: number
           total_time_ms?: number
           updated_at?: string
           user_id: string
+          username?: string | null
         }
         Update: {
           address?: string | null
+          avatar_url?: string | null
           completed?: boolean
           completed_at?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
           id?: string
+          is_muted_until?: string | null
+          is_suspended_until?: string | null
           last_puzzle_index?: number
+          last_seen_at?: string | null
           name?: string | null
           phone?: string | null
           profile_image?: string | null
+          riddles_completed_count?: number
           saved_score?: number
           saved_time_bonus?: number
           saved_total_points?: number
           total_time_ms?: number
           updated_at?: string
           user_id?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -172,6 +407,44 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      reports: {
+        Row: {
+          created_at: string
+          id: string
+          reason: string
+          reporter_id: string
+          status: string
+          target_message_id: string | null
+          target_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reason: string
+          reporter_id: string
+          status?: string
+          target_message_id?: string | null
+          target_user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reason?: string
+          reporter_id?: string
+          status?: string
+          target_message_id?: string | null
+          target_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_target_message_id_fkey"
+            columns: ["target_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       todos: {
         Row: {
@@ -209,6 +482,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_presence: {
+        Row: {
+          last_seen_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_seen_at?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_seen_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -229,15 +523,65 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_profiles: {
+        Row: {
+          avatar_url: string | null
+          completed: boolean | null
+          is_muted_until: string | null
+          is_suspended_until: string | null
+          joined_at: string | null
+          last_seen_at: string | null
+          riddles_completed: number | null
+          user_id: string | null
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          completed?: boolean | null
+          is_muted_until?: string | null
+          is_suspended_until?: string | null
+          joined_at?: string | null
+          last_seen_at?: string | null
+          riddles_completed?: never
+          user_id?: string | null
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          completed?: boolean | null
+          is_muted_until?: string | null
+          is_suspended_until?: string | null
+          joined_at?: string | null
+          last_seen_at?: string | null
+          riddles_completed?: never
+          user_id?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
+      get_or_create_conversation: { Args: { _other: string }; Returns: string }
+      has_completed_400: { Args: { _uid: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      is_active_user: { Args: { _uid: string }; Returns: boolean }
+      is_blocked: { Args: { _a: string; _b: string }; Returns: boolean }
+      search_users: {
+        Args: { _q: string }
+        Returns: {
+          avatar_url: string
+          last_seen_at: string
+          riddles_completed: number
+          user_id: string
+          username: string
+        }[]
       }
     }
     Enums: {
