@@ -57,27 +57,27 @@ export async function fetchMyProfile(userId: string) {
 }
 
 export async function fetchPublicProfile(userId: string) {
-  const { data } = await supabase
-    .from("public_profiles" as any)
+  const { data } = await (supabase as any)
+    .from("public_profiles")
     .select("*")
     .eq("user_id", userId)
     .maybeSingle();
-  return data as PublicProfile | null;
+  return (data ?? null) as PublicProfile | null;
 }
 
 export async function fetchPublicProfileByUsername(username: string) {
-  const { data } = await supabase
-    .from("public_profiles" as any)
+  const { data } = await (supabase as any)
+    .from("public_profiles")
     .select("*")
     .eq("username", username)
     .maybeSingle();
-  return data as PublicProfile | null;
+  return (data ?? null) as PublicProfile | null;
 }
 
 export async function fetchPublicProfilesByIds(ids: string[]) {
   if (ids.length === 0) return [] as PublicProfile[];
-  const { data } = await supabase
-    .from("public_profiles" as any)
+  const { data } = await (supabase as any)
+    .from("public_profiles")
     .select("*")
     .in("user_id", ids);
   return (data ?? []) as PublicProfile[];
