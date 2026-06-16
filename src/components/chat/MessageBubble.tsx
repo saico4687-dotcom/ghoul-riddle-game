@@ -86,7 +86,7 @@ export default function MessageBubble({ message, mine, reactions, myUserId, onRe
                 <MoreVertical className="w-3 h-3" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent dir="rtl" align="start">
+            <DropdownMenuContent align="start">
               <DropdownMenuItem onClick={() => onReport(message)}>
                 <Flag className="w-3 h-3 ml-2" />
                 الإبلاغ عن الرسالة
