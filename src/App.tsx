@@ -88,6 +88,21 @@ const App = () => {
               <Route path="/admin" element={<Admin />} />
               <Route path="/delete-account" element={<DeleteAccount />} />
 
+              {/* Chat — gated behind 400-riddles completion */}
+              <Route path="/chat/setup" element={<UsernameSetup />} />
+              <Route path="/chat" element={<RequireCompletion><ChatLayout /></RequireCompletion>}>
+                <Route index element={<ChatHome />} />
+                <Route path="search" element={<ChatSearch />} />
+                <Route path="friends" element={<ChatFriends />} />
+                <Route path="notifications" element={<ChatNotifications />} />
+                <Route path="settings" element={<ChatSettings />} />
+                <Route path="safety" element={<ChatSafety />} />
+                <Route path="guidelines" element={<ChatGuidelines />} />
+                <Route path="privacy" element={<ChatPrivacy />} />
+                <Route path="u/:username" element={<ChatProfile />} />
+                <Route path="c/:id" element={<ChatConversation />} />
+              </Route>
+
               {/* OAuth callbacks */}
               <Route path="/auth/callback" element={<OAuthCallback />} />
               <Route path="/~oauth/callback" element={<OAuthCallback />} />
@@ -95,6 +110,7 @@ const App = () => {
 
               {/* بدل 404 — رجّع للصفحة الرئيسية */}
               <Route path="*" element={<Index />} />
+
             </Routes>
           </DesktopFrame>
         </BrowserRouter>
