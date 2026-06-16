@@ -16,6 +16,22 @@ import OAuthCallback from "./pages/OAuthCallback";
 import SplashScreen from "./components/SplashScreen";
 import AdsConsentDialog from "./components/AdsConsentDialog";
 import DesktopFrame from "./components/DesktopFrame";
+import RequireCompletion from "./components/RequireCompletion";
+
+// Chat pages
+import ChatLayout from "./pages/chat/ChatLayout";
+import ChatHome from "./pages/chat/ChatHome";
+import ChatSearch from "./pages/chat/ChatSearch";
+import ChatProfile from "./pages/chat/ChatProfile";
+import ChatConversation from "./pages/chat/ChatConversation";
+import ChatFriends from "./pages/chat/ChatFriends";
+import ChatNotifications from "./pages/chat/ChatNotifications";
+import ChatSettings from "./pages/chat/ChatSettings";
+import ChatSafety from "./pages/chat/ChatSafety";
+import ChatGuidelines from "./pages/chat/ChatGuidelines";
+import ChatPrivacy from "./pages/chat/ChatPrivacy";
+import UsernameSetup from "./pages/chat/UsernameSetup";
+
 
 import { initAdMob, showAppOpenAdIfDue } from "./lib/ads";
 import { isNativePlatform } from "./lib/isNative";
