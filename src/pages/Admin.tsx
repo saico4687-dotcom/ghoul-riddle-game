@@ -4,6 +4,9 @@ import { ArrowRight, Loader2, RefreshCw, Trophy, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AdminModeration from "@/components/AdminModeration";
+
 
 interface Score {
   id: string;
