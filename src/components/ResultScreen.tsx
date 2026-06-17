@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import HorrorButton from "./HorrorButton";
 import { Brain, Trophy, Sparkles, Star, Calendar, Hourglass, LogOut, Home, MessageCircle, Lock, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
