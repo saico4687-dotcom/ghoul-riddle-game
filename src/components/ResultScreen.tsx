@@ -32,6 +32,49 @@ const ResultScreen = ({
 }: ResultScreenProps) => {
   const percentage = totalQuestions ? (score / totalQuestions) * 100 : 0;
   const pointsPercentage = maxPoints ? (totalPoints / maxPoints) * 100 : 0;
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [openingChat, setOpeningChat] = useState(false);
+
+  const openChat = async () => {
+    if (!user) {
+      toast.error("سجّل الدخول أولاً لفتح الدردشة");
+      return;
+    }
+    setOpeningChat(true);
+    try {
+      // Ensure the server-side completion flag is set (covers any earlier silent failure)
+      const { data: before } = await supabase
+        .from("profiles")
+        .select("user_id, username, completed")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      console.log("[chat-open] current profile", before);
+
+      let isCompleted = before?.completed === true;
+      if (!isCompleted) {
+        const { data: upd, error } = await supabase
+          .from("profiles")
+          .update({ completed: true, completed_at: new Date().toISOString() })
+          .eq("user_id", user.id)
+          .select("completed, username")
+          .maybeSingle();
+        console.log("[chat-open] forced completion", { upd, error });
+        if (error) {
+          toast.error("تعذر تفعيل الدردشة: " + error.message);
+          setOpeningChat(false);
+          return;
+        }
+        isCompleted = upd?.completed === true;
+      }
+
+      const dest = before?.username ? "/chat" : "/chat/setup";
+      console.log("[chat-open] navigating to", dest);
+      navigate(dest);
+    } finally {
+      setOpeningChat(false);
+    }
+  };
 
   const getMessage = () => {
     if (percentage === 100) return { title: "عبقري الألغاز! 🏆", subtitle: "أداء استثنائي ومذهل!" };
