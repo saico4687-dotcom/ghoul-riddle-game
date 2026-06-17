@@ -1,7 +1,11 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import HorrorButton from "./HorrorButton";
-import { Brain, Trophy, Sparkles, Star, Calendar, Hourglass, LogOut, Home, MessageCircle, Lock } from "lucide-react";
+import { Brain, Trophy, Sparkles, Star, Calendar, Hourglass, LogOut, Home, MessageCircle, Lock, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 
 interface ResultScreenProps {
@@ -28,6 +32,49 @@ const ResultScreen = ({
 }: ResultScreenProps) => {
   const percentage = totalQuestions ? (score / totalQuestions) * 100 : 0;
   const pointsPercentage = maxPoints ? (totalPoints / maxPoints) * 100 : 0;
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [openingChat, setOpeningChat] = useState(false);
+
+  const openChat = async () => {
+    if (!user) {
+      toast.error("سجّل الدخول أولاً لفتح الدردشة");
+      return;
+    }
+    setOpeningChat(true);
+    try {
+      // Ensure the server-side completion flag is set (covers any earlier silent failure)
+      const { data: before } = await supabase
+        .from("profiles")
+        .select("user_id, username, completed")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      console.log("[chat-open] current profile", before);
+
+      let isCompleted = before?.completed === true;
+      if (!isCompleted) {
+        const { data: upd, error } = await supabase
+          .from("profiles")
+          .update({ completed: true, completed_at: new Date().toISOString() })
+          .eq("user_id", user.id)
+          .select("completed, username")
+          .maybeSingle();
+        console.log("[chat-open] forced completion", { upd, error });
+        if (error) {
+          toast.error("تعذر تفعيل الدردشة: " + error.message);
+          setOpeningChat(false);
+          return;
+        }
+        isCompleted = upd?.completed === true;
+      }
+
+      const dest = before?.username ? "/chat" : "/chat/setup";
+      console.log("[chat-open] navigating to", dest);
+      navigate(dest);
+    } finally {
+      setOpeningChat(false);
+    }
+  };
 
   const getMessage = () => {
     if (percentage === 100) return { title: "عبقري الألغاز! 🏆", subtitle: "أداء استثنائي ومذهل!" };
@@ -161,12 +208,14 @@ const ResultScreen = ({
 
         <div className="flex flex-col gap-3">
           {completed ? (
-            <Link to="/chat" className="block">
-              <button className="w-full font-horror text-xl py-4 rounded-xl bg-gradient-to-l from-primary to-accent text-primary-foreground shadow-[0_0_30px_hsl(var(--primary)/0.6)] hover:scale-105 transition-transform flex items-center justify-center gap-3 border-2 border-primary-foreground/20">
-                <MessageCircle className="w-6 h-6" />
-                ادخل الدردشة
-              </button>
-            </Link>
+            <button
+              onClick={openChat}
+              disabled={openingChat}
+              className="w-full font-horror text-xl py-4 rounded-xl bg-gradient-to-l from-primary to-accent text-primary-foreground shadow-[0_0_30px_hsl(var(--primary)/0.6)] hover:scale-105 transition-transform flex items-center justify-center gap-3 border-2 border-primary-foreground/20 disabled:opacity-70"
+            >
+              {openingChat ? <Loader2 className="w-6 h-6 animate-spin" /> : <MessageCircle className="w-6 h-6" />}
+              ادخل الدردشة
+            </button>
           ) : (
             <div className="w-full py-3 rounded-xl border-2 border-dashed border-muted-foreground/40 text-muted-foreground text-center font-typewriter text-sm flex items-center justify-center gap-2">
               <Lock className="w-4 h-4" />

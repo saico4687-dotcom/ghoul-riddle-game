@@ -354,9 +354,12 @@ const Index = () => {
   };
 
   const markCompletedOnServer = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      console.warn("[completion] skipped — no user session");
+      return false;
+    }
     try {
-      await supabase
+      const { data, error } = await supabase
         .from("profiles")
         .update({
           completed: true,
@@ -365,11 +368,28 @@ const Index = () => {
           last_puzzle_index: allRiddles.length - 1,
           updated_at: new Date().toISOString(),
         })
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .select("user_id, completed, completed_at")
+        .maybeSingle();
+      console.log("[completion] mark result", { userId: user.id, data, error });
+      if (error) {
+        console.error("mark completed failed", error);
+        return false;
+      }
+      return data?.completed === true;
     } catch (e) {
-      console.error("mark completed failed", e);
+      console.error("mark completed exception", e);
+      return false;
     }
   }, [user, allRiddles.length]);
+
+  // Defensive: whenever we land on the result screen as a completed logged-in user,
+  // make sure the server-side flag is actually set (covers earlier silent failures).
+  useEffect(() => {
+    if (gameState === "result" && completed && user) {
+      void markCompletedOnServer();
+    }
+  }, [gameState, completed, user, markCompletedOnServer]);
 
   const handleNext = () => {
     if (currentRiddleIndex < allRiddles.length - 1) {
