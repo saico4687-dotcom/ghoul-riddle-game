@@ -19,8 +19,21 @@ export default function RequireCompletion({ children }: Props) {
       </div>
     );
   }
-  if (!user) return <Navigate to="/" replace />;
-  if (!profile?.completed) return <Navigate to="/" replace />;
+  console.log("[RequireCompletion]", {
+    userId: user?.id,
+    completed: profile?.completed,
+    username: profile?.username,
+    is_muted_until: profile?.is_muted_until,
+    is_suspended_until: profile?.is_suspended_until,
+  });
+  if (!user) {
+    console.warn("[RequireCompletion] no user → /");
+    return <Navigate to="/" replace />;
+  }
+  if (!profile?.completed) {
+    console.warn("[RequireCompletion] profile.completed=false → /");
+    return <Navigate to="/" replace />;
+  }
 
   const suspended = profile.is_suspended_until && new Date(profile.is_suspended_until) > new Date();
   if (suspended) {
