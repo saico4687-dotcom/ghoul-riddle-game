@@ -208,12 +208,14 @@ const ResultScreen = ({
 
         <div className="flex flex-col gap-3">
           {completed ? (
-            <Link to="/chat" className="block">
-              <button className="w-full font-horror text-xl py-4 rounded-xl bg-gradient-to-l from-primary to-accent text-primary-foreground shadow-[0_0_30px_hsl(var(--primary)/0.6)] hover:scale-105 transition-transform flex items-center justify-center gap-3 border-2 border-primary-foreground/20">
-                <MessageCircle className="w-6 h-6" />
-                ادخل الدردشة
-              </button>
-            </Link>
+            <button
+              onClick={openChat}
+              disabled={openingChat}
+              className="w-full font-horror text-xl py-4 rounded-xl bg-gradient-to-l from-primary to-accent text-primary-foreground shadow-[0_0_30px_hsl(var(--primary)/0.6)] hover:scale-105 transition-transform flex items-center justify-center gap-3 border-2 border-primary-foreground/20 disabled:opacity-70"
+            >
+              {openingChat ? <Loader2 className="w-6 h-6 animate-spin" /> : <MessageCircle className="w-6 h-6" />}
+              ادخل الدردشة
+            </button>
           ) : (
             <div className="w-full py-3 rounded-xl border-2 border-dashed border-muted-foreground/40 text-muted-foreground text-center font-typewriter text-sm flex items-center justify-center gap-2">
               <Lock className="w-4 h-4" />
