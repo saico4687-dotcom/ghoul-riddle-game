@@ -2,6 +2,13 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Brain, Lightbulb, Sparkles, Trophy, Settings as SettingsIcon } from "lucide-react";
 import heroImage from "@/assets/hero-horror.jpg";
+import { useAuth } from "@/hooks/useAuth";
+import { lovable } from "@/integrations/lovable/index";
+import { clearStaleAuth } from "@/lib/clearStaleAuth";
+import { isNativePlatform } from "@/lib/isNative";
+import { startNativeGoogleSignIn } from "@/lib/nativeGoogleAuth";
+import { toast } from "sonner";
+import { useState } from "react";
 
 export type GameMode = "fun";
 
