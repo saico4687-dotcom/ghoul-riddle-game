@@ -17,6 +17,41 @@ interface WelcomeScreenProps {
 }
 
 const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
+  const { user } = useAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      await clearStaleAuth();
+
+      if (isNativePlatform()) {
+        await startNativeGoogleSignIn();
+        setGoogleLoading(false);
+        return;
+      }
+
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result?.error) {
+        toast({
+          title: "تعذّر تسجيل دخول Google",
+          description: String(result.error),
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "خطأ غير متوقع",
+        description: err?.message || String(err),
+        variant: "destructive",
+      });
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-horror-gradient relative overflow-hidden">
       <div
