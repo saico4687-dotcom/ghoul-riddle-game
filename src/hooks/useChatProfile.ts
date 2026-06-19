@@ -12,28 +12,40 @@ export type MyChatProfile = {
 };
 
 export function useMyChatProfile() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<MyChatProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   const reload = async () => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
     if (!user) {
       setProfile(null);
       setLoading(false);
       return;
     }
-    const { data } = await supabase
+    setLoading(true);
+    const { data, error } = await supabase
       .from("profiles")
       .select("user_id, username, avatar_url, completed, is_muted_until, is_suspended_until")
       .eq("user_id", user.id)
       .maybeSingle();
+
+    console.log("[useMyChatProfile] loaded", {
+      userId: user.id,
+      completed: data?.completed,
+      username: data?.username,
+      error,
+    });
     setProfile((data as MyChatProfile) ?? null);
     setLoading(false);
   };
 
   useEffect(() => {
     reload();
-  }, [user]);
+  }, [user, authLoading]);
 
   return { profile, loading, reload };
 }

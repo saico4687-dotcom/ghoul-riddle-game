@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useMyChatProfile } from "@/hooks/useChatProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
@@ -11,6 +11,7 @@ interface Props {
 export default function RequireCompletion({ children }: Props) {
   const { user, loading: authLoading } = useAuth();
   const { profile, loading } = useMyChatProfile();
+  const location = useLocation();
 
   if (authLoading || loading) {
     return (
@@ -30,8 +31,23 @@ export default function RequireCompletion({ children }: Props) {
     console.warn("[RequireCompletion] no user → /");
     return <Navigate to="/" replace />;
   }
+  if (!profile) {
+    console.warn("[RequireCompletion] no profile yet → keep loading", {
+      userId: user.id,
+      currentPath: location.pathname,
+    });
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
   if (!profile?.completed) {
-    console.warn("[RequireCompletion] profile.completed=false → /");
+    console.warn("[RequireCompletion] profile.completed=false → /", {
+      userId: user.id,
+      completed: profile.completed,
+      currentPath: location.pathname,
+    });
     return <Navigate to="/" replace />;
   }
 
@@ -51,6 +67,11 @@ export default function RequireCompletion({ children }: Props) {
   }
 
   if (!profile.username) {
+    console.log("[RequireCompletion] username missing → /chat/setup", {
+      userId: user.id,
+      completed: profile.completed,
+      currentPath: location.pathname,
+    });
     return <Navigate to="/chat/setup" replace />;
   }
 
