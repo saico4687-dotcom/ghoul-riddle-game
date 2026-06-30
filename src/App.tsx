@@ -13,6 +13,7 @@ import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
 import DeleteAccount from "./pages/DeleteAccount";
 import OAuthCallback from "./pages/OAuthCallback";
+
 import SplashScreen from "./components/SplashScreen";
 import AdsConsentDialog from "./components/AdsConsentDialog";
 import DesktopFrame from "./components/DesktopFrame";
@@ -31,6 +32,11 @@ import ChatGuidelines from "./pages/chat/ChatGuidelines";
 import ChatPrivacy from "./pages/chat/ChatPrivacy";
 import UsernameSetup from "./pages/chat/UsernameSetup";
 
+import {
+  initAdMob,
+  showAppOpenAdIfDue,
+  requestUMPConsent,
+} from "./lib/ads";
 
 import { isNativePlatform } from "./lib/isNative";
 import { registerNativeGoogleAuth } from "./lib/nativeGoogleAuth";
@@ -41,61 +47,42 @@ const App = () => {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    if (isNativePlatform()) {
-      void registerNativeGoogleAuth();
-    }
+    let splashTimer: number;
 
-    const splashTimer = window.setTimeout(() => {
-      setShowSplash(fauseEffect(() => {
-  if (isNativePlatform()) {
-    void registerNativeGoogleAuth();
-  }
-
-  const splashTimer = window.setTimeout(() => {
-    setShowSplash(false);
-  }, 2500);
-
-  (async () => {
-    try {
-      // طلب موافقة الإعلانات أولاً
-      await requestUMPConsent();
-
-      // تهيئة AdMob
-      await initAdMob();
-
-      // إعلان فتح التطبيق
-      await showAppOpenAdIfDue();
-    } catch (err) {
-      console.error("[AdMob]", err);
-    }
-  })();
-
-  // عند رجوع التطبيق من الخلفية
-  const handleVisibility = async () => {
-    if (document.visibilityState === "visible") {
+    const init = async () => {
       try {
+        if (isNativePlatform()) {
+          void registerNativeGoogleAuth();
+        }
+
+        // splash timeout
+        splashTimer = window.setTimeout(() => {
+          setShowSplash(false);
+        }, 2500);
+
+        // AdMob flow
+        await requestUMPConsent();
+        await initAdMob();
         await showAppOpenAdIfDue();
-      } catch {}
-    }
-  };
 
-  document.addEventListener("visibilitychange", handleVisibility);
+        // عند الرجوع للتطبيق
+        const handleVisibility = async () => {
+          if (document.visibilityState === "visible") {
+            await showAppOpenAdIfDue();
+          }
+        };
 
-  return () => {
-    clearTimeout(splashTimer);
-    document.removeEventListener("visibilitychange", handleVisibility);
-  };
-}, []);lse);
-    }, 2500);
+        document.addEventListener("visibilitychange", handleVisibility);
 
-    (async () => {
-      try {
-        await initAdMob();          // Singleton
-        await showAppOpenAdIfDue(); // لن يعمل إلا إذا كان App Open مدعومًا فعليًا
+        return () => {
+          document.removeEventListener("visibilitychange", handleVisibility);
+        };
       } catch (err) {
-        console.error("[AdMob]", err);
+        console.error("[App Init Error]", err);
       }
-    })();
+    };
+
+    init();
 
     return () => {
       clearTimeout(splashTimer);
@@ -125,6 +112,7 @@ const App = () => {
               <Route path="/delete-account" element={<DeleteAccount />} />
 
               <Route path="/chat/setup" element={<UsernameSetup />} />
+
               <Route
                 path="/chat"
                 element={
