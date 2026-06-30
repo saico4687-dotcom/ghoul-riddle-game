@@ -2,11 +2,12 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 
 interface HorrorClockProps {
-  duration: number; // in seconds
+  duration: number;
   isActive: boolean;
+  paused?: boolean; // إيقاف المؤقت أثناء إعلان Rewarded
   onTimeUp?: () => void;
   isMuted?: boolean;
-  extraTime?: number; // extra seconds added via lifeline
+  extraTime?: number;
 }
 
 const HorrorClock = ({ duration, isActive, onTimeUp, isMuted = false, extraTime = 0 }: HorrorClockProps) => {
