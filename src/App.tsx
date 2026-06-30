@@ -18,7 +18,6 @@ import AdsConsentDialog from "./components/AdsConsentDialog";
 import DesktopFrame from "./components/DesktopFrame";
 import RequireCompletion from "./components/RequireCompletion";
 
-// Chat pages
 import ChatLayout from "./pages/chat/ChatLayout";
 import ChatHome from "./pages/chat/ChatHome";
 import ChatSearch from "./pages/chat/ChatSearch";
@@ -32,8 +31,11 @@ import ChatGuidelines from "./pages/chat/ChatGuidelines";
 import ChatPrivacy from "./pages/chat/ChatPrivacy";
 import UsernameSetup from "./pages/chat/UsernameSetup";
 
+import {
+  initAdMob,
+  showAppOpenAdIfDue,
+} from "./lib/ads";
 
-import { initAdMob, showAppOpenAdIfDue } from "./lib/ads";
 import { isNativePlatform } from "./lib/isNative";
 import { registerNativeGoogleAuth } from "./lib/nativeGoogleAuth";
 
@@ -47,22 +49,21 @@ const App = () => {
       void registerNativeGoogleAuth();
     }
 
-    const splashTimer = setTimeout(() => {
+    const splashTimer = window.setTimeout(() => {
       setShowSplash(false);
     }, 2500);
 
-    const adsTimer = setTimeout(async () => {
+    (async () => {
       try {
-        await initAdMob();
-        await showAppOpenAdIfDue();
-      } catch (error) {
-        console.error(error);
+        await initAdMob();          // Singleton
+        await showAppOpenAdIfDue(); // لن يعمل إلا إذا كان App Open مدعومًا فعليًا
+      } catch (err) {
+        console.error("[AdMob]", err);
       }
-    }, 8000);
+    })();
 
     return () => {
       clearTimeout(splashTimer);
-      clearTimeout(adsTimer);
     };
   }, []);
 
@@ -88,9 +89,15 @@ const App = () => {
               <Route path="/admin" element={<Admin />} />
               <Route path="/delete-account" element={<DeleteAccount />} />
 
-              {/* Chat — gated behind 400-riddles completion */}
               <Route path="/chat/setup" element={<UsernameSetup />} />
-              <Route path="/chat" element={<RequireCompletion><ChatLayout /></RequireCompletion>}>
+              <Route
+                path="/chat"
+                element={
+                  <RequireCompletion>
+                    <ChatLayout />
+                  </RequireCompletion>
+                }
+              >
                 <Route index element={<ChatHome />} />
                 <Route path="search" element={<ChatSearch />} />
                 <Route path="friends" element={<ChatFriends />} />
@@ -103,14 +110,11 @@ const App = () => {
                 <Route path="c/:id" element={<ChatConversation />} />
               </Route>
 
-              {/* OAuth callbacks */}
               <Route path="/auth/callback" element={<OAuthCallback />} />
               <Route path="/~oauth/callback" element={<OAuthCallback />} />
               <Route path="/auth/*" element={<OAuthCallback />} />
 
-              {/* بدل 404 — رجّع للصفحة الرئيسية */}
               <Route path="*" element={<Index />} />
-
             </Routes>
           </DesktopFrame>
         </BrowserRouter>
