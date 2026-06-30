@@ -31,10 +31,6 @@ import ChatGuidelines from "./pages/chat/ChatGuidelines";
 import ChatPrivacy from "./pages/chat/ChatPrivacy";
 import UsernameSetup from "./pages/chat/UsernameSetup";
 
-import {
-  initAdMob,
-  showAppOpenAdIfDue,
-} from "./lib/ads";
 
 import { isNativePlatform } from "./lib/isNative";
 import { registerNativeGoogleAuth } from "./lib/nativeGoogleAuth";
@@ -50,7 +46,46 @@ const App = () => {
     }
 
     const splashTimer = window.setTimeout(() => {
-      setShowSplash(false);
+      setShowSplash(fauseEffect(() => {
+  if (isNativePlatform()) {
+    void registerNativeGoogleAuth();
+  }
+
+  const splashTimer = window.setTimeout(() => {
+    setShowSplash(false);
+  }, 2500);
+
+  (async () => {
+    try {
+      // طلب موافقة الإعلانات أولاً
+      await requestUMPConsent();
+
+      // تهيئة AdMob
+      await initAdMob();
+
+      // إعلان فتح التطبيق
+      await showAppOpenAdIfDue();
+    } catch (err) {
+      console.error("[AdMob]", err);
+    }
+  })();
+
+  // عند رجوع التطبيق من الخلفية
+  const handleVisibility = async () => {
+    if (document.visibilityState === "visible") {
+      try {
+        await showAppOpenAdIfDue();
+      } catch {}
+    }
+  };
+
+  document.addEventListener("visibilitychange", handleVisibility);
+
+  return () => {
+    clearTimeout(splashTimer);
+    document.removeEventListener("visibilitychange", handleVisibility);
+  };
+}, []);lse);
     }, 2500);
 
     (async () => {
