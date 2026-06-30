@@ -156,7 +156,7 @@ const HorrorClock = ({
         clearInterval(tickIntervalRef.current);
       }
     };
-  }, [isActive, onTimeUp, playTickSound]);
+  }, [isActive, paused, onTimeUp, playTickSound]); 
 
   const progress = ((duration - timeLeft) / duration) * 100;
   const isUrgent = timeLeft <= 10;
