@@ -124,7 +124,7 @@ const HorrorClock = ({
   }, [extraTime]);
 
   useEffect(() => {
-    if (!isActive) {
+    if (!isActive || paused) {
       if (tickIntervalRef.current) {
         clearInterval(tickIntervalRef.current);
         tickIntervalRef.current = null;
