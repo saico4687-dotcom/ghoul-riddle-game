@@ -309,13 +309,8 @@ const Index = () => {
     elapsedMs?: number | null,
   ) => {
     const newAnswered = answeredCount + 1;
+    setAnsweredCount(newAnswered);
 
-    if (newAnswered >= 5) {
-      showInterstitial();
-      setAnsweredCount(0);
-    } else {
-      setAnsweredCount(newAnswered);
-    }
 
     // Accumulate total time for ranking (default to full timer if missing)
     const addMs = typeof elapsedMs === "number" && elapsedMs > 0 ? elapsedMs : 60000;
