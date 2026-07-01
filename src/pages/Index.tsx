@@ -388,6 +388,11 @@ const Index = () => {
 
   const handleNext = () => {
     if (currentRiddleIndex < allRiddles.length - 1) {
+      // Show interstitial every 5 completed riddles, before loading next
+      if (answeredCount > 0 && answeredCount % 5 === 0) {
+        void showInterstitial();
+        setAnsweredCount(0);
+      }
       const nextIdx = currentRiddleIndex + 1;
       setCurrentRiddleIndex(nextIdx);
       void persistLastPuzzleIndex(nextIdx);
@@ -400,6 +405,7 @@ const Index = () => {
         });
       }
     } else {
+
       // Finished the last riddle (e.g. #400) → lock account and show final result
       setCompleted(true);
       void markCompletedOnServer();
