@@ -182,6 +182,7 @@ const RiddleCard = ({
         backgroundAttachment: "fixed",
         borderRadius: "1rem",
         padding: "1.5rem",
+        paddingBottom: "calc(1.5rem + 72px)",
       }}
     >
       <motion.div className="flex flex-col items-center gap-4 mb-8">
@@ -189,10 +190,12 @@ const RiddleCard = ({
           key={clockKey}
           duration={60}
           isActive={isTypingComplete && !showResult}
+          paused={adPaused}
           onTimeUp={handleTimeUp}
           isMuted={isMuted}
           extraTime={extraTime}
         />
+
 
         {gameMode === "fun" && (
           <div className="flex gap-3">
