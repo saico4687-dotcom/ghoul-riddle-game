@@ -12,9 +12,11 @@ import { Brain, Mic, MicOff, Scissors, Clock } from "lucide-react";
 import { useHorrorSounds } from "@/hooks/useHorrorSounds";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
 
-import { showRewarded } from "@/lib/ads";
+import { showRewarded, showBannerAd, hideBannerAd } from "@/lib/ads";
 
 import moneyBg from "@/assets/money-bg.jpg";
+
+
 import HeartRateMonitor from "./HeartRateMonitor";
 
 interface RiddleCardProps {
@@ -51,6 +53,8 @@ const RiddleCard = ({
   const [removedOptions, setRemovedOptions] = useState<number[]>([]);
   const [extraTime, setExtraTime] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
+  const [adPaused, setAdPaused] = useState(false);
+
 
   const { playSound, setMuted } = useHorrorSounds();
   const { setVolume: setMusicVolume } = useHorrorBackgroundMusic();
@@ -81,11 +85,28 @@ const RiddleCard = ({
     }
   }, [isTypingComplete, startTime]);
 
+  // Show banner on puzzle screen; hide when leaving
+  useEffect(() => {
+    void showBannerAd();
+    return () => {
+      void hideBannerAd();
+    };
+  }, []);
+
   const handleUseFifty = async () => {
     if (lifelineUsed || showResult) return;
 
-    const earned = await showRewarded();
-    if (!earned) return;
+    // Freeze timer for the exact duration of the rewarded ad
+    const before = Date.now();
+    await showRewarded({
+      onStart: () => setAdPaused(true),
+      onEnd: () => setAdPaused(false),
+    });
+    // Compensate elapsed startTime so no seconds are lost
+    if (startTime !== null) {
+      setStartTime(startTime + (Date.now() - before));
+    }
+
 
     const wrongIndices = riddle.options
       .map((_, i) => i)
