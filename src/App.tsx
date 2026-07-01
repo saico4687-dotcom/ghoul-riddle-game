@@ -48,6 +48,7 @@ const App = () => {
 
   useEffect(() => {
     let splashTimer: number;
+    let removeAppListener: (() => void) | null = null;
 
     const init = async () => {
       try {
@@ -63,20 +64,29 @@ const App = () => {
         // AdMob flow
         await requestUMPConsent();
         await initAdMob();
+
+        // Cold launch App Open ad
         await showAppOpenAdIfDue();
 
-        // عند الرجوع للتطبيق
-        const handleVisibility = async () => {
-          if (document.visibilityState === "visible") {
-            await showAppOpenAdIfDue();
+        // Return-from-background App Open (5h cooldown enforced internally)
+        if (isNativePlatform()) {
+          try {
+            const { App: CapApp } = await import("@capacitor/app");
+            const handle = await CapApp.addListener(
+              "appStateChange",
+              async (state) => {
+                if (state.isActive) {
+                  await showAppOpenAdIfDue();
+                }
+              },
+            );
+            removeAppListener = () => {
+              void handle.remove();
+            };
+          } catch (e) {
+            console.warn("[App] appStateChange listener failed", e);
           }
-        };
-
-        document.addEventListener("visibilitychange", handleVisibility);
-
-        return () => {
-          document.removeEventListener("visibilitychange", handleVisibility);
-        };
+        }
       } catch (err) {
         console.error("[App Init Error]", err);
       }
@@ -86,8 +96,10 @@ const App = () => {
 
     return () => {
       clearTimeout(splashTimer);
+      removeAppListener?.();
     };
   }, []);
+
 
   return (
     <QueryClientProvider client={queryClient}>
