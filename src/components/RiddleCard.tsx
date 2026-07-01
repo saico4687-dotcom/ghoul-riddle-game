@@ -127,12 +127,19 @@ const RiddleCard = ({
   const handleAddTime = async () => {
     if (lifelineUsed || showResult) return;
 
-    const earned = await showRewarded();
-    if (!earned) return;
+    const before = Date.now();
+    await showRewarded({
+      onStart: () => setAdPaused(true),
+      onEnd: () => setAdPaused(false),
+    });
+    if (startTime !== null) {
+      setStartTime(startTime + (Date.now() - before));
+    }
 
     setExtraTime((p) => p + 60);
     setLifelineUsed("time");
   };
+
 
   const handleTimeUp = () => {
     if (!showResult && selectedOption === null) {
