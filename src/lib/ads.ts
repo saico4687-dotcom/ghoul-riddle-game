@@ -172,9 +172,12 @@ export const preloadInterstitial = async () => {
   try {
     const { AdMob } = await getAdMob();
     await AdMob.prepareInterstitial({ adId: INTERSTITIAL_AD_ID });
+    interstitialLoaded = true;
   } catch (e) {
     interstitialLoading = false;
     console.warn("[AdMob] preload interstitial failed", e);
+  } finally {
+    interstitialLoading = false;
   }
 };
 
@@ -185,9 +188,12 @@ export const preloadRewarded = async () => {
   try {
     const { AdMob } = await getAdMob();
     await AdMob.prepareRewardVideoAd({ adId: REWARDED_AD_ID });
+    rewardedLoaded = true;
   } catch (e) {
     rewardedLoading = false;
     console.warn("[AdMob] preload rewarded failed", e);
+  } finally {
+    rewardedLoading = false;
   }
 };
 
@@ -251,10 +257,11 @@ export const showInterstitial = async (): Promise<boolean> => {
     if (!interstitialLoaded) {
       await preloadInterstitial();
     }
-    if (!interstitialLoaded && interstitialLoading) return false;
+    if (!interstitialLoaded) return false;
 
     anyFullscreenAdShowing = true;
     await AdMob.showInterstitial();
+    anyFullscreenAdShowing = false;
     interstitialLoaded = false;
     void preloadInterstitial();
     return true;
@@ -302,6 +309,10 @@ export const showRewarded = async (opts?: {
       await AdMob.showRewardVideoAd();
     } catch (e) {
       console.warn("[AdMob] rewarded show error", e);
+    } finally {
+      rewardedLoaded = false;
+      anyFullscreenAdShowing = false;
+      void preloadRewarded();
     }
 
     opts?.onEnd?.();
