@@ -386,11 +386,11 @@ const Index = () => {
     }
   }, [gameState, completed, user, markCompletedOnServer]);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentRiddleIndex < allRiddles.length - 1) {
       // Show interstitial every 5 completed riddles, before loading next
       if (answeredCount > 0 && answeredCount % 5 === 0) {
-        void showInterstitial();
+        await showInterstitial();
         setAnsweredCount(0);
       }
       const nextIdx = currentRiddleIndex + 1;

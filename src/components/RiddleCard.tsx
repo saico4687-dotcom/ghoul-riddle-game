@@ -96,25 +96,21 @@ const RiddleCard = ({
   const handleUseFifty = async () => {
     if (lifelineUsed || showResult) return;
 
-    // Freeze timer for the exact duration of the rewarded ad
     const before = Date.now();
-    await showRewarded({
+    const earned = await showRewarded({
       onStart: () => setAdPaused(true),
       onEnd: () => setAdPaused(false),
     });
-    // Compensate elapsed startTime so no seconds are lost
     if (startTime !== null) {
       setStartTime(startTime + (Date.now() - before));
     }
-
+    if (!earned) return;
 
     const wrongIndices = riddle.options
       .map((_, i) => i)
       .filter((i) => i !== riddle.correctIndex);
 
-    const toRemove = wrongIndices
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 2);
+    const toRemove = [...wrongIndices].sort(() => Math.random() - 0.5).slice(0, 2);
 
     setRemovedOptions(toRemove);
     setLifelineUsed("fifty");
@@ -128,13 +124,14 @@ const RiddleCard = ({
     if (lifelineUsed || showResult) return;
 
     const before = Date.now();
-    await showRewarded({
+    const earned = await showRewarded({
       onStart: () => setAdPaused(true),
       onEnd: () => setAdPaused(false),
     });
     if (startTime !== null) {
       setStartTime(startTime + (Date.now() - before));
     }
+    if (!earned) return;
 
     setExtraTime((p) => p + 60);
     setLifelineUsed("time");
@@ -180,12 +177,17 @@ const RiddleCard = ({
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",
+        backgroundRepeat: "no-repeat",
         borderRadius: "1rem",
         padding: "1.5rem",
         paddingBottom: "calc(1.5rem + 72px)",
       }}
     >
-      <motion.div className="flex flex-col items-center gap-4 mb-8">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col items-center gap-4 mb-8"
+      >
         <HorrorClock
           key={clockKey}
           duration={60}
@@ -198,60 +200,178 @@ const RiddleCard = ({
 
 
         {gameMode === "fun" && (
-          <div className="flex gap-3">
-            <button onClick={handleUseFifty}>شاهد إعلان لحذف إجابتين</button>
-            <button onClick={handleAddTime}>شاهد إعلان لإضافة وقت</button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleUseFifty}
+              disabled={lifelineUsed !== null || showResult || !isTypingComplete}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary border border-primary/40 text-primary text-sm font-typewriter hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              aria-label="حذف إجابتين خاطئتين"
+            >
+              <Scissors className="w-4 h-4" />
+              <span>شاهد الإعلان لحذف إجابتين</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleAddTime}
+              disabled={lifelineUsed !== null || showResult || !isTypingComplete}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary border border-primary/40 text-primary text-sm font-typewriter hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              aria-label="شاهد الإعلان لإضافة دقيقة"
+            >
+              <Clock className="w-4 h-4" />
+              <span>شاهد الإعلان لإضافة دقيقة</span>
+            </button>
           </div>
         )}
+        {lifelineUsed && (
+          <p className="text-xs text-muted-foreground font-typewriter">
+            تم استخدام أداة المساعدة لهذا السؤال
+          </p>
+        )}
 
-        <div className="flex justify-between w-full">
-          <div className="flex gap-2 items-center">
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-3">
             <Brain className="w-8 h-8 text-primary" />
-            <span>اللغز {riddleNumber} / {totalRiddles}</span>
+            <span className="font-horror text-2xl text-primary">اللغز {riddleNumber} / {totalRiddles}</span>
           </div>
 
-          <button onClick={handleMuteToggle}>
-            {isMuted ? <MicOff /> : <Mic />}
+          <button
+            type="button"
+            onClick={handleMuteToggle}
+            className="p-2 rounded-full bg-secondary hover:bg-accent transition-colors cursor-pointer z-50"
+            aria-label={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
+          >
+            {isMuted ? (
+              <MicOff className="w-6 h-6 text-muted-foreground" />
+            ) : (
+              <Mic className="w-6 h-6 text-primary" />
+            )}
           </button>
         </div>
       </motion.div>
 
-      <div className="card-horror p-6 mb-8">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="mb-8"
+      >
+        <HeartRateMonitor
+          status={showResult && selectedOption !== riddle.correctIndex ? "flatline" : "alive"}
+          bpm={78}
+        />
+      </motion.div>
+
+      {riddle.image && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="image-horror mb-8"
+        >
+          <img
+            src={riddle.image}
+            alt={`صورة اللغز ${riddleNumber}`}
+            className="w-full max-h-80 object-cover"
+            loading="lazy"
+          />
+        </motion.div>
+      )}
+
+      <div className="card-horror p-6 mb-8 min-h-[120px]">
         <TypewriterText
           text={riddle.question}
           speed={40}
+          className="text-xl md:text-2xl leading-relaxed text-right"
           onComplete={() => setIsTypingComplete(true)}
+          onCharacterTyped={() => playSound("typewriter")}
         />
       </div>
 
-      {isTypingComplete && (
-        <div className="space-y-4">
-          {riddle.options.map((option, index) => (
-            <RiddleOption
-              key={index}
-              option={option}
-              index={index}
-              selected={selectedOption === index}
-              showResult={showResult}
-              isCorrect={index === riddle.correctIndex}
-              onClick={() => handleOptionClick(index)}
-              disabled={showResult}
-            />
-          ))}
-        </div>
-      )}
+      <AnimatePresence>
+        {isTypingComplete && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4 mb-8"
+          >
+            {riddle.options.map((option, index) => {
+              const isRemoved = removedOptions.includes(index);
+              if (isRemoved) {
+                return (
+                  <div
+                    key={index}
+                    className="option-horror w-full text-right flex items-center gap-4 opacity-30 line-through pointer-events-none"
+                  >
+                    <span className="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-horror text-muted-foreground text-xl shrink-0">
+                      ✕
+                    </span>
+                    <span className="font-typewriter text-muted-foreground text-lg leading-relaxed">
+                      {option}
+                    </span>
+                  </div>
+                );
+              }
+              return (
+                <RiddleOption
+                  key={index}
+                  option={option}
+                  index={index}
+                  selected={selectedOption === index}
+                  showResult={showResult}
+                  isCorrect={index === riddle.correctIndex}
+                  onClick={() => handleOptionClick(index)}
+                  disabled={showResult}
+                  hideCorrectInCompetition={false}
+                />
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <div className="flex justify-center mt-6">
+      <AnimatePresence>
+        {showResult && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="card-horror p-6 mb-8 text-right"
+          >
+            {selectedOption === riddle.correctIndex ? (
+              <>
+                <h3 className="font-horror text-2xl mb-3 text-primary">🎉 أحسنت!</h3>
+                <p className="font-typewriter text-foreground text-lg leading-relaxed">
+                  {riddle.explanation}
+                </p>
+              </>
+            ) : (
+              <h3 className="font-horror text-2xl text-primary">🍀 حظ أوفر في المرة القادمة</h3>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="flex justify-center gap-4">
         {!showResult ? (
-          <HorrorButton onClick={handleSubmit} disabled={selectedOption === null}>
+          <HorrorButton onClick={handleSubmit} disabled={selectedOption === null || !isTypingComplete}>
             تحقق من الإجابة
           </HorrorButton>
         ) : (
           <HorrorButton onClick={onNext}>
-            اللغز التالي
+            {riddleNumber < totalRiddles ? "اللغز التالي" : "النتيجة النهائية"}
           </HorrorButton>
         )}
       </div>
+
+      {onExitToHome && (
+        <div className="flex justify-center mt-6 mb-8">
+          <button
+            type="button"
+            onClick={onExitToHome}
+            className="px-5 py-2 rounded-lg border border-primary/40 bg-secondary/60 text-primary font-typewriter text-sm hover:bg-accent transition-colors"
+          >
+            🏠 العودة إلى القائمة الرئيسية
+          </button>
+        </div>
+      )}
     </div>
   );
 };

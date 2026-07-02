@@ -78,7 +78,6 @@ export const initAdMob = async (): Promise<void> => {
         AdMob,
         InterstitialAdPluginEvents,
         RewardAdPluginEvents,
-        AppOpenAdPluginEvents,
       } = await getAdMob();
 
       await requestUMPConsent();
@@ -142,31 +141,7 @@ export const initAdMob = async (): Promise<void> => {
           void preloadRewarded();
         });
 
-        /* --- App Open --- */
-        AdMob.addListener(AppOpenAdPluginEvents.Loaded, () => {
-          appOpenLoaded = true;
-          appOpenLoading = false;
-          console.log("[AdMob] app-open loaded");
-        });
-        AdMob.addListener(AppOpenAdPluginEvents.FailedToLoad, (e) => {
-          appOpenLoaded = false;
-          appOpenLoading = false;
-          console.warn("[AdMob] app-open failed to load", e);
-        });
-        AdMob.addListener(AppOpenAdPluginEvents.Opened, () => {
-          anyFullscreenAdShowing = true;
-        });
-        AdMob.addListener(AppOpenAdPluginEvents.Closed, () => {
-          anyFullscreenAdShowing = false;
-          appOpenLoaded = false;
-          void preloadAppOpen();
-        });
-        AdMob.addListener(AppOpenAdPluginEvents.FailedToShow, (e) => {
-          anyFullscreenAdShowing = false;
-          appOpenLoaded = false;
-          console.warn("[AdMob] app-open failed to show", e);
-          void preloadAppOpen();
-        });
+        /* App Open is served through the stable interstitial API in this plugin version. */
       }
 
       initialized = true;
@@ -197,9 +172,12 @@ export const preloadInterstitial = async () => {
   try {
     const { AdMob } = await getAdMob();
     await AdMob.prepareInterstitial({ adId: INTERSTITIAL_AD_ID });
+    interstitialLoaded = true;
   } catch (e) {
     interstitialLoading = false;
     console.warn("[AdMob] preload interstitial failed", e);
+  } finally {
+    interstitialLoading = false;
   }
 };
 
@@ -210,9 +188,12 @@ export const preloadRewarded = async () => {
   try {
     const { AdMob } = await getAdMob();
     await AdMob.prepareRewardVideoAd({ adId: REWARDED_AD_ID });
+    rewardedLoaded = true;
   } catch (e) {
     rewardedLoading = false;
     console.warn("[AdMob] preload rewarded failed", e);
+  } finally {
+    rewardedLoading = false;
   }
 };
 
@@ -222,10 +203,13 @@ export const preloadAppOpen = async () => {
   appOpenLoading = true;
   try {
     const { AdMob } = await getAdMob();
-    await AdMob.loadAppOpen({ adId: APP_OPEN_AD_ID });
+    await AdMob.prepareInterstitial({ adId: APP_OPEN_AD_ID });
+    appOpenLoaded = true;
   } catch (e) {
     appOpenLoading = false;
     console.warn("[AdMob] preload app-open failed", e);
+  } finally {
+    appOpenLoading = false;
   }
 };
 
@@ -243,17 +227,18 @@ export const showAppOpenAdIfDue = async () => {
     await initAdMob();
     const { AdMob } = await getAdMob();
 
-    if (!appOpenLoaded) {
-      await preloadAppOpen();
-      const { value } = await AdMob.isAppOpenLoaded().catch(() => ({
-        value: false,
-      }));
-      if (!value) return;
-    }
+    if (!appOpenLoaded) await preloadAppOpen();
+    if (!appOpenLoaded) return;
 
-    await AdMob.showAppOpen();
+    anyFullscreenAdShowing = true;
+    await AdMob.showInterstitial();
+    anyFullscreenAdShowing = false;
+    appOpenLoaded = false;
+    void preloadAppOpen();
     localStorage.setItem(LAST_APP_OPEN_KEY, String(Date.now()));
   } catch (e) {
+    anyFullscreenAdShowing = false;
+    appOpenLoaded = false;
     console.warn("[AdMob] show app-open failed", e);
   }
 };
@@ -274,9 +259,15 @@ export const showInterstitial = async (): Promise<boolean> => {
     }
     if (!interstitialLoaded) return false;
 
+    anyFullscreenAdShowing = true;
     await AdMob.showInterstitial();
+    anyFullscreenAdShowing = false;
+    interstitialLoaded = false;
+    void preloadInterstitial();
     return true;
   } catch (e) {
+    anyFullscreenAdShowing = false;
+    interstitialLoaded = false;
     console.warn("[AdMob] show interstitial failed", e);
     return false;
   }
@@ -318,6 +309,10 @@ export const showRewarded = async (opts?: {
       await AdMob.showRewardVideoAd();
     } catch (e) {
       console.warn("[AdMob] rewarded show error", e);
+    } finally {
+      rewardedLoaded = false;
+      anyFullscreenAdShowing = false;
+      void preloadRewarded();
     }
 
     opts?.onEnd?.();
