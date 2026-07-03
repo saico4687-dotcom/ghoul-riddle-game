@@ -85,7 +85,7 @@ const HorrorClock = ({
     resonance.stop(now + 0.2);
 
     // Add eerie whisper-like undertone every few seconds
-    if (timeLeft <= 10 && timeLeft > 0) {
+    if (timeLeftRef.current <= 10 && timeLeftRef.current > 0) {
       const whisper = ctx.createOscillator();
       const whisperGain = ctx.createGain();
       const whisperFilter = ctx.createBiquadFilter();
