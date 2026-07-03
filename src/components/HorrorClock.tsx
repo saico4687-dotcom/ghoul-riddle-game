@@ -108,7 +108,7 @@ const HorrorClock = ({
       whisper.start(now);
       whisper.stop(now + 0.3);
     }
-  }, [isMuted, getAudioContext, timeLeft]);
+  }, [isMuted, getAudioContext]);
 
   useEffect(() => {
     setTimeLeft(duration);
