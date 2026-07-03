@@ -22,6 +22,9 @@ const HorrorClock = ({
   const [secondHandAngle, setSecondHandAngle] = useState(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const tickIntervalRef = useRef<number | null>(null);
+  const timeLeftRef = useRef(duration);
+  useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
+
 
   const getAudioContext = useCallback(() => {
     if (!audioContextRef.current) {
@@ -82,7 +85,7 @@ const HorrorClock = ({
     resonance.stop(now + 0.2);
 
     // Add eerie whisper-like undertone every few seconds
-    if (timeLeft <= 10 && timeLeft > 0) {
+    if (timeLeftRef.current <= 10 && timeLeftRef.current > 0) {
       const whisper = ctx.createOscillator();
       const whisperGain = ctx.createGain();
       const whisperFilter = ctx.createBiquadFilter();
@@ -105,7 +108,7 @@ const HorrorClock = ({
       whisper.start(now);
       whisper.stop(now + 0.3);
     }
-  }, [isMuted, getAudioContext, timeLeft]);
+  }, [isMuted, getAudioContext]);
 
   useEffect(() => {
     setTimeLeft(duration);
