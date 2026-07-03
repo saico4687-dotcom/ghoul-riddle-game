@@ -22,6 +22,9 @@ const HorrorClock = ({
   const [secondHandAngle, setSecondHandAngle] = useState(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const tickIntervalRef = useRef<number | null>(null);
+  const timeLeftRef = useRef(duration);
+  useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
+
 
   const getAudioContext = useCallback(() => {
     if (!audioContextRef.current) {
