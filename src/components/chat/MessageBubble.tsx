@@ -42,9 +42,14 @@ export default function MessageBubble({ message, mine, reactions, myUserId, onRe
           )}
         >
           {renderWithMentions(message.body)}
-          <div className={cn("text-[10px] mt-1 opacity-70", mine ? "text-primary-foreground" : "text-muted-foreground")}>
-            {new Date(message.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}
-            {mine && message.read_at && <span className="mr-1">✓✓</span>}
+          <div className={cn("text-[10px] mt-1 opacity-70 flex items-center gap-1 justify-end", mine ? "text-primary-foreground" : "text-muted-foreground")}>
+            <span>{new Date(message.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}</span>
+            {mine && (
+              <span aria-label={message.read_at ? "قُرئت" : message.delivered_at ? "تم التسليم" : "أُرسلت"}>
+                {message.read_at ? "✓✓" : message.delivered_at ? "✓✓" : "✓"}
+                {message.read_at && <span className="text-cyan-300 mr-[-6px]"></span>}
+              </span>
+            )}
           </div>
         </div>
 
