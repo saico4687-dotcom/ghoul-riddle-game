@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import ReportDialog from "@/components/chat/ReportDialog";
 import { blockUser } from "@/lib/chat/queries";
+import { typingChannel, sendTyping } from "@/lib/chat/typing";
 import { toast } from "sonner";
 
 export default function ChatConversation() {
@@ -41,7 +42,12 @@ export default function ChatConversation() {
   const [sending, setSending] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportMsgId, setReportMsgId] = useState<string | undefined>();
+  const [otherTyping, setOtherTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const typingChannelRef = useRef<ReturnType<typeof typingChannel> | null>(null);
+  const typingTimerRef = useRef<number | null>(null);
+  const otherTypingTimerRef = useRef<number | null>(null);
+  const lastTypingSentRef = useRef(0);
 
   useEffect(() => {
     if (!conversationId || !user) return;
@@ -73,6 +79,10 @@ export default function ChatConversation() {
           setMessages((m) => (m.some((x) => x.id === (payload.new as any).id) ? m : [...m, payload.new as Message]));
           if ((payload.new as any).sender_id !== user.id) markConversationRead(conversationId, user.id);
         })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
+        (payload) => {
+          setMessages((m) => m.map((x) => (x.id === (payload.new as any).id ? { ...x, ...(payload.new as any) } : x)));
+        })
       .on("postgres_changes", { event: "*", schema: "public", table: "message_reactions" },
         async () => {
           const msgs = await fetchMessages(conversationId);
@@ -81,12 +91,36 @@ export default function ChatConversation() {
         })
       .subscribe();
 
-    return () => { active = false; supabase.removeChannel(ch); };
+    const tc = typingChannel(conversationId);
+    typingChannelRef.current = tc;
+    tc.on("broadcast", { event: "typing" }, (msg) => {
+      if ((msg.payload as any)?.userId === user.id) return;
+      setOtherTyping(true);
+      if (otherTypingTimerRef.current) window.clearTimeout(otherTypingTimerRef.current);
+      otherTypingTimerRef.current = window.setTimeout(() => setOtherTyping(false), 3500);
+    }).subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(ch);
+      if (typingChannelRef.current) supabase.removeChannel(typingChannelRef.current);
+      if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
+      if (otherTypingTimerRef.current) window.clearTimeout(otherTypingTimerRef.current);
+    };
   }, [conversationId, user]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+  }, [messages.length, otherTyping]);
+
+  const onTypingChange = (v: string) => {
+    setText(v);
+    const now = Date.now();
+    if (typingChannelRef.current && user && v.length > 0 && now - lastTypingSentRef.current > 1200) {
+      lastTypingSentRef.current = now;
+      sendTyping(typingChannelRef.current, user.id).catch(() => {});
+    }
+  };
 
   const send = async () => {
     if (!text.trim() || !user || !conversationId || sending) return;
@@ -149,15 +183,25 @@ export default function ChatConversation() {
             onReport={(msg) => { setReportMsgId(msg.id); setReportOpen(true); }}
           />
         ))}
+        {otherTyping && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground font-typewriter animate-pulse">
+            <span>{other?.username ?? "المستخدم"} يكتب</span>
+            <span className="inline-flex gap-1">
+              <span className="w-1 h-1 rounded-full bg-primary/70" />
+              <span className="w-1 h-1 rounded-full bg-primary/70" />
+              <span className="w-1 h-1 rounded-full bg-primary/70" />
+            </span>
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
 
       <div className="border-t border-border p-2 flex gap-2 items-end bg-card">
         <Textarea
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => onTypingChange(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-          placeholder="اكتب رسالة... (استخدم @ للإشارة لصديق)"
+          placeholder="اكتب رسالة..."
           rows={1}
           className="resize-none min-h-[40px] max-h-32"
           maxLength={2000}

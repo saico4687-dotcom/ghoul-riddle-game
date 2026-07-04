@@ -106,26 +106,32 @@ export type Database = {
       }
       conversations: {
         Row: {
+          archived_by: string[]
           created_at: string
           id: string
           last_message_at: string | null
           last_message_preview: string | null
+          pinned_by: string[]
           user_a: string
           user_b: string
         }
         Insert: {
+          archived_by?: string[]
           created_at?: string
           id?: string
           last_message_at?: string | null
           last_message_preview?: string | null
+          pinned_by?: string[]
           user_a: string
           user_b: string
         }
         Update: {
+          archived_by?: string[]
           created_at?: string
           id?: string
           last_message_at?: string | null
           last_message_preview?: string | null
+          pinned_by?: string[]
           user_a?: string
           user_b?: string
         }
@@ -214,6 +220,7 @@ export type Database = {
           conversation_id: string
           created_at: string
           deleted_at: string | null
+          delivered_at: string | null
           id: string
           read_at: string | null
           sender_id: string
@@ -223,6 +230,7 @@ export type Database = {
           conversation_id: string
           created_at?: string
           deleted_at?: string | null
+          delivered_at?: string | null
           id?: string
           read_at?: string | null
           sender_id: string
@@ -232,6 +240,7 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           deleted_at?: string | null
+          delivered_at?: string | null
           id?: string
           read_at?: string | null
           sender_id?: string
@@ -307,6 +316,7 @@ export type Database = {
         Row: {
           address: string | null
           avatar_url: string | null
+          bio: string | null
           completed: boolean
           completed_at: string | null
           created_at: string
@@ -319,6 +329,9 @@ export type Database = {
           last_seen_at: string | null
           name: string | null
           phone: string | null
+          privacy_friend_requests: Database["public"]["Enums"]["chat_visibility"]
+          privacy_last_seen: Database["public"]["Enums"]["chat_visibility"]
+          privacy_messages: Database["public"]["Enums"]["chat_visibility"]
           profile_image: string | null
           riddles_completed_count: number
           saved_score: number
@@ -328,10 +341,12 @@ export type Database = {
           updated_at: string
           user_id: string
           username: string | null
+          username_changed_at: string | null
         }
         Insert: {
           address?: string | null
           avatar_url?: string | null
+          bio?: string | null
           completed?: boolean
           completed_at?: string | null
           created_at?: string
@@ -344,6 +359,9 @@ export type Database = {
           last_seen_at?: string | null
           name?: string | null
           phone?: string | null
+          privacy_friend_requests?: Database["public"]["Enums"]["chat_visibility"]
+          privacy_last_seen?: Database["public"]["Enums"]["chat_visibility"]
+          privacy_messages?: Database["public"]["Enums"]["chat_visibility"]
           profile_image?: string | null
           riddles_completed_count?: number
           saved_score?: number
@@ -353,10 +371,12 @@ export type Database = {
           updated_at?: string
           user_id: string
           username?: string | null
+          username_changed_at?: string | null
         }
         Update: {
           address?: string | null
           avatar_url?: string | null
+          bio?: string | null
           completed?: boolean
           completed_at?: string | null
           created_at?: string
@@ -369,6 +389,9 @@ export type Database = {
           last_seen_at?: string | null
           name?: string | null
           phone?: string | null
+          privacy_friend_requests?: Database["public"]["Enums"]["chat_visibility"]
+          privacy_last_seen?: Database["public"]["Enums"]["chat_visibility"]
+          privacy_messages?: Database["public"]["Enums"]["chat_visibility"]
           profile_image?: string | null
           riddles_completed_count?: number
           saved_score?: number
@@ -378,6 +401,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           username?: string | null
+          username_changed_at?: string | null
         }
         Relationships: []
       }
@@ -484,18 +508,21 @@ export type Database = {
       }
       user_presence: {
         Row: {
+          last_beat: string
           last_seen_at: string
           status: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          last_beat?: string
           last_seen_at?: string
           status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          last_beat?: string
           last_seen_at?: string
           status?: string
           updated_at?: string
@@ -563,6 +590,19 @@ export type Database = {
     Functions: {
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
       get_or_create_conversation: { Args: { _other: string }; Returns: string }
+      get_public_profile: {
+        Args: { _uid: string }
+        Returns: {
+          avatar_url: string
+          bio: string
+          completed: boolean
+          is_online: boolean
+          last_seen_at: string
+          riddles_completed_count: number
+          user_id: string
+          username: string
+        }[]
+      }
       has_completed_400: { Args: { _uid: string }; Returns: boolean }
       has_role: {
         Args: {
@@ -573,6 +613,11 @@ export type Database = {
       }
       is_active_user: { Args: { _uid: string }; Returns: boolean }
       is_blocked: { Args: { _a: string; _b: string }; Returns: boolean }
+      mark_conversation_read: {
+        Args: { _conversation_id: string }
+        Returns: undefined
+      }
+      presence_heartbeat: { Args: never; Returns: undefined }
       search_users: {
         Args: { _q: string }
         Returns: {
@@ -583,9 +628,11 @@ export type Database = {
           username: string
         }[]
       }
+      set_username: { Args: { _new: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"
+      chat_visibility: "everyone" | "friends" | "none"
       todo_priority: "high" | "medium" | "low"
     }
     CompositeTypes: {
@@ -715,6 +762,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      chat_visibility: ["everyone", "friends", "none"],
       todo_priority: ["high", "medium", "low"],
     },
   },

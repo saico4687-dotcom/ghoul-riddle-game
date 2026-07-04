@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { heartbeatPresence } from "@/lib/chat/queries";
 import { useAuth } from "./useAuth";
 
 export function usePresence() {
@@ -8,40 +9,38 @@ export function usePresence() {
   useEffect(() => {
     if (!user) return;
 
-    const upsert = async (status: "online" | "offline") => {
+    const beat = () => {
+      heartbeatPresence().catch(() => {});
+    };
+
+    const markOffline = async () => {
       try {
         await supabase
           .from("user_presence")
           .upsert(
-            { user_id: user.id, status, last_seen_at: new Date().toISOString() },
+            { user_id: user.id, status: "offline", last_seen_at: new Date().toISOString() },
             { onConflict: "user_id" }
           );
-        await supabase
-          .from("profiles")
-          .update({ last_seen_at: new Date().toISOString() })
-          .eq("user_id", user.id);
       } catch {}
     };
 
-    upsert("online");
-    const heartbeat = setInterval(() => upsert("online"), 30_000);
+    beat();
+    const heartbeat = window.setInterval(beat, 30_000);
 
     const onVis = () => {
-      if (document.visibilityState === "hidden") upsert("offline");
-      else upsert("online");
+      if (document.visibilityState === "hidden") markOffline();
+      else beat();
     };
-    const onUnload = () => upsert("offline");
-
     document.addEventListener("visibilitychange", onVis);
-    window.addEventListener("pagehide", onUnload);
-    window.addEventListener("beforeunload", onUnload);
+    window.addEventListener("pagehide", markOffline);
+    window.addEventListener("beforeunload", markOffline);
 
     return () => {
-      clearInterval(heartbeat);
+      window.clearInterval(heartbeat);
       document.removeEventListener("visibilitychange", onVis);
-      window.removeEventListener("pagehide", onUnload);
-      window.removeEventListener("beforeunload", onUnload);
-      upsert("offline");
+      window.removeEventListener("pagehide", markOffline);
+      window.removeEventListener("beforeunload", markOffline);
+      markOffline();
     };
   }, [user]);
 }

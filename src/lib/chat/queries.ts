@@ -19,6 +19,7 @@ export type Message = {
   body: string;
   created_at: string;
   read_at: string | null;
+  delivered_at: string | null;
   deleted_at: string | null;
 };
 
@@ -181,22 +182,45 @@ export async function fetchMessages(conversationId: string, limit = 100) {
 }
 
 export async function sendMessage(conversationId: string, senderId: string, body: string) {
+  const { filterMessage, checkRateLimit } = await import("./contentFilter");
+  const rl = checkRateLimit(conversationId);
+  if (!rl.ok) {
+    throw new Error(`تجاوزت الحد المسموح. حاول بعد ${Math.ceil(rl.retryInMs / 1000)} ثانية`);
+  }
+  const cleaned = filterMessage(body).trim();
+  if (!cleaned) throw new Error("رسالة فارغة");
   const { data, error } = await supabase
     .from("messages")
-    .insert({ conversation_id: conversationId, sender_id: senderId, body })
+    .insert({ conversation_id: conversationId, sender_id: senderId, body: cleaned, delivered_at: new Date().toISOString() })
     .select()
     .single();
   if (error) throw error;
   return data as Message;
 }
 
-export async function markConversationRead(conversationId: string, myId: string) {
-  await supabase
-    .from("messages")
-    .update({ read_at: new Date().toISOString() })
-    .eq("conversation_id", conversationId)
-    .neq("sender_id", myId)
-    .is("read_at", null);
+export async function markConversationRead(conversationId: string, _myId: string) {
+  await supabase.rpc("mark_conversation_read", { _conversation_id: conversationId });
+}
+
+export async function setUsernameRpc(newUsername: string) {
+  const { error } = await supabase.rpc("set_username", { _new: newUsername });
+  if (error) throw error;
+}
+
+export type ChatVisibility = "everyone" | "friends" | "none";
+
+export async function updateChatPrivacy(userId: string, opts: {
+  privacy_last_seen?: ChatVisibility;
+  privacy_friend_requests?: ChatVisibility;
+  privacy_messages?: ChatVisibility;
+  bio?: string;
+}) {
+  const { error } = await supabase.from("profiles").update(opts as any).eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function heartbeatPresence() {
+  await supabase.rpc("presence_heartbeat");
 }
 
 export async function fetchReactions(messageIds: string[]) {
