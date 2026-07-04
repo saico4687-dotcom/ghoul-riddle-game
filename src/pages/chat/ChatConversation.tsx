@@ -183,15 +183,25 @@ export default function ChatConversation() {
             onReport={(msg) => { setReportMsgId(msg.id); setReportOpen(true); }}
           />
         ))}
+        {otherTyping && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground font-typewriter animate-pulse">
+            <span>{other?.username ?? "المستخدم"} يكتب</span>
+            <span className="inline-flex gap-1">
+              <span className="w-1 h-1 rounded-full bg-primary/70" />
+              <span className="w-1 h-1 rounded-full bg-primary/70" />
+              <span className="w-1 h-1 rounded-full bg-primary/70" />
+            </span>
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
 
       <div className="border-t border-border p-2 flex gap-2 items-end bg-card">
         <Textarea
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => onTypingChange(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-          placeholder="اكتب رسالة... (استخدم @ للإشارة لصديق)"
+          placeholder="اكتب رسالة..."
           rows={1}
           className="resize-none min-h-[40px] max-h-32"
           maxLength={2000}
