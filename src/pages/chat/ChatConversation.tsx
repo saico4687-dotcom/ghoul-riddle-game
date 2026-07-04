@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import ReportDialog from "@/components/chat/ReportDialog";
 import { blockUser } from "@/lib/chat/queries";
+import { typingChannel, sendTyping } from "@/lib/chat/typing";
 import { toast } from "sonner";
 
 export default function ChatConversation() {
