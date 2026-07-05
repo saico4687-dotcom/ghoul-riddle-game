@@ -68,6 +68,20 @@ export default function ChatHome() {
 
   return (
     <div className="p-4 space-y-6">
+      {pendingCount > 0 && (
+        <Link
+          to="/chat/friends"
+          className="card-horror p-3 flex items-center gap-3 border-primary/60 hover:border-primary transition-colors"
+        >
+          <UserPlus className="w-5 h-5 text-primary" />
+          <div className="flex-1">
+            <div className="font-horror text-primary text-sm">لديك {pendingCount} طلب صداقة جديد</div>
+            <div className="text-[11px] text-muted-foreground font-typewriter">اضغط للعرض والرد</div>
+          </div>
+          <span className="bg-destructive text-destructive-foreground text-[10px] rounded-full px-2 py-0.5">{pendingCount}</span>
+        </Link>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <div className="card-horror p-4 text-center">
           <div className="text-3xl font-horror text-primary">{friends.length}</div>
