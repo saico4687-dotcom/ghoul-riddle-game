@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
   listFriends,
   listMyConversations,
+  listIncomingRequests,
   fetchPublicProfilesByIds,
   fetchPresenceForUsers,
   isOnline,
@@ -11,7 +12,7 @@ import {
   type Conversation,
 } from "@/lib/chat/queries";
 import UserAvatar from "@/components/chat/UserAvatar";
-import { Loader2, MessageCircle, Search, Users } from "lucide-react";
+import { Loader2, MessageCircle, Search, Users, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function ChatHome() {
@@ -20,12 +21,16 @@ export default function ChatHome() {
   const [convos, setConvos] = useState<Conversation[]>([]);
   const [profiles, setProfiles] = useState<Map<string, PublicProfile>>(new Map());
   const [presence, setPresence] = useState<Map<string, any>>(new Map());
+  const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!user) return;
-    setLoading(true);
-    const [fr, cs] = await Promise.all([listFriends(user.id), listMyConversations(user.id)]);
+    const [fr, cs, inc] = await Promise.all([
+      listFriends(user.id),
+      listMyConversations(user.id),
+      listIncomingRequests(user.id),
+    ]);
     const friendIds = fr.map((f: any) => f.friend_id);
     const otherIds = cs.map((c) => (c.user_a === user.id ? c.user_b : c.user_a));
     const allIds = Array.from(new Set([...friendIds, ...otherIds]));
@@ -39,8 +44,9 @@ export default function ChatHome() {
     setPresence(presMap);
     setFriends(friendIds.map((id: string) => pm.get(id)).filter(Boolean) as PublicProfile[]);
     setConvos(cs);
+    setPendingCount(inc.length);
     setLoading(false);
-  };
+  }, [user]);
 
   useEffect(() => {
     load();
@@ -49,9 +55,12 @@ export default function ChatHome() {
       .channel(`home:${user.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "user_presence" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "friend_requests", filter: `to_user=eq.${user.id}` }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "friends", filter: `user_id=eq.${user.id}` }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [user]);
+  }, [user, load]);
+
 
   if (loading) return <div className="flex justify-center pt-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
