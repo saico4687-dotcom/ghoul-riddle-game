@@ -145,9 +145,37 @@ export async function sendFriendRequest(toUser: string) {
   if (!u.user) throw new Error("not authenticated");
   const { error } = await supabase
     .from("friend_requests")
-    .insert({ from_user: u.user.id, to_user: toUser });
+    .insert({ from_user: u.user.id, to_user: toUser, status: "pending" });
   if (error) throw error;
 }
+
+export async function cancelFriendRequest(requestId: string) {
+  const { error } = await supabase
+    .from("friend_requests")
+    .update({ status: "cancelled" })
+    .eq("id", requestId);
+  if (error) throw error;
+}
+
+export type FriendshipStatus = "none" | "friends" | "incoming" | "outgoing" | "blocked";
+
+export async function fetchFriendshipStatuses(myId: string, otherIds: string[]) {
+  const map = new Map<string, { status: FriendshipStatus; requestId?: string }>();
+  if (otherIds.length === 0) return map;
+  const [fr, inc, out, bl] = await Promise.all([
+    supabase.from("friends").select("friend_id").eq("user_id", myId).in("friend_id", otherIds),
+    supabase.from("friend_requests").select("id, from_user").eq("to_user", myId).eq("status", "pending").in("from_user", otherIds),
+    supabase.from("friend_requests").select("id, to_user").eq("from_user", myId).eq("status", "pending").in("to_user", otherIds),
+    supabase.from("blocked_users").select("blocked_id").eq("blocker_id", myId).in("blocked_id", otherIds),
+  ]);
+  otherIds.forEach((id) => map.set(id, { status: "none" }));
+  (fr.data ?? []).forEach((r: any) => map.set(r.friend_id, { status: "friends" }));
+  (inc.data ?? []).forEach((r: any) => map.set(r.from_user, { status: "incoming", requestId: r.id }));
+  (out.data ?? []).forEach((r: any) => map.set(r.to_user, { status: "outgoing", requestId: r.id }));
+  (bl.data ?? []).forEach((r: any) => map.set(r.blocked_id, { status: "blocked" }));
+  return map;
+}
+
 
 export async function respondFriendRequest(requestId: string, accept: boolean) {
   const { error } = await supabase
