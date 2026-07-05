@@ -17,7 +17,7 @@ import { showRewarded, showBannerAd, hideBannerAd } from "@/lib/ads";
 import moneyBg from "@/assets/money-bg.jpg";
 
 
-import HeartRateMonitor from "./HeartRateMonitor";
+
 
 interface RiddleCardProps {
   riddle: Riddle;
@@ -250,16 +250,6 @@ const RiddleCard = ({
         </div>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="mb-8"
-      >
-        <HeartRateMonitor
-          status={showResult && selectedOption !== riddle.correctIndex ? "flatline" : "alive"}
-          bpm={78}
-        />
-      </motion.div>
 
       {riddle.image && (
         <motion.div
