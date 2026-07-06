@@ -45,10 +45,13 @@ export default function ChatConversation() {
   const [reportMsgId, setReportMsgId] = useState<string | undefined>();
   const [otherTyping, setOtherTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const typingChannelRef = useRef<ReturnType<typeof typingChannel> | null>(null);
   const typingTimerRef = useRef<number | null>(null);
   const otherTypingTimerRef = useRef<number | null>(null);
   const lastTypingSentRef = useRef(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
     if (!conversationId || !user) return;
