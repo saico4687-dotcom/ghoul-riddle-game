@@ -83,19 +83,19 @@ const Index = () => {
     const { data: created, error: createError } = await supabase
       .from("profiles")
       .upsert(
-        {
-          user_id: user.id,
-          email: user.email,
-          name:
-            (user.user_metadata as any)?.full_name ||
-            (user.user_metadata as any)?.name ||
-            "",
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "user_id",
-        }
-      )
+  {
+    user_id: user.id,
+    email: user.email,
+    full_name:
+      (user.user_metadata as any)?.full_name ||
+      (user.user_metadata as any)?.name ||
+      "",
+    updated_at: new Date().toISOString(),
+  },
+  {
+    onConflict: "user_id",
+  }
+) 
       .select(
         "last_puzzle_index,saved_score,saved_total_points,saved_time_bonus,full_name,phone,address,completed,total_time_ms"
       )
