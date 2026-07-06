@@ -216,14 +216,25 @@ export async function unblockUser(blockerId: string, blockedId: string) {
   await supabase.from("blocked_users").delete().eq("blocker_id", blockerId).eq("blocked_id", blockedId);
 }
 
-export async function fetchMessages(conversationId: string, limit = 100) {
+export async function fetchMessages(conversationId: string, limit = 50) {
   const { data } = await supabase
     .from("messages")
     .select("*")
     .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true })
+    .order("created_at", { ascending: false })
     .limit(limit);
-  return (data ?? []) as Message[];
+  return ((data ?? []) as Message[]).slice().reverse();
+}
+
+export async function fetchMessagesBefore(conversationId: string, beforeIso: string, limit = 30) {
+  const { data } = await supabase
+    .from("messages")
+    .select("*")
+    .eq("conversation_id", conversationId)
+    .lt("created_at", beforeIso)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return ((data ?? []) as Message[]).slice().reverse();
 }
 
 export async function sendMessage(conversationId: string, senderId: string, body: string) {

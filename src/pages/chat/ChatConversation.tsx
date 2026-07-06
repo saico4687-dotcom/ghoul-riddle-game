@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
   fetchMessages,
+  fetchMessagesBefore,
   sendMessage,
   fetchReactions,
   markConversationRead,
@@ -44,10 +45,13 @@ export default function ChatConversation() {
   const [reportMsgId, setReportMsgId] = useState<string | undefined>();
   const [otherTyping, setOtherTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const typingChannelRef = useRef<ReturnType<typeof typingChannel> | null>(null);
   const typingTimerRef = useRef<number | null>(null);
   const otherTypingTimerRef = useRef<number | null>(null);
   const lastTypingSentRef = useRef(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
     if (!conversationId || !user) return;
@@ -113,6 +117,34 @@ export default function ChatConversation() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, otherTyping]);
 
+  const loadOlder = async () => {
+    if (!conversationId || loadingMore || !hasMore || messages.length === 0) return;
+    setLoadingMore(true);
+    const container = scrollRef.current;
+    const prevHeight = container?.scrollHeight ?? 0;
+    try {
+      const older = await fetchMessagesBefore(conversationId, messages[0].created_at, 30);
+      if (older.length === 0) {
+        setHasMore(false);
+      } else {
+        setMessages((cur) => [...older, ...cur]);
+        const olderReacts = await fetchReactions(older.map((m) => m.id));
+        setReactions((cur) => [...cur, ...olderReacts]);
+        requestAnimationFrame(() => {
+          if (container) container.scrollTop = container.scrollHeight - prevHeight;
+        });
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (e.currentTarget.scrollTop < 60 && !loadingMore && hasMore) {
+      loadOlder();
+    }
+  };
+
   const onTypingChange = (v: string) => {
     setText(v);
     const now = Date.now();
@@ -172,7 +204,13 @@ export default function ChatConversation() {
         </DropdownMenu>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+      <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto p-3 space-y-2">
+        {loadingMore && (
+          <div className="text-center text-xs text-muted-foreground py-1">جاري تحميل الرسائل الأقدم…</div>
+        )}
+        {!hasMore && messages.length > 0 && (
+          <div className="text-center text-[10px] text-muted-foreground/70 py-1">بداية المحادثة</div>
+        )}
         {messages.map((m) => (
           <MessageBubble
             key={m.id}
