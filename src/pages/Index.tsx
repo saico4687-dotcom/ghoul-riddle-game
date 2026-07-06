@@ -63,16 +63,54 @@ const Index = () => {
   const allRiddles = useMemo(() => riddles.slice(0, 400), []);
 
   const ensureProfile = useCallback(async () => {
-    if (!user) return null;
+  if (!user) return null;
 
-    const { data } = await supabase
+  let { data, error } = await supabase
+    .from("profiles")
+    .select(
+      "last_puzzle_index,saved_score,saved_total_points,saved_time_bonus,full_name,phone,address,completed,total_time_ms"
+    )
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("ensureProfile:", error);
+    return null;
+  }
+
+  // أول تسجيل دخول ولم يتم إنشاء Profile
+  if (!data) {
+    const { data: created, error: createError } = await supabase
       .from("profiles")
-      .select("last_puzzle_index,saved_score,saved_total_points,saved_time_bonus,full_name,phone,address,completed,total_time_ms")
-      .eq("user_id", user.id)
-      .maybeSingle();
+      .upsert(
+        {
+          user_id: user.id,
+          email: user.email,
+          name:
+            (user.user_metadata as any)?.full_name ||
+            (user.user_metadata as any)?.name ||
+            "",
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "user_id",
+        }
+      )
+      .select(
+        "last_puzzle_index,saved_score,saved_total_points,saved_time_bonus,full_name,phone,address,completed,total_time_ms"
+      )
+      .single();
 
-    return data;
-  }, [user]);
+    if (createError) {
+      console.error("Create profile:", createError);
+      return null;
+    }
+
+    data = created;
+  }
+
+  return data;
+}, [user]);
 
   // After Google/email login: check profile, then auto-resume to last puzzle
   const autoResumedRef = useRef(false);
@@ -84,6 +122,8 @@ const Index = () => {
     }
     (async () => {
       const data = await ensureProfile();
+
+if (!data) return;
 
       // If user already completed all riddles → straight to final result, no more play
       if (data?.completed) {
@@ -462,7 +502,20 @@ const Index = () => {
             <ParticipantInfoForm
               userId={user.id}
               defaults={profileDefaults}
-              onSaved={() => setNeedsInfo(false)}
+              onSaved={async () => {
+  setNeedsInfo(false);
+
+  const data = await ensureProfile();
+
+  if (!data) return;
+
+  setScore(data.saved_score ?? 0);
+  setTotalPoints(data.saved_total_points ?? 0);
+  setTimeBonus(data.saved_time_bonus ?? 0);
+  setCurrentRiddleIndex(data.last_puzzle_index ?? 0);
+
+  setGameState("playing");
+}}
             />
           </motion.div>
         )}
