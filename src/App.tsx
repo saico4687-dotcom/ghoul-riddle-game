@@ -108,13 +108,13 @@ const App = () => {
         <Sonner />
 
         <AnimatePresence>
-          {showSplash && <SplashScreen />}
-        </AnimatePresence>
+  {showSplash && <SplashScreen />}
+</AnimatePresence>
 
-        <AdsConsentDialog />
+<BrowserRouter>
+  <AdsConsentDialog />
 
-        <BrowserRouter>
-          <DesktopFrame>
+  <DesktopFrame>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/privacy" element={<Privacy />} />
