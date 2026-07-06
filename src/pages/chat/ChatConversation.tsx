@@ -204,7 +204,13 @@ export default function ChatConversation() {
         </DropdownMenu>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+      <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto p-3 space-y-2">
+        {loadingMore && (
+          <div className="text-center text-xs text-muted-foreground py-1">جاري تحميل الرسائل الأقدم…</div>
+        )}
+        {!hasMore && messages.length > 0 && (
+          <div className="text-center text-[10px] text-muted-foreground/70 py-1">بداية المحادثة</div>
+        )}
         {messages.map((m) => (
           <MessageBubble
             key={m.id}
