@@ -8,6 +8,7 @@ import {
   fetchPublicProfilesByIds,
   setUsernameRpc,
   updateChatPrivacy,
+  invalidateAvatarCache,
   type PublicProfile,
   type ChatVisibility,
 } from "@/lib/chat/queries";
@@ -74,22 +75,37 @@ export default function ChatSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
   const upload = async (file: File) => {
     if (!user) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("الرجاء اختيار صورة");
+      return;
+    }
     if (file.size > 4 * 1024 * 1024) {
-      toast.error("الصورة كبيرة جداً");
+      toast.error("الصورة كبيرة جداً (الحد 4 ميجابايت)");
       return;
     }
-    const ext = file.name.split(".").pop() ?? "jpg";
-    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-    if (error) {
-      toast.error(error.message);
-      return;
+    setUploadingAvatar(true);
+    try {
+      const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true, contentType: file.type, cacheControl: "3600" });
+      if (upErr) throw upErr;
+      const { error: dbErr } = await supabase.from("profiles").update({ avatar_url: path }).eq("user_id", user.id);
+      if (dbErr) throw dbErr;
+      if (avatarPath) invalidateAvatarCache(avatarPath);
+      invalidateAvatarCache(path);
+      setAvatarPath(path);
+      toast.success("تم تحديث الصورة");
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر رفع الصورة");
+    } finally {
+      setUploadingAvatar(false);
     }
-    setAvatarPath(path);
-    await supabase.from("profiles").update({ avatar_url: path }).eq("user_id", user.id);
-    toast.success("تم تحديث الصورة");
   };
 
   const save = async () => {
@@ -140,9 +156,10 @@ export default function ChatSettings() {
         <h2 className="font-horror text-primary mb-4">البروفايل</h2>
         <div className="flex items-center gap-4 mb-4">
           <UserAvatar url={avatarPath} username={username} size="lg" />
-          <label className="cursor-pointer text-sm text-primary inline-flex items-center gap-2 border border-primary/40 rounded-md px-3 py-1.5">
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
-            <Upload className="w-4 h-4" /> تغيير الصورة
+          <label className={`cursor-pointer text-sm text-primary inline-flex items-center gap-2 border border-primary/40 rounded-md px-3 py-1.5 ${uploadingAvatar ? "opacity-60 pointer-events-none" : ""}`}>
+            <input type="file" accept="image/*" className="hidden" disabled={uploadingAvatar} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
+            {uploadingAvatar ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            {uploadingAvatar ? "جاري الرفع…" : "تغيير الصورة"}
           </label>
         </div>
         <label className="text-sm font-typewriter">اسم المستخدم</label>

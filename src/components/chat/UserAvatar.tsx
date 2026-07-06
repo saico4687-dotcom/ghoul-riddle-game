@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { avatarPublicUrl } from "@/lib/chat/queries";
+import { avatarSignedUrl } from "@/lib/chat/queries";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -13,8 +14,27 @@ interface Props {
 const sizes = { sm: "h-8 w-8", md: "h-10 w-10", lg: "h-14 w-14", xl: "h-24 w-24" };
 
 export default function UserAvatar({ url, username, size = "md", online, className }: Props) {
-  const resolved = avatarPublicUrl(url);
+  const [resolved, setResolved] = useState<string | null>(null);
   const initial = (username ?? "?").charAt(0).toUpperCase();
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!url) {
+      setResolved(null);
+      return;
+    }
+    if (url.startsWith("http")) {
+      setResolved(url);
+      return;
+    }
+    avatarSignedUrl(url).then((u) => {
+      if (!cancelled) setResolved(u);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
   return (
     <div className={cn("relative inline-block", className)}>
       <Avatar className={cn(sizes[size], "border-2 border-primary/30")}>
