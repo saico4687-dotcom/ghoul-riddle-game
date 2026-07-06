@@ -202,18 +202,20 @@ if (!data) return;
   };
 
   const startFromProfile = useCallback(async () => {
-    if (!user) return;
+  if (!user) return;
 
-    const data = await ensureProfile();
+  const data = await ensureProfile();
 
-    setScore(data?.saved_score ?? 0);
-    setTotalPoints(data?.saved_total_points ?? 0);
-    setTimeBonus(data?.saved_time_bonus ?? 0);
-    setCurrentRiddleIndex(data?.last_puzzle_index ?? 0);
+  if (!data) return;
 
-    setShowAuth(false);
-    setGameState("playing");
-  }, [ensureProfile, user]);
+  setScore(data.saved_score ?? 0);
+  setTotalPoints(data.saved_total_points ?? 0);
+  setTimeBonus(data.saved_time_bonus ?? 0);
+  setCurrentRiddleIndex(data.last_puzzle_index ?? 0);
+
+  setShowAuth(false);
+  setGameState("playing");
+}, [ensureProfile, user]);
 
   const startAsGuest = () => {
     const p = loadGuestProgress();
