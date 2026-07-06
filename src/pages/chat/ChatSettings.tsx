@@ -8,6 +8,7 @@ import {
   fetchPublicProfilesByIds,
   setUsernameRpc,
   updateChatPrivacy,
+  invalidateAvatarCache,
   type PublicProfile,
   type ChatVisibility,
 } from "@/lib/chat/queries";
