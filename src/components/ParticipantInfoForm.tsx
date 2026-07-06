@@ -32,9 +32,17 @@ const ParticipantInfoForm = ({ userId, defaults, onSaved }: Props) => {
     }
     setLoading(true);
     const { error } = await supabase
-      .from("profiles")
-      .update({ ...parsed.data, updated_at: new Date().toISOString() })
-      .eq("user_id", userId);
+  .from("profiles")
+  .upsert(
+    {
+      user_id: userId,
+      ...parsed.data,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      onConflict: "user_id",
+    }
+  );
     setLoading(false);
     if (error) {
       toast.error("تعذّر حفظ البيانات، حاول مرة أخرى");
