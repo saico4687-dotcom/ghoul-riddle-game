@@ -321,3 +321,22 @@ export function avatarPublicUrl(path: string | null | undefined) {
   const { data } = supabase.storage.from("avatars").getPublicUrl(path);
   return data.publicUrl;
 }
+
+// In-memory cache for signed avatar URLs (bucket is private).
+const _avatarSignedCache = new Map<string, { url: string; expires: number }>();
+
+export async function avatarSignedUrl(path: string | null | undefined): Promise<string | null> {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  const cached = _avatarSignedCache.get(path);
+  if (cached && cached.expires > Date.now() + 30_000) return cached.url;
+  const { data, error } = await supabase.storage.from("avatars").createSignedUrl(path, 3600);
+  if (error || !data?.signedUrl) return null;
+  _avatarSignedCache.set(path, { url: data.signedUrl, expires: Date.now() + 3600_000 });
+  return data.signedUrl;
+}
+
+export function invalidateAvatarCache(path?: string | null) {
+  if (path) _avatarSignedCache.delete(path);
+  else _avatarSignedCache.clear();
+}
