@@ -117,6 +117,34 @@ export default function ChatConversation() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, otherTyping]);
 
+  const loadOlder = async () => {
+    if (!conversationId || loadingMore || !hasMore || messages.length === 0) return;
+    setLoadingMore(true);
+    const container = scrollRef.current;
+    const prevHeight = container?.scrollHeight ?? 0;
+    try {
+      const older = await fetchMessagesBefore(conversationId, messages[0].created_at, 30);
+      if (older.length === 0) {
+        setHasMore(false);
+      } else {
+        setMessages((cur) => [...older, ...cur]);
+        const olderReacts = await fetchReactions(older.map((m) => m.id));
+        setReactions((cur) => [...cur, ...olderReacts]);
+        requestAnimationFrame(() => {
+          if (container) container.scrollTop = container.scrollHeight - prevHeight;
+        });
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (e.currentTarget.scrollTop < 60 && !loadingMore && hasMore) {
+      loadOlder();
+    }
+  };
+
   const onTypingChange = (v: string) => {
     setText(v);
     const now = Date.now();
