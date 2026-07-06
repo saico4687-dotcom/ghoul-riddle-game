@@ -142,11 +142,28 @@ export async function listOutgoingRequests(myId: string) {
 
 export async function sendFriendRequest(toUser: string) {
   const { data: u } = await supabase.auth.getUser();
-  if (!u.user) throw new Error("not authenticated");
+  if (!u.user) throw new Error("يجب تسجيل الدخول");
+  if (u.user.id === toUser) throw new Error("لا يمكنك إرسال طلب لنفسك");
+
+  // Pre-flight checks so we can surface a clear reason instead of silent RLS rejection.
+  const [meDone, otherDone, blocked, existing] = await Promise.all([
+    supabase.from("profiles").select("completed, is_muted_until, is_suspended_until").eq("user_id", u.user.id).maybeSingle(),
+    supabase.from("profiles").select("completed").eq("user_id", toUser).maybeSingle(),
+    supabase.from("blocked_users").select("blocker_id").or(`and(blocker_id.eq.${u.user.id},blocked_id.eq.${toUser}),and(blocker_id.eq.${toUser},blocked_id.eq.${u.user.id})`).limit(1),
+    supabase.from("friend_requests").select("id, status").eq("from_user", u.user.id).eq("to_user", toUser).eq("status", "pending").maybeSingle(),
+  ]);
+  if (!meDone.data?.completed) throw new Error("يجب إكمال 400 لغز قبل إرسال طلبات الصداقة");
+  if (!otherDone.data?.completed) throw new Error("هذا المستخدم لم يُكمل 400 لغز بعد");
+  const now = Date.now();
+  if (meDone.data?.is_suspended_until && new Date(meDone.data.is_suspended_until).getTime() > now) throw new Error("حسابك موقوف مؤقتاً");
+  if (meDone.data?.is_muted_until && new Date(meDone.data.is_muted_until).getTime() > now) throw new Error("حسابك مكتوم مؤقتاً");
+  if ((blocked.data ?? []).length > 0) throw new Error("لا يمكن إرسال طلب — العلاقة محظورة");
+  if (existing.data) throw new Error("طلب الصداقة مرسل مسبقاً");
+
   const { error } = await supabase
     .from("friend_requests")
     .insert({ from_user: u.user.id, to_user: toUser, status: "pending" });
-  if (error) throw error;
+  if (error) throw new Error(error.message || "تعذر إرسال طلب الصداقة");
 }
 
 export async function cancelFriendRequest(requestId: string) {
