@@ -75,22 +75,37 @@ export default function ChatSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
   const upload = async (file: File) => {
     if (!user) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("الرجاء اختيار صورة");
+      return;
+    }
     if (file.size > 4 * 1024 * 1024) {
-      toast.error("الصورة كبيرة جداً");
+      toast.error("الصورة كبيرة جداً (الحد 4 ميجابايت)");
       return;
     }
-    const ext = file.name.split(".").pop() ?? "jpg";
-    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-    if (error) {
-      toast.error(error.message);
-      return;
+    setUploadingAvatar(true);
+    try {
+      const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true, contentType: file.type, cacheControl: "3600" });
+      if (upErr) throw upErr;
+      const { error: dbErr } = await supabase.from("profiles").update({ avatar_url: path }).eq("user_id", user.id);
+      if (dbErr) throw dbErr;
+      if (avatarPath) invalidateAvatarCache(avatarPath);
+      invalidateAvatarCache(path);
+      setAvatarPath(path);
+      toast.success("تم تحديث الصورة");
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر رفع الصورة");
+    } finally {
+      setUploadingAvatar(false);
     }
-    setAvatarPath(path);
-    await supabase.from("profiles").update({ avatar_url: path }).eq("user_id", user.id);
-    toast.success("تم تحديث الصورة");
   };
 
   const save = async () => {
