@@ -156,9 +156,10 @@ export default function ChatSettings() {
         <h2 className="font-horror text-primary mb-4">البروفايل</h2>
         <div className="flex items-center gap-4 mb-4">
           <UserAvatar url={avatarPath} username={username} size="lg" />
-          <label className="cursor-pointer text-sm text-primary inline-flex items-center gap-2 border border-primary/40 rounded-md px-3 py-1.5">
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
-            <Upload className="w-4 h-4" /> تغيير الصورة
+          <label className={`cursor-pointer text-sm text-primary inline-flex items-center gap-2 border border-primary/40 rounded-md px-3 py-1.5 ${uploadingAvatar ? "opacity-60 pointer-events-none" : ""}`}>
+            <input type="file" accept="image/*" className="hidden" disabled={uploadingAvatar} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
+            {uploadingAvatar ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            {uploadingAvatar ? "جاري الرفع…" : "تغيير الصورة"}
           </label>
         </div>
         <label className="text-sm font-typewriter">اسم المستخدم</label>
