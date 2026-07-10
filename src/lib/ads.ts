@@ -276,7 +276,7 @@ export const showInterstitial = async (): Promise<boolean> => {
   } catch (e) {
     anyFullscreenAdShowing = false;
     interstitialLoaded = false;
-    console.warn("[AdMob] show interstitial failed", e);
+    logAdMobError("show interstitial failed", e);
     return false;
   }
 };
