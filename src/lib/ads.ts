@@ -589,8 +589,11 @@ export const showRewarded = async (opts?: {
     }
 
     if (anyFullscreenAdShowing) {
-        console.warn("[AdMob] Another fullscreen ad is already showing.");
-        return false;
+
+    console.warn("[AdMob] Another fullscreen ad is already showing.");
+
+    return true;
+
     }
 
     try {
