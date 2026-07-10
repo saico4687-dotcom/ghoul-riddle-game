@@ -25,32 +25,67 @@ const ParticipantInfoForm = ({ userId, defaults, onSaved }: Props) => {
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
-    const parsed = schema.safeParse({ full_name, phone, address });
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0].message);
-      return;
-    }
-    setLoading(true);
+  const parsed = schema.safeParse({ full_name, phone, address });
+
+  if (!parsed.success) {
+    toast.error(parsed.error.issues[0].message);
+    return;
+  }
+
+  setLoading(true);
+
+  try {
     const { error } = await supabase
-  .from("profiles")
-  .upsert(
-    {
-      user_id: userId,
-      ...parsed.data,
-      updated_at: new Date().toISOString(),
-    },
-    {
-      onConflict: "user_id",
-    }
-  );
+      .from("profiles")
+      .upsert(
+        {
+          user_id: userId,
+          ...parsed.data,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "user_id",
+        }
+      );
+
     setLoading(false);
+
     if (error) {
-      toast.error("تعذّر حفظ البيانات، حاول مرة أخرى");
+      console.error("Supabase Save Error:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      });
+
+      toast.error(
+        `${error.message}
+
+Code: ${error.code ?? "N/A"}
+
+Details: ${error.details ?? "N/A"}
+
+Hint: ${error.hint ?? "N/A"}`
+      );
+
       return;
     }
+
     toast.success("تم حفظ بياناتك");
     onSaved();
-  };
+  } catch (error: any) {
+    setLoading(false);
+
+    console.error("Unexpected Save Error:", error);
+
+    toast.error(
+      `${error?.message ?? "Unknown Error"}
+
+Stack:
+${error?.stack ?? "No Stack"}`
+    );
+  }
+};
 
   return (
     <div className="min-h-screen bg-horror-gradient flex items-center justify-center px-4 py-8" dir="rtl">
