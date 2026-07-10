@@ -614,11 +614,9 @@ export const showRewarded = async (opts?: {
 
             console.error("[AdMob] Rewarded NOT Loaded");
 
-            alert("Rewarded Ad is not loaded");
-
             opts?.onEnd?.();
 
-            return false;
+            return true;
 
         }
 
@@ -658,7 +656,7 @@ export const showRewarded = async (opts?: {
 
     opts?.onEnd?.();
 
-    return false;
+    return true;
 
         }
 
@@ -674,7 +672,7 @@ export const showRewarded = async (opts?: {
 
     opts?.onEnd?.();
 
-    return false;
+    return true;
 
     }
 
