@@ -352,7 +352,7 @@ export const showBannerAd = async () => {
 
     bannerVisible = true;
   } catch (e) {
-    console.warn("[AdMob] banner show failed", e);
+    logAdMobError("banner show failed", e);
   }
 };
 
@@ -364,7 +364,7 @@ export const hideBannerAd = async () => {
     const { AdMob } = await getAdMob();
     await AdMob.removeBanner();
   } catch (e) {
-    console.warn("[AdMob] banner hide failed", e);
+    logAdMobError("banner hide failed", e);
   } finally {
     bannerVisible = false;
   }
