@@ -108,7 +108,6 @@ Hint: ${err?.hint ?? "N/A"}`,
     variant: "destructive",
   });
 
-  setLoading(false);
   return;
       }
     } catch (err: any) {
