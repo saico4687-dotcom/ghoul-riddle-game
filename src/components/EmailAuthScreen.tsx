@@ -99,12 +99,16 @@ Hint: ${err?.hint ?? "N/A"}`,
         redirect_uri: window.location.origin,
       });
       if (result?.error) {
-        toast({
-          title: "تعذّر تسجيل دخول Google",
-          description: String(result.error),
-          variant: "destructive",
-        });
-        setLoading(false);
+  console.error("Google OAuth Result Error:", result.error);
+
+  toast({
+    title: "تعذّر تسجيل دخول Google",
+    description: String(result.error),
+    variant: "destructive",
+  });
+
+  setLoading(false);
+  return;
       }
     } catch (err: any) {
   console.error("Google OAuth Error:", {
