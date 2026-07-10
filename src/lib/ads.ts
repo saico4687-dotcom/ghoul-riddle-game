@@ -161,7 +161,7 @@ export const initAdMob = async (): Promise<void> => {
 
       console.log("[AdMob] initialized");
     } catch (e) {
-      console.warn("[AdMob] init failed", e);
+      logAdMobError("initialization failed", e);
       initialized = false;
       initPromise = null;
     }
