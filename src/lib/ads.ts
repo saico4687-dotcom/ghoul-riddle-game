@@ -493,13 +493,13 @@ export const showAppOpenAdIfDue = async () => {
 
     } catch (e) {
 
-        anyFullscreenAdShowing = false;
+    anyFullscreenAdShowing = false;
 
-        appOpenLoaded = false;
+    appOpenLoaded = false;
 
-        logAdMobError("Show App Open", e);
+    logAdMobError("Show App Open", e);
 
-        alert(JSON.stringify(e));
+    alert(e instanceof Error ? e.message : String(e));
 
     }
 
@@ -561,15 +561,15 @@ export const showInterstitial = async (): Promise<boolean> => {
 
     } catch (e) {
 
-        anyFullscreenAdShowing = false;
+    anyFullscreenAdShowing = false;
 
-        interstitialLoaded = false;
+    interstitialLoaded = false;
 
-        logAdMobError("Show Interstitial", e);
+    logAdMobError("Show Interstitial", e);
 
-        alert(JSON.stringify(e));
+    alert(e instanceof Error ? e.message : String(e));
 
-        return false;
+    return false;
 
     }
 
@@ -643,35 +643,35 @@ export const showRewarded = async (opts?: {
 
         } catch (e) {
 
-            rewardedLoaded = false;
+    rewardedLoaded = false;
 
-            anyFullscreenAdShowing = false;
+    anyFullscreenAdShowing = false;
 
-            logAdMobError("Rewarded Show", e);
+    logAdMobError("Rewarded Show", e);
 
-            alert(JSON.stringify(e));
+    alert(e instanceof Error ? e.message : String(e));
 
-            void preloadRewarded();
+    void preloadRewarded();
 
-            opts?.onEnd?.();
+    opts?.onEnd?.();
 
-            return false;
+    return false;
 
         }
 
     } catch (e) {
 
-        rewardedLoaded = false;
+    rewardedLoaded = false;
 
-        anyFullscreenAdShowing = false;
+    anyFullscreenAdShowing = false;
 
-        logAdMobError("Rewarded Error", e);
+    logAdMobError("Rewarded Error", e);
 
-        alert(JSON.stringify(e));
+    alert(e instanceof Error ? e.message : String(e));
 
-        opts?.onEnd?.();
+    opts?.onEnd?.();
 
-        return false;
+    return false;
 
     }
 
@@ -721,11 +721,11 @@ export const showBannerAd = async () => {
 
     } catch (e) {
 
-        bannerVisible = false;
+    bannerVisible = false;
 
-        logAdMobError("Banner Show", e);
+    logAdMobError("Banner Show", e);
 
-        alert(JSON.stringify(e));
+    alert(e instanceof Error ? e.message : String(e));
 
     }
 
