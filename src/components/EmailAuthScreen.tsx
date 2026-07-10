@@ -91,9 +91,8 @@ Hint: ${err?.hint ?? "N/A"}`,
 
       // Android / iOS → Native Google Sign-In
       if (isNativePlatform()) {
-        await startNativeGoogleSignIn();
-        setLoading(false);
-        return;
+  await startNativeGoogleSignIn();
+  return;
       }
 
       // Web → Lovable Managed OAuth
