@@ -53,14 +53,32 @@ const EmailAuthScreen = ({ onBack }: EmailAuthScreenProps) => {
         toast({ title: "أهلاً بعودتك", description: "تم تسجيل الدخول" });
       }
     } catch (err: any) {
-      toast({
-        title: "خطأ",
-        description: err?.message || "حدث خطأ غير متوقع",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+  console.error("Authentication Error:", {
+    message: err?.message,
+    code: err?.code,
+    status: err?.status,
+    details: err?.details,
+    hint: err?.hint,
+    stack: err?.stack,
+    error: err,
+  });
+
+  toast({
+    title: "فشل العملية",
+    description: `${err?.message ?? "Unknown Error"}
+
+Code: ${err?.code ?? "N/A"}
+
+Status: ${err?.status ?? "N/A"}
+
+Details: ${err?.details ?? "N/A"}
+
+Hint: ${err?.hint ?? "N/A"}`,
+    variant: "destructive",
+  });
+} finally {
+  setLoading(false);
+} 
   };
 
   const handleGoogle = async () => {
@@ -89,13 +107,32 @@ const EmailAuthScreen = ({ onBack }: EmailAuthScreenProps) => {
         setLoading(false);
       }
     } catch (err: any) {
-      toast({
-        title: "خطأ غير متوقع",
-        description: err?.message || String(err),
-        variant: "destructive",
-      });
-      setLoading(false);
-    }
+  console.error("Google OAuth Error:", {
+    message: err?.message,
+    code: err?.code,
+    status: err?.status,
+    details: err?.details,
+    hint: err?.hint,
+    stack: err?.stack,
+    error: err,
+  });
+
+  toast({
+    title: "فشل تسجيل الدخول بواسطة Google",
+    description: `${err?.message ?? "Unknown Error"}
+
+Code: ${err?.code ?? "N/A"}
+
+Status: ${err?.status ?? "N/A"}
+
+Details: ${err?.details ?? "N/A"}
+
+Hint: ${err?.hint ?? "N/A"}`,
+    variant: "destructive",
+  });
+
+  setLoading(false);
+} 
   };
 
   return (
