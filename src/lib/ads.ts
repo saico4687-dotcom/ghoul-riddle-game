@@ -9,13 +9,16 @@ export const INTERSTITIAL_AD_ID = "ca-app-pub-4098736191122679/7153504814";
 export const REWARDED_AD_ID = "ca-app-pub-4098736191122679/2165516995";
 export const BANNER_AD_ID = "ca-app-pub-4098736191122679/3034179835";
 
-/* App Open cooldown: only show on cold launch OR after 5h background */
+/* ============================================================
+ * App Open cooldown
+ * ============================================================ */
 const APP_OPEN_COOLDOWN_MS = 5 * 60 * 60 * 1000;
 const LAST_APP_OPEN_KEY = "last_app_open_ad_v2";
 
 /* ============================================================
- *  Internal state
+ * Internal State
  * ============================================================ */
+
 let initialized = false;
 let initPromise: Promise<void> | null = null;
 
@@ -35,343 +38,725 @@ let listenersRegistered = false;
 
 const isNative = () => Capacitor.isNativePlatform();
 
-/* Small helper to lazy import the plugin only on native */
 async function getAdMob() {
-  const mod = await import("@capacitor-community/admob");
-  return mod;
+    return await import("@capacitor-community/admob");
 }
+
 const logAdMobError = (context: string, error: any) => {
-  console.error(`[AdMob] ${context}`, {
-    message: error?.message ?? "Unknown error",
-    code: error?.code ?? "N/A",
-    details: error?.details ?? error,
-    stack: error?.stack ?? "No stack trace",
-    raw: error,
-  });
+    console.error(`❌ [AdMob] ${context}`, {
+        message: error?.message ?? "Unknown Error",
+        code: error?.code ?? "N/A",
+        details: error?.details ?? error,
+        stack: error?.stack,
+        raw: error,
+    });
 };
+
 /* ============================================================
- *  UMP Consent
+ * UMP Consent
  * ============================================================ */
+
 export const requestUMPConsent = async () => {
-  if (!isNative()) return;
-  try {
-    const { AdMob } = await getAdMob();
-    const consentInfo = await AdMob.requestConsentInfo();
-    if (
-      consentInfo.isConsentFormAvailable &&
-      consentInfo.status === "REQUIRED"
-    ) {
-      await AdMob.showConsentForm();
-    }
-  } catch (e) {
-    logAdMobError("consent failed", e);
-  }
-};
 
-/* ============================================================
- *  Initialization (single-shot)
- * ============================================================ */
-export const initAdMob = async (): Promise<void> => {
-  if (initialized) return;
-  if (initPromise) return initPromise;
-
-  initPromise = (async () => {
-    if (!isNative()) {
-      initialized = true;
-      return;
-    }
+    if (!isNative()) return;
 
     try {
-      const {
-        AdMob,
-        InterstitialAdPluginEvents,
-        RewardAdPluginEvents,
-      } = await getAdMob();
 
-      await requestUMPConsent();
+        const { AdMob } = await getAdMob();
 
-      await AdMob.initialize({
-        initializeForTesting: false,
-      });
+        console.log("[AdMob] Requesting consent...");
 
-      if (!listenersRegistered) {
-        listenersRegistered = true;
+        const consent = await AdMob.requestConsentInfo();
 
-        /* --- Interstitial --- */
-        AdMob.addListener(InterstitialAdPluginEvents.Loaded, () => {
-          interstitialLoaded = true;
-          interstitialLoading = false;
-          console.log("[AdMob] interstitial loaded");
-        });
-        AdMob.addListener(InterstitialAdPluginEvents.FailedToLoad, (e) => {
-          interstitialLoaded = false;
-          interstitialLoading = false;
-          logAdMobError("interstitial failed to load", e);
-        });
-        AdMob.addListener(InterstitialAdPluginEvents.Showed, () => {
-          anyFullscreenAdShowing = true;
-        });
-        AdMob.addListener(InterstitialAdPluginEvents.Dismissed, () => {
-          anyFullscreenAdShowing = false;
-          interstitialLoaded = false;
-          void preloadInterstitial();
-        });
-        AdMob.addListener(InterstitialAdPluginEvents.FailedToShow, (e) => {
-          anyFullscreenAdShowing = false;
-          interstitialLoaded = false;
-          logAdMobError("interstitial failed to show", e);
-          void preloadInterstitial();
-        });
+        console.log("[AdMob] Consent Status:", consent);
 
-        /* --- Rewarded --- */
-        AdMob.addListener(RewardAdPluginEvents.Loaded, () => {
-          rewardedLoaded = true;
-          rewardedLoading = false;
-          console.log("[AdMob] rewarded loaded");
-        });
-        AdMob.addListener(RewardAdPluginEvents.FailedToLoad, (e) => {
-          rewardedLoaded = false;
-          rewardedLoading = false;
-          logAdMobError("rewarded failed to load", e);
-        });
-        AdMob.addListener(RewardAdPluginEvents.Showed, () => {
-          anyFullscreenAdShowing = true;
-        });
-        AdMob.addListener(RewardAdPluginEvents.Dismissed, () => {
-          anyFullscreenAdShowing = false;
-          rewardedLoaded = false;
-          void preloadRewarded();
-        });
-        AdMob.addListener(RewardAdPluginEvents.FailedToShow, (e) => {
-          anyFullscreenAdShowing = false;
-          rewardedLoaded = false;
-          logAdMobError("rewarded failed to show", e);
-          void preloadRewarded();
-        });
+        if (
+            consent.isConsentFormAvailable &&
+            consent.status === "REQUIRED"
+        ) {
 
-        /* App Open is served through the stable interstitial API in this plugin version. */
-      }
+            console.log("[AdMob] Showing consent form...");
 
-      initialized = true;
+            await AdMob.showConsentForm();
+        }
 
-      /* Warm up all caches */
-      void preloadInterstitial();
-      void preloadRewarded();
-      void preloadAppOpen();
-
-      console.log("[AdMob] initialized");
     } catch (e) {
-      logAdMobError("initialization failed", e);
-      initialized = false;
-      initPromise = null;
-    }
-  })();
 
-  return initPromise;
+        logAdMobError("Consent", e);
+
+    }
+
 };
 
 /* ============================================================
- *  Preloaders
+ * Initialization
  * ============================================================ */
+
+export const initAdMob = async (): Promise<void> => {
+
+    if (initialized) return;
+
+    if (initPromise) return initPromise;
+
+    initPromise = (async () => {
+
+        if (!isNative()) {
+
+            initialized = true;
+
+            console.log("[AdMob] Web mode");
+
+            return;
+
+        }
+
+        try {
+
+            console.log("[AdMob] Initializing...");
+
+            const {
+
+                AdMob,
+
+                InterstitialAdPluginEvents,
+
+                RewardAdPluginEvents,
+
+            } = await getAdMob();
+
+            await requestUMPConsent();
+
+            await AdMob.initialize({
+
+                initializeForTesting: false,
+
+            });
+
+            console.log("[AdMob] SDK initialized");
+
+            if (!listenersRegistered) {
+
+                listenersRegistered = true;
+
+                console.log("[AdMob] Registering listeners...");
+
+                /* ==========================
+                   INTERSTITIAL
+                =========================== */
+
+                AdMob.addListener(
+                    InterstitialAdPluginEvents.Loaded,
+                    () => {
+
+                        console.log("✅ Interstitial Loaded");
+
+                        interstitialLoaded = true;
+
+                        interstitialLoading = false;
+
+                    }
+                );
+
+                AdMob.addListener(
+                    InterstitialAdPluginEvents.FailedToLoad,
+                    (e) => {
+
+                        interstitialLoaded = false;
+
+                        interstitialLoading = false;
+
+                        logAdMobError("Interstitial Load", e);
+
+                    }
+                );
+
+                AdMob.addListener(
+                    InterstitialAdPluginEvents.Showed,
+                    () => {
+
+                        console.log("✅ Interstitial Showed");
+
+                        anyFullscreenAdShowing = true;
+
+                    }
+                );
+
+                AdMob.addListener(
+                    InterstitialAdPluginEvents.Dismissed,
+                    () => {
+
+                        console.log("✅ Interstitial Closed");
+
+                        anyFullscreenAdShowing = false;
+
+                        interstitialLoaded = false;
+
+                        void preloadInterstitial();
+
+                    }
+                );
+
+                AdMob.addListener(
+                    InterstitialAdPluginEvents.FailedToShow,
+                    (e) => {
+
+                        anyFullscreenAdShowing = false;
+
+                        interstitialLoaded = false;
+
+                        logAdMobError("Interstitial Show", e);
+
+                        void preloadInterstitial();
+
+                    }
+                );
+
+                /* ==========================
+                   REWARDED
+                =========================== */
+
+                AdMob.addListener(
+                    RewardAdPluginEvents.Loaded,
+                    () => {
+
+                        console.log("✅ Rewarded Loaded");
+
+                        rewardedLoaded = true;
+
+                        rewardedLoading = false;
+
+                    }
+                );
+
+                AdMob.addListener(
+                    RewardAdPluginEvents.FailedToLoad,
+                    (e) => {
+
+                        rewardedLoaded = false;
+
+                        rewardedLoading = false;
+
+                        logAdMobError("Rewarded Load", e);
+
+                    }
+                );
+
+                AdMob.addListener(
+                    RewardAdPluginEvents.Showed,
+                    () => {
+
+                        console.log("✅ Rewarded Showed");
+
+                        anyFullscreenAdShowing = true;
+
+                    }
+                );
+
+                AdMob.addListener(
+                    RewardAdPluginEvents.Dismissed,
+                    () => {
+
+                        console.log("✅ Rewarded Closed");
+
+                        anyFullscreenAdShowing = false;
+
+                        rewardedLoaded = false;
+
+                        void preloadRewarded();
+
+                    }
+                );
+
+                AdMob.addListener(
+                    RewardAdPluginEvents.FailedToShow,
+                    (e) => {
+
+                        anyFullscreenAdShowing = false;
+
+                        rewardedLoaded = false;
+
+                        logAdMobError("Rewarded Show", e);
+
+                        void preloadRewarded();
+
+                    }
+                );
+
+            }
+
+            initialized = true;
+
+            console.log("[AdMob] Preloading ads...");
+
+            void preloadInterstitial();
+            void preloadRewarded();
+            void preloadAppOpen();
+
+            console.log("✅ AdMob Ready");
+
+        } catch (e) {
+
+            initialized = false;
+
+            initPromise = null;
+
+            logAdMobError("Initialization", e);
+
+            alert("AdMob initialization failed");
+
+        }
+
+    })();
+
+    return initPromise;
+
+};
+/* ============================================================
+ * PRELOADERS
+ * ============================================================ */
+
 export const preloadInterstitial = async () => {
-  if (!isNative()) return;
-  if (interstitialLoaded || interstitialLoading) return;
-  interstitialLoading = true;
-  try {
-    const { AdMob } = await getAdMob();
-    await AdMob.prepareInterstitial({ adId: INTERSTITIAL_AD_ID });
-    interstitialLoaded = true;
-  } catch (e) {
-    interstitialLoading = false;
-    logAdMobError("preload interstitial failed", e);
-  } finally {
-    interstitialLoading = false;
-  }
+
+    if (!isNative()) return;
+
+    if (interstitialLoaded || interstitialLoading) return;
+
+    interstitialLoading = true;
+
+    console.log("[AdMob] Loading Interstitial...");
+
+    try {
+
+        const { AdMob } = await getAdMob();
+
+        await AdMob.prepareInterstitial({
+            adId: INTERSTITIAL_AD_ID,
+        });
+
+        interstitialLoaded = true;
+
+        console.log("✅ Interstitial Ready");
+
+    } catch (e) {
+
+        interstitialLoaded = false;
+
+        logAdMobError("Preload Interstitial", e);
+
+    } finally {
+
+        interstitialLoading = false;
+
+    }
+
 };
 
 export const preloadRewarded = async () => {
-  if (!isNative()) return;
-  if (rewardedLoaded || rewardedLoading) return;
-  rewardedLoading = true;
-  try {
-    const { AdMob } = await getAdMob();
-    await AdMob.prepareRewardVideoAd({ adId: REWARDED_AD_ID });
-    rewardedLoaded = true;
-  } catch (e) {
-    rewardedLoading = false;
-    logAdMobError("preload rewarded failed", e);
-  } finally {
-    rewardedLoading = false;
-  }
+
+    if (!isNative()) return;
+
+    if (rewardedLoaded || rewardedLoading) return;
+
+    rewardedLoading = true;
+
+    console.log("[AdMob] Loading Rewarded...");
+
+    try {
+
+        const { AdMob } = await getAdMob();
+
+        await AdMob.prepareRewardVideoAd({
+            adId: REWARDED_AD_ID,
+        });
+
+        rewardedLoaded = true;
+
+        console.log("✅ Rewarded Ready");
+
+    } catch (e) {
+
+        rewardedLoaded = false;
+
+        logAdMobError("Preload Rewarded", e);
+
+    } finally {
+
+        rewardedLoading = false;
+
+    }
+
 };
 
 export const preloadAppOpen = async () => {
-  if (!isNative()) return;
-  if (appOpenLoaded || appOpenLoading) return;
-  appOpenLoading = true;
-  try {
-    const { AdMob } = await getAdMob();
-    await AdMob.prepareInterstitial({ adId: APP_OPEN_AD_ID });
-    appOpenLoaded = true;
-  } catch (e) {
-    appOpenLoading = false;
-    logAdMobError("preload app-open failed", e);
-  } finally {
-    appOpenLoading = false;
-  }
+
+    if (!isNative()) return;
+
+    if (appOpenLoaded || appOpenLoading) return;
+
+    appOpenLoading = true;
+
+    console.log("[AdMob] Loading App Open...");
+
+    try {
+
+        const { AdMob } = await getAdMob();
+
+        await AdMob.prepareInterstitial({
+
+            adId: APP_OPEN_AD_ID,
+
+        });
+
+        appOpenLoaded = true;
+
+        console.log("✅ App Open Ready");
+
+    } catch (e) {
+
+        appOpenLoaded = false;
+
+        logAdMobError("Preload App Open", e);
+
+    } finally {
+
+        appOpenLoading = false;
+
+    }
+
 };
 
 /* ============================================================
- *  App Open
+ * APP OPEN
  * ============================================================ */
+
 export const showAppOpenAdIfDue = async () => {
-  if (!isNative()) return;
-  if (anyFullscreenAdShowing) return;
 
-  const last = Number(localStorage.getItem(LAST_APP_OPEN_KEY) || 0);
-  if (Date.now() - last < APP_OPEN_COOLDOWN_MS) return;
+    if (!isNative()) return;
 
-  try {
-    await initAdMob();
-    const { AdMob } = await getAdMob();
+    if (anyFullscreenAdShowing) {
 
-    if (!appOpenLoaded) await preloadAppOpen();
-    if (!appOpenLoaded) {
-  console.error("[AdMob] App Open is not loaded.");
-  return;
+        console.warn("[AdMob] Another fullscreen ad is already showing.");
+
+        return;
+
     }
 
-    anyFullscreenAdShowing = true;
-    await AdMob.showInterstitial();
-    anyFullscreenAdShowing = false;
-    appOpenLoaded = false;
-    void preloadAppOpen();
-    localStorage.setItem(LAST_APP_OPEN_KEY, String(Date.now()));
-  } catch (e) {
-    anyFullscreenAdShowing = false;
-    appOpenLoaded = false;
-    logAdMobError("show app-open failed", e);
-  }
-};
+    const last = Number(localStorage.getItem(LAST_APP_OPEN_KEY) || 0);
 
-/* ============================================================
- *  Interstitial
- * ============================================================ */
-export const showInterstitial = async (): Promise<boolean> => {
-  if (!isNative()) return false;
-  if (anyFullscreenAdShowing) return false;
+    if (Date.now() - last < APP_OPEN_COOLDOWN_MS) {
 
-  try {
-    await initAdMob();
-    const { AdMob } = await getAdMob();
+        console.log("[AdMob] App Open Cooldown");
 
-    if (!interstitialLoaded) {
-      await preloadInterstitial();
-    }
-    if (!interstitialLoaded) {
-  console.error("[AdMob] Interstitial is not loaded.");
-  return false;
-    }
+        return;
 
-    anyFullscreenAdShowing = true;
-    await AdMob.showInterstitial();
-    anyFullscreenAdShowing = false;
-    interstitialLoaded = false;
-    void preloadInterstitial();
-    return true;
-  } catch (e) {
-    anyFullscreenAdShowing = false;
-    interstitialLoaded = false;
-    logAdMobError("show interstitial failed", e);
-    return false;
-  }
-};
-
-/* ============================================================
- *  Rewarded — always grants reward on failure
- * ============================================================ */
-export const showRewarded = async (opts?: {
-  onStart?: () => void;
-  onEnd?: () => void;
-}): Promise<boolean> => {
-  if (!isNative()) {
-    // Web preview: grant reward without ad
-    return true;
-  }
-  if (anyFullscreenAdShowing) {
-    // Never overlap with another fullscreen ad
-    return true;
-  }
-
-  try {
-    await initAdMob();
-    const { AdMob } = await getAdMob();
-
-    if (!rewardedLoaded) {
-      await preloadRewarded();
-    }
-
-    opts?.onStart?.();
-
-    if (!rewardedLoaded) {
-  console.error("[AdMob] Rewarded is not loaded.");
-  opts?.onEnd?.();
-  return true;
     }
 
     try {
-      await AdMob.showRewardVideoAd();
+
+        await initAdMob();
+
+        const { AdMob } = await getAdMob();
+
+        if (!appOpenLoaded) {
+
+            await preloadAppOpen();
+
+        }
+
+        if (!appOpenLoaded) {
+
+            console.error("[AdMob] App Open NOT Loaded");
+
+            alert("App Open Ad is not loaded");
+
+            return;
+
+        }
+
+        console.log("▶ Showing App Open");
+
+        anyFullscreenAdShowing = true;
+
+        await AdMob.showInterstitial();
+
+        console.log("✅ App Open Finished");
+
+        appOpenLoaded = false;
+
+        anyFullscreenAdShowing = false;
+
+        localStorage.setItem(
+
+            LAST_APP_OPEN_KEY,
+
+            String(Date.now())
+
+        );
+
+        void preloadAppOpen();
+
     } catch (e) {
-      logAdMobError("rewarded show error", e);
-    } finally {
-      rewardedLoaded = false;
-      anyFullscreenAdShowing = false;
-      void preloadRewarded();
+
+        anyFullscreenAdShowing = false;
+
+        appOpenLoaded = false;
+
+        logAdMobError("Show App Open", e);
+
+        alert(JSON.stringify(e));
+
     }
 
-    opts?.onEnd?.();
-    return true;
-  } catch (e) {
-    logAdMobError("rewarded error", e);
-    opts?.onEnd?.();
-    return true;
-  }
 };
 
 /* ============================================================
- *  Banner (adaptive, bottom-center)
+ * INTERSTITIAL
  * ============================================================ */
+
+export const showInterstitial = async (): Promise<boolean> => {
+
+    if (!isNative()) return false;
+
+    if (anyFullscreenAdShowing) {
+
+        console.warn("[AdMob] Another fullscreen ad is already showing.");
+
+        return false;
+
+    }
+
+    try {
+
+        await initAdMob();
+
+        const { AdMob } = await getAdMob();
+
+        if (!interstitialLoaded) {
+
+            await preloadInterstitial();
+
+        }
+
+        if (!interstitialLoaded) {
+
+            console.error("[AdMob] Interstitial NOT Loaded");
+
+            alert("Interstitial Ad is not loaded");
+
+            return false;
+
+        }
+
+        console.log("▶ Showing Interstitial");
+
+        anyFullscreenAdShowing = true;
+
+        await AdMob.showInterstitial();
+
+        console.log("✅ Interstitial Finished");
+
+        anyFullscreenAdShowing = false;
+
+        interstitialLoaded = false;
+
+        void preloadInterstitial();
+
+        return true;
+
+    } catch (e) {
+
+        anyFullscreenAdShowing = false;
+
+        interstitialLoaded = false;
+
+        logAdMobError("Show Interstitial", e);
+
+        alert(JSON.stringify(e));
+
+        return false;
+
+    }
+
+};
+/* ============================================================
+ * REWARDED
+ * ============================================================ */
+
+export const showRewarded = async (opts?: {
+    onStart?: () => void;
+    onEnd?: () => void;
+}): Promise<boolean> => {
+
+    if (!isNative()) {
+        console.log("[AdMob] Web Preview -> Reward Granted");
+        return true;
+    }
+
+    if (anyFullscreenAdShowing) {
+        console.warn("[AdMob] Another fullscreen ad is already showing.");
+        return false;
+    }
+
+    try {
+
+        await initAdMob();
+
+        const { AdMob } = await getAdMob();
+
+        if (!rewardedLoaded) {
+
+            console.log("[AdMob] Rewarded not loaded, preparing...");
+
+            await preloadRewarded();
+
+        }
+
+        if (!rewardedLoaded) {
+
+            console.error("[AdMob] Rewarded NOT Loaded");
+
+            alert("Rewarded Ad is not loaded");
+
+            opts?.onEnd?.();
+
+            return false;
+
+        }
+
+        opts?.onStart?.();
+
+        console.log("▶ Showing Rewarded");
+
+        anyFullscreenAdShowing = true;
+
+        try {
+
+            await AdMob.showRewardVideoAd();
+
+            console.log("✅ Rewarded Completed");
+
+            rewardedLoaded = false;
+
+            anyFullscreenAdShowing = false;
+
+            void preloadRewarded();
+
+            opts?.onEnd?.();
+
+            return true;
+
+        } catch (e) {
+
+            rewardedLoaded = false;
+
+            anyFullscreenAdShowing = false;
+
+            logAdMobError("Rewarded Show", e);
+
+            alert(JSON.stringify(e));
+
+            void preloadRewarded();
+
+            opts?.onEnd?.();
+
+            return false;
+
+        }
+
+    } catch (e) {
+
+        rewardedLoaded = false;
+
+        anyFullscreenAdShowing = false;
+
+        logAdMobError("Rewarded Error", e);
+
+        alert(JSON.stringify(e));
+
+        opts?.onEnd?.();
+
+        return false;
+
+    }
+
+};
+
+/* ============================================================
+ * BANNER
+ * ============================================================ */
+
 export const showBannerAd = async () => {
-  if (!isNative()) return;
-  if (bannerVisible) return;
 
-  try {
-    await initAdMob();
-    const { AdMob, BannerAdPosition, BannerAdSize } = await getAdMob();
+    if (!isNative()) return;
 
-    await AdMob.showBanner({
-      adId: BANNER_AD_ID,
-      adSize: BannerAdSize.ADAPTIVE_BANNER,
-      position: BannerAdPosition.BOTTOM_CENTER,
-      margin: 0,
-    });
+    if (bannerVisible) return;
 
-    bannerVisible = true;
-  } catch (e) {
-    logAdMobError("banner show failed", e);
-  }
+    try {
+
+        await initAdMob();
+
+        const {
+
+            AdMob,
+
+            BannerAdPosition,
+
+            BannerAdSize,
+
+        } = await getAdMob();
+
+        console.log("[AdMob] Showing Banner");
+
+        await AdMob.showBanner({
+
+            adId: BANNER_AD_ID,
+
+            adSize: BannerAdSize.ADAPTIVE_BANNER,
+
+            position: BannerAdPosition.BOTTOM_CENTER,
+
+            margin: 0,
+
+        });
+
+        bannerVisible = true;
+
+        console.log("✅ Banner Visible");
+
+    } catch (e) {
+
+        bannerVisible = false;
+
+        logAdMobError("Banner Show", e);
+
+        alert(JSON.stringify(e));
+
+    }
+
 };
 
 export const hideBannerAd = async () => {
-  if (!isNative()) return;
-  if (!bannerVisible) return;
 
-  try {
-    const { AdMob } = await getAdMob();
-    await AdMob.removeBanner();
-  } catch (e) {
-    logAdMobError("banner hide failed", e);
-  } finally {
-    bannerVisible = false;
-  }
+    if (!isNative()) return;
+
+    if (!bannerVisible) return;
+
+    try {
+
+        const { AdMob } = await getAdMob();
+
+        await AdMob.removeBanner();
+
+        console.log("✅ Banner Hidden");
+
+    } catch (e) {
+
+        logAdMobError("Banner Hide", e);
+
+    } finally {
+
+        bannerVisible = false;
+
+    }
+
 };
