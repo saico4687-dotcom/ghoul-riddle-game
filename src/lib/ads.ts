@@ -338,6 +338,8 @@ export const preloadInterstitial = async () => {
         interstitialLoaded = false;
 
         logAdMobError("Preload Interstitial", e);
+        
+        alert(JSON.stringify(e, null, 2));
 
     } finally {
 
@@ -374,6 +376,8 @@ export const preloadRewarded = async () => {
         rewardedLoaded = false;
 
         logAdMobError("Preload Rewarded", e);
+
+        alert(JSON.stringify(e, null, 2));
 
     } finally {
 
@@ -412,6 +416,8 @@ export const preloadAppOpen = async () => {
         appOpenLoaded = false;
 
         logAdMobError("Preload App Open", e);
+
+        alert(JSON.stringify(e, null, 2));
 
     } finally {
 
@@ -749,6 +755,8 @@ export const hideBannerAd = async () => {
     } catch (e) {
 
         logAdMobError("Banner Hide", e);
+
+        alert(JSON.stringify(e, null, 2));
 
     } finally {
 
