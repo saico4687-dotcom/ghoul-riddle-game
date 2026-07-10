@@ -101,12 +101,9 @@ export const initAdMob = async (): Promise<void> => {
     initPromise = (async () => {
 
         if (!isNative()) {
-
-            initialized = true;
-
-            console.log("[AdMob] Web mode");
-
-            return;
+    console.warn("[AdMob] Rewarded ads are only available on native Android.");
+    return false;
+        }
 
         }
 
