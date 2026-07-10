@@ -183,7 +183,7 @@ export const preloadInterstitial = async () => {
     interstitialLoaded = true;
   } catch (e) {
     interstitialLoading = false;
-    console.warn("[AdMob] preload interstitial failed", e);
+    logAdMobError("preload interstitial failed", e);
   } finally {
     interstitialLoading = false;
   }
