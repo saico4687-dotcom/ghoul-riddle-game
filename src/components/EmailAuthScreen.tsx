@@ -78,6 +78,7 @@ Hint: ${err?.hint ?? "N/A"}`,
   });
 } finally {
   setLoading(false);
+      return;
 } 
   };
 
@@ -136,6 +137,7 @@ Hint: ${err?.hint ?? "N/A"}`,
   });
 
   setLoading(false);
+      return;
 } 
   };
 
