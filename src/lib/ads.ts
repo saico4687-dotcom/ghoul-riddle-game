@@ -106,7 +106,7 @@ export const initAdMob = async (): Promise<void> => {
         AdMob.addListener(InterstitialAdPluginEvents.FailedToLoad, (e) => {
           interstitialLoaded = false;
           interstitialLoading = false;
-          console.warn("[AdMob] interstitial failed to load", e);
+          logAdMobError("interstitial failed to load", e);
         });
         AdMob.addListener(InterstitialAdPluginEvents.Showed, () => {
           anyFullscreenAdShowing = true;
