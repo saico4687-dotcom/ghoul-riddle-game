@@ -40,7 +40,15 @@ async function getAdMob() {
   const mod = await import("@capacitor-community/admob");
   return mod;
 }
-
+const logAdMobError = (context: string, error: any) => {
+  console.error(`[AdMob] ${context}`, {
+    message: error?.message ?? "Unknown error",
+    code: error?.code ?? "N/A",
+    details: error?.details ?? error,
+    stack: error?.stack ?? "No stack trace",
+    raw: error,
+  });
+};
 /* ============================================================
  *  UMP Consent
  * ============================================================ */
