@@ -137,8 +137,9 @@ Hint: ${err?.hint ?? "N/A"}`,
     variant: "destructive",
   });
 
+  return;
+} finally {
   setLoading(false);
-      return;
 } 
   };
 
