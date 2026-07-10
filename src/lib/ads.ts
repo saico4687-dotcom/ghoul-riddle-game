@@ -326,7 +326,7 @@ export const showRewarded = async (opts?: {
     opts?.onEnd?.();
     return true;
   } catch (e) {
-    console.warn("[AdMob] rewarded error", e);
+    logAdMobError("rewarded error", e);
     opts?.onEnd?.();
     return true;
   }
