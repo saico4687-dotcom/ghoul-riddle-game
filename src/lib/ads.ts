@@ -316,7 +316,7 @@ export const showRewarded = async (opts?: {
     try {
       await AdMob.showRewardVideoAd();
     } catch (e) {
-      console.warn("[AdMob] rewarded show error", e);
+      logAdMobError("rewarded show error", e);
     } finally {
       rewardedLoaded = false;
       anyFullscreenAdShowing = false;
