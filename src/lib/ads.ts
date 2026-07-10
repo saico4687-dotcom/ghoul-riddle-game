@@ -236,7 +236,10 @@ export const showAppOpenAdIfDue = async () => {
     const { AdMob } = await getAdMob();
 
     if (!appOpenLoaded) await preloadAppOpen();
-    if (!appOpenLoaded) return;
+    if (!appOpenLoaded) {
+  console.error("[AdMob] App Open is not loaded.");
+  return;
+    }
 
     anyFullscreenAdShowing = true;
     await AdMob.showInterstitial();
@@ -265,7 +268,10 @@ export const showInterstitial = async (): Promise<boolean> => {
     if (!interstitialLoaded) {
       await preloadInterstitial();
     }
-    if (!interstitialLoaded) return false;
+    if (!interstitialLoaded) {
+  console.error("[AdMob] Interstitial is not loaded.");
+  return false;
+    }
 
     anyFullscreenAdShowing = true;
     await AdMob.showInterstitial();
@@ -308,9 +314,9 @@ export const showRewarded = async (opts?: {
     opts?.onStart?.();
 
     if (!rewardedLoaded) {
-      // No ad available — still grant reward
-      opts?.onEnd?.();
-      return true;
+  console.error("[AdMob] Rewarded is not loaded.");
+  opts?.onEnd?.();
+  return true;
     }
 
     try {
