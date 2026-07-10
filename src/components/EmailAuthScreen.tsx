@@ -84,62 +84,49 @@ Hint: ${err?.hint ?? "N/A"}`,
   };
 
   const handleGoogle = async () => {
-    setLoading(true);
-    try {
-      // امسح أي جلسة قديمة قبل البدء
-      await clearStaleAuth();
+  setLoading(true);
 
-      // Android / iOS → Native Google Sign-In
-      if (isNativePlatform()) {
-  await startNativeGoogleSignIn();
-  return;
-      }
+  try {
+    await clearStaleAuth();
 
-      // Web → Lovable Managed OAuth
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+    // Android / iOS
+    if (isNativePlatform()) {
+      await startNativeGoogleSignIn();
+      return;
+    }
+
+    // Web
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+
+    if (result?.error) {
+      console.error("Google OAuth Result Error:", result.error);
+
+      toast({
+        title: "تعذّر تسجيل دخول Google",
+        description: String(result.error),
+        variant: "destructive",
       });
-      if (result?.error) {
-  console.error("Google OAuth Result Error:", result.error);
 
-  toast({
-    title: "تعذّر تسجيل دخول Google",
-    description: String(result.error),
-    variant: "destructive",
-  });
+      return;
+    }
 
-  return;
-      }
-    } catch (err: any) {
-  console.error("Google OAuth Error:", {
-    message: err?.message,
-    code: err?.code,
-    status: err?.status,
-    details: err?.details,
-    hint: err?.hint,
-    stack: err?.stack,
-    error: err,
-  });
+  } catch (err: any) {
+    console.error("Google OAuth Error:", err);
 
-  toast({
-    title: "فشل تسجيل الدخول بواسطة Google",
-    description: `${err?.message ?? "Unknown Error"}
+    toast({
+      title: "فشل تسجيل الدخول بواسطة Google",
+      description: `${err?.message ?? "Unknown Error"}`,
+      variant: "destructive",
+    });
 
-Code: ${err?.code ?? "N/A"}
+    return;
 
-Status: ${err?.status ?? "N/A"}
-
-Details: ${err?.details ?? "N/A"}
-
-Hint: ${err?.hint ?? "N/A"}`,
-    variant: "destructive",
-  });
-
-  return;
-} finally {
-  setLoading(false);
-} 
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-horror-gradient relative overflow-hidden flex items-center justify-center" dir="rtl">
