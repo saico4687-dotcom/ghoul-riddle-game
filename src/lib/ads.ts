@@ -132,7 +132,7 @@ export const initAdMob = async (): Promise<void> => {
         AdMob.addListener(RewardAdPluginEvents.FailedToLoad, (e) => {
           rewardedLoaded = false;
           rewardedLoading = false;
-          console.warn("[AdMob] rewarded failed to load", e);
+          logAdMobError("rewarded failed to load", e);
         });
         AdMob.addListener(RewardAdPluginEvents.Showed, () => {
           anyFullscreenAdShowing = true;
