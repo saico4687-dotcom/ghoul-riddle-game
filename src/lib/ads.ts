@@ -247,7 +247,7 @@ export const showAppOpenAdIfDue = async () => {
   } catch (e) {
     anyFullscreenAdShowing = false;
     appOpenLoaded = false;
-    console.warn("[AdMob] show app-open failed", e);
+    logAdMobError("show app-open failed", e);
   }
 };
 
