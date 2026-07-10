@@ -64,7 +64,7 @@ export const requestUMPConsent = async () => {
       await AdMob.showConsentForm();
     }
   } catch (e) {
-    console.warn("[AdMob] consent failed", e);
+    logAdMobError("consent failed", e);
   }
 };
 
