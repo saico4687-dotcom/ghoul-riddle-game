@@ -215,7 +215,7 @@ export const preloadAppOpen = async () => {
     appOpenLoaded = true;
   } catch (e) {
     appOpenLoading = false;
-    console.warn("[AdMob] preload app-open failed", e);
+    logAdMobError("preload app-open failed", e);
   } finally {
     appOpenLoading = false;
   }
