@@ -94,48 +94,68 @@ const RiddleCard = ({
   }, []);
 
   const handleUseFifty = async () => {
-    if (lifelineUsed || showResult) return;
+  if (lifelineUsed || showResult) return;
 
-    const before = Date.now();
-    const earned = await showRewarded({
-      onStart: () => setAdPaused(true),
-      onEnd: () => setAdPaused(false),
-    });
-    if (startTime !== null) {
-      setStartTime(startTime + (Date.now() - before));
-    }
-    if (!earned) return;
+  const before = Date.now();
 
-    const wrongIndices = riddle.options
-      .map((_, i) => i)
-      .filter((i) => i !== riddle.correctIndex);
+  const earned = await showRewarded({
+    onStart: () => setAdPaused(true),
+    onEnd: () => setAdPaused(false),
+  });
 
-    const toRemove = [...wrongIndices].sort(() => Math.random() - 0.5).slice(0, 2);
+  console.log("[Rewarded] earned =", earned);
 
-    setRemovedOptions(toRemove);
-    setLifelineUsed("fifty");
+  if (startTime !== null) {
+    setStartTime(startTime + (Date.now() - before));
+  }
 
-    if (selectedOption !== null && toRemove.includes(selectedOption)) {
-      setSelectedOption(null);
-    }
-  };
+  if (!earned) {
+    console.error("[Rewarded] Failed to show rewarded ad.");
+    alert("لم يتم عرض إعلان المكافأة. راجع سجل الأخطاء (Logcat).");
+    return;
+  }
+
+  const wrongIndices = riddle.options
+    .map((_, i) => i)
+    .filter((i) => i !== riddle.correctIndex);
+
+  const toRemove = [...wrongIndices]
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 2);
+
+  setRemovedOptions(toRemove);
+  setLifelineUsed("fifty");
+
+  if (selectedOption !== null && toRemove.includes(selectedOption)) {
+    setSelectedOption(null);
+  }
+};
 
   const handleAddTime = async () => {
-    if (lifelineUsed || showResult) return;
+  if (lifelineUsed || showResult) return;
 
-    const before = Date.now();
-    const earned = await showRewarded({
-      onStart: () => setAdPaused(true),
-      onEnd: () => setAdPaused(false),
-    });
-    if (startTime !== null) {
-      setStartTime(startTime + (Date.now() - before));
-    }
-    if (!earned) return;
+  const before = Date.now();
 
-    setExtraTime((p) => p + 60);
-    setLifelineUsed("time");
-  };
+  const earned = await showRewarded({
+    onStart: () => setAdPaused(true),
+    onEnd: () => setAdPaused(false),
+  });
+
+  console.log("[Rewarded] earned =", earned);
+
+  if (startTime !== null) {
+    setStartTime(startTime + (Date.now() - before));
+  }
+
+  if (!earned) {
+    console.error("[Rewarded] Failed to show rewarded ad.");
+    alert("لم يتم عرض إعلان المكافأة. راجع سجل الأخطاء (Logcat).");
+    return;
+  }
+
+  setExtraTime((p) => p + 60);
+  setLifelineUsed("time");
+};
 
 
   const handleTimeUp = () => {
