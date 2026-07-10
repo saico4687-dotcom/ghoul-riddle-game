@@ -199,7 +199,7 @@ export const preloadRewarded = async () => {
     rewardedLoaded = true;
   } catch (e) {
     rewardedLoading = false;
-    console.warn("[AdMob] preload rewarded failed", e);
+    logAdMobError("preload rewarded failed", e);
   } finally {
     rewardedLoading = false;
   }
