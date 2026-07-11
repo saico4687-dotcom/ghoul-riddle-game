@@ -209,7 +209,7 @@ const RiddleCard = ({
         className="flex flex-col items-center gap-4 mb-8"
       >
         <HorrorClock
-          key={clockKey}
+    key={`${clockKey}-${extraTime}`}
           duration={60}
           isActive={isTypingComplete && !showResult}
           paused={adPaused}
