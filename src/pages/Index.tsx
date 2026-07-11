@@ -1,3 +1,4 @@
+src/pages/Index.tsx
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import WelcomeScreen, { GameMode } from "@/components/WelcomeScreen";
@@ -63,56 +64,52 @@ const Index = () => {
   const allRiddles = useMemo(() => riddles.slice(0, 400), []);
 
   const ensureProfile = useCallback(async () => {
-  if (!user) return null;
+    if (!user) return null;
 
-  let { data, error } = await supabase
-    .from("profiles")
-    .select(
-      "last_puzzle_index,saved_score,saved_total_points,saved_time_bonus,full_name,phone,address,completed,total_time_ms"
-    )
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (error) {
-    console.error("ensureProfile:", error);
-    return null;
-  }
-
-  // أول تسجيل دخول ولم يتم إنشاء Profile
-  if (!data) {
-    const { data: created, error: createError } = await supabase
+    let { data, error } = await supabase
       .from("profiles")
-      .upsert(
-  {
-    user_id: user.id,
-    email: user.email,
-    full_name:
-      (user.user_metadata as any)?.full_name ||
-      (user.user_metadata as any)?.name ||
-      "",
-    updated_at: new Date().toISOString(),
-  },
-  {
-    onConflict: "user_id",
-  }
-) 
       .select(
         "last_puzzle_index,saved_score,saved_total_points,saved_time_bonus,full_name,phone,address,completed,total_time_ms"
       )
-      .single();
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    if (createError) {
-      console.error("Create profile:", createError);
+    if (error) {
+      console.error("ensureProfile:", error);
       return null;
     }
 
-    data = created;
-  }
+    if (!data) {
+      const { data: created, error: createError } = await supabase
+        .from("profiles")
+        .upsert(
+          {
+            user_id: user.id,
+            email: user.email,
+            full_name:
+              (user.user_metadata as any)?.full_name ||
+              (user.user_metadata as any)?.name ||
+              "",
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" }
+        )
+        .select(
+          "last_puzzle_index,saved_score,saved_total_points,saved_time_bonus,full_name,phone,address,completed,total_time_ms"
+        )
+        .single();
 
-  return data;
-}, [user]);
+      if (createError) {
+        console.error("Create profile:", createError);
+        return null;
+      }
 
-  // After Google/email login: check profile, then auto-resume to last puzzle
+      data = created;
+    }
+
+    return data;
+  }, [user]);
+
   const autoResumedRef = useRef(false);
   useEffect(() => {
     if (!user) {
@@ -120,12 +117,11 @@ const Index = () => {
       autoResumedRef.current = false;
       return;
     }
+
     (async () => {
       const data = await ensureProfile();
+      if (!data) return;
 
-if (!data) return;
-
-      // If user already completed all riddles → straight to final result, no more play
       if (data?.completed) {
         setCompleted(true);
         setScore(data?.saved_score ?? 0);
@@ -151,7 +147,6 @@ if (!data) return;
         return;
       }
 
-      // Auto-resume only once per session and only if no ?puzzle= override
       if (autoResumedRef.current) return;
       const urlHasPuzzle = new URLSearchParams(window.location.search).has("puzzle");
       if (urlHasPuzzle) return;
@@ -172,10 +167,8 @@ if (!data) return;
       setShowAuth(false);
       setGameState("playing");
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, ensureProfile]);
+  }, [user, ensureProfile, allRiddles.length]);
 
-  // On mount: if ?puzzle=N in URL, jump directly to that puzzle
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -188,9 +181,7 @@ if (!data) return;
       setGameState("playing");
       setShowAuth(false);
     } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  }, [allRiddles.length]);
 
   const startFreshGame = () => {
     setCurrentRiddleIndex(0);
@@ -202,36 +193,31 @@ if (!data) return;
   };
 
   const startFromProfile = useCallback(async () => {
-  if (!user) return;
+    if (!user) return;
+    const data = await ensureProfile();
+    if (!data) return;
 
-  const data = await ensureProfile();
+    setScore(data.saved_score ?? 0);
+    setTotalPoints(data.saved_total_points ?? 0);
+    setTimeBonus(data.saved_time_bonus ?? 0);
+    setCurrentRiddleIndex(data.last_puzzle_index ?? 0);
 
-  if (!data) return;
-
-  setScore(data.saved_score ?? 0);
-  setTotalPoints(data.saved_total_points ?? 0);
-  setTimeBonus(data.saved_time_bonus ?? 0);
-  setCurrentRiddleIndex(data.last_puzzle_index ?? 0);
-
-  setShowAuth(false);
-  setGameState("playing");
-}, [ensureProfile, user]);
+    setShowAuth(false);
+    setGameState("playing");
+  }, [ensureProfile, user]);
 
   const startAsGuest = () => {
     const p = loadGuestProgress();
-
     if (p) {
       setScore(p.score);
       setTotalPoints(p.totalPoints);
       setTimeBonus(p.timeBonus);
       setCurrentRiddleIndex(p.currentRiddleIndex);
     }
-
     setShowAuth(false);
     setGameState("playing");
   };
 
-  // Read ?puzzle=N from URL (1-based for users)
   const getPuzzleParam = (): number | null => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -239,30 +225,29 @@ if (!data) return;
       if (!raw) return null;
       const n = parseInt(raw, 10);
       if (isNaN(n)) return null;
-      const idx = Math.max(0, Math.min(allRiddles.length - 1, n - 1));
-      return idx;
+      return Math.max(0, Math.min(allRiddles.length - 1, n - 1));
     } catch {
       return null;
     }
   };
 
-  // Persist last_puzzle_index to Supabase + localStorage (debounced + dedup)
   const lastSyncedIndexRef = useRef<number | null>(null);
   const pendingIndexRef = useRef<number | null>(null);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightRef = useRef(false);
 
   const flushSync = useCallback(async () => {
-    if (!user) return;
-    if (inFlightRef.current) return;
+    if (!user || inFlightRef.current) return;
     const target = pendingIndexRef.current;
     if (target === null || target === lastSyncedIndexRef.current) return;
+
     inFlightRef.current = true;
     try {
       const { error } = await supabase
         .from("profiles")
         .update({ last_puzzle_index: target, updated_at: new Date().toISOString() })
         .eq("user_id", user.id);
+
       if (!error) {
         lastSyncedIndexRef.current = target;
       } else {
@@ -272,7 +257,6 @@ if (!data) return;
       console.error("Progress sync error:", e);
     } finally {
       inFlightRef.current = false;
-      // If more updates queued during request, schedule another flush
       if (pendingIndexRef.current !== lastSyncedIndexRef.current) {
         if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
         syncTimerRef.current = setTimeout(() => void flushSync(), 600);
@@ -282,12 +266,11 @@ if (!data) return;
 
   const persistLastPuzzleIndex = useCallback(
     (index: number) => {
-      // 1) Local fallback — instant
       try {
         localStorage.setItem(LAST_PUZZLE_KEY, String(index));
       } catch {}
       if (!user) return;
-      // 2) Debounced server sync
+
       pendingIndexRef.current = index;
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
       syncTimerRef.current = setTimeout(() => void flushSync(), 600);
@@ -295,7 +278,6 @@ if (!data) return;
     [user, flushSync]
   );
 
-  // Flush pending progress on tab hide / unload so we never lose a write
   useEffect(() => {
     const flush = () => {
       if (syncTimerRef.current) {
@@ -304,20 +286,21 @@ if (!data) return;
       }
       void flushSync();
     };
+
     const onVis = () => {
       if (document.visibilityState === "hidden") flush();
     };
+
     window.addEventListener("pagehide", flush);
     document.addEventListener("visibilitychange", onVis);
+
     return () => {
       window.removeEventListener("pagehide", flush);
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [flushSync]);
 
-
   const handleStart = async (_mode: GameMode) => {
-    // URL param takes priority for debugging/jump
     const urlIdx = getPuzzleParam();
     if (urlIdx !== null) {
       setCurrentRiddleIndex(urlIdx);
@@ -327,10 +310,10 @@ if (!data) return;
     }
 
     if (!user) {
-      // Restore guest progress from localStorage if exists
       const p = loadGuestProgress();
       const localIdx = parseInt(localStorage.getItem(LAST_PUZZLE_KEY) || "", 10);
       const idx = !isNaN(localIdx) ? localIdx : p?.currentRiddleIndex ?? 0;
+
       if (p) {
         setScore(p.score);
         setTotalPoints(p.totalPoints);
@@ -348,17 +331,14 @@ if (!data) return;
     isCorrect: boolean,
     selectedIndex: number | null,
     _remainingTime?: number,
-    elapsedMs?: number | null,
+    elapsedMs?: number | null
   ) => {
     const newAnswered = answeredCount + 1;
     setAnsweredCount(newAnswered);
 
-
-    // Accumulate total time for ranking (default to full timer if missing)
     const addMs = typeof elapsedMs === "number" && elapsedMs > 0 ? elapsedMs : 60000;
     totalTimeMsRef.current += addMs;
 
-    // Persist per-answer timing for the authenticated user (used to pick winners)
     if (user) {
       try {
         await supabase.from("answer_times").insert({
@@ -391,10 +371,7 @@ if (!data) return;
   };
 
   const markCompletedOnServer = useCallback(async () => {
-    if (!user) {
-      console.warn("[completion] skipped — no user session");
-      return false;
-    }
+    if (!user) return false;
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -408,7 +385,7 @@ if (!data) return;
         .eq("user_id", user.id)
         .select("user_id, completed, completed_at")
         .maybeSingle();
-      console.log("[completion] mark result", { userId: user.id, data, error });
+
       if (error) {
         console.error("mark completed failed", error);
         return false;
@@ -420,8 +397,6 @@ if (!data) return;
     }
   }, [user, allRiddles.length]);
 
-  // Defensive: whenever we land on the result screen as a completed logged-in user,
-  // make sure the server-side flag is actually set (covers earlier silent failures).
   useEffect(() => {
     if (gameState === "result" && completed && user) {
       void markCompletedOnServer();
@@ -430,31 +405,28 @@ if (!data) return;
 
   const handleNext = async () => {
     if (currentRiddleIndex < allRiddles.length - 1) {
-      // Show interstitial every 5 completed riddles, before loading next
       const solved = currentRiddleIndex + 1;
 
-const nextIdx = currentRiddleIndex + 1;
+      // إعلان كل 5 ألغاز — يظهر قبل الانتقال للغز التالي
+      if (solved % 5 === 0) {
+        await showInterstitial();
+      }
 
-setCurrentRiddleIndex(nextIdx);
-void persistLastPuzzleIndex(nextIdx);
+      const nextIdx = currentRiddleIndex + 1;
 
-if (!user) {
-    saveGuestProgress({
-        currentRiddleIndex: nextIdx,
-        score,
-        totalPoints,
-        timeBonus,
-    });
-}
+      setCurrentRiddleIndex(nextIdx);
+      void persistLastPuzzleIndex(nextIdx);
 
-if (solved % 5 === 0) {
-    setTimeout(() => {
-        void showInterstitial();
-    }, 500);
-}
+      if (!user) {
+        saveGuestProgress({
+          currentRiddleIndex: nextIdx,
+          score,
+          totalPoints,
+          timeBonus,
+        });
+      }
     } else {
-
-      // Finished the last riddle (e.g. #400) → lock account and show final result
+      // انتهاء جميع الألغاز
       setCompleted(true);
       void markCompletedOnServer();
       setGameState("result");
@@ -462,7 +434,6 @@ if (solved % 5 === 0) {
   };
 
   const handleExitToHome = () => {
-    // Persist current position so the user resumes here next time
     void persistLastPuzzleIndex(currentRiddleIndex);
     if (!user) {
       saveGuestProgress({
@@ -481,7 +452,6 @@ if (solved % 5 === 0) {
     setShowAuth(false);
   };
 
-
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -499,7 +469,6 @@ if (solved % 5 === 0) {
     <div className="min-h-screen bg-background" dir="rtl">
       <UserHeader />
       <AnimatePresence mode="wait">
-
         {user && needsInfo && (
           <motion.div
             key="info"
@@ -511,19 +480,16 @@ if (solved % 5 === 0) {
               userId={user.id}
               defaults={profileDefaults}
               onSaved={async () => {
-  setNeedsInfo(false);
+                setNeedsInfo(false);
+                const data = await ensureProfile();
+                if (!data) return;
 
-  const data = await ensureProfile();
-
-  if (!data) return;
-
-  setScore(data.saved_score ?? 0);
-  setTotalPoints(data.saved_total_points ?? 0);
-  setTimeBonus(data.saved_time_bonus ?? 0);
-  setCurrentRiddleIndex(data.last_puzzle_index ?? 0);
-
-  setGameState("playing");
-}}
+                setScore(data.saved_score ?? 0);
+                setTotalPoints(data.saved_total_points ?? 0);
+                setTimeBonus(data.saved_time_bonus ?? 0);
+                setCurrentRiddleIndex(data.last_puzzle_index ?? 0);
+                setGameState("playing");
+              }}
             />
           </motion.div>
         )}
@@ -535,9 +501,7 @@ if (solved % 5 === 0) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <EmailAuthScreen
-              onBack={() => setShowAuth(false)}
-            />
+            <EmailAuthScreen onBack={() => setShowAuth(false)} />
           </motion.div>
         )}
 
@@ -565,7 +529,6 @@ if (solved % 5 === 0) {
             />
           </motion.div>
         )}
-
 
         {gameState === "result" && (
           <ResultScreen
