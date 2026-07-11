@@ -4,16 +4,9 @@ import { Capacitor } from "@capacitor/core";
  *  AdMob unit IDs (production)
  * ============================================================ */
 export const ADMOB_APP_ID = "ca-app-pub-4098736191122679~4275235624";
-export const APP_OPEN_AD_ID = "ca-app-pub-4098736191122679/7200781863";
 export const INTERSTITIAL_AD_ID = "ca-app-pub-4098736191122679/7153504814";
 export const REWARDED_AD_ID = "ca-app-pub-4098736191122679/2165516995";
 export const BANNER_AD_ID = "ca-app-pub-4098736191122679/3034179835";
-
-/* ============================================================
- * App Open cooldown
- * ============================================================ */
-const APP_OPEN_COOLDOWN_MS = 5 * 60 * 60 * 1000;
-const LAST_APP_OPEN_KEY = "last_app_open_ad_v2";
 
 /* ============================================================
  * Internal State
@@ -27,9 +20,6 @@ let interstitialLoading = false;
 
 let rewardedLoaded = false;
 let rewardedLoading = false;
-
-let appOpenLoaded = false;
-let appOpenLoading = false;
 
 let bannerVisible = false;
 let anyFullscreenAdShowing = false;
@@ -101,9 +91,9 @@ export const initAdMob = async (): Promise<void> => {
     initPromise = (async () => {
 
         if (!isNative()) {
-    initialized = true;
-    console.log("[AdMob] Running on Web.");
-    return;
+            initialized = true;
+            console.log("[AdMob] Running on Web.");
+            return;
         }
 
         try {
@@ -111,13 +101,9 @@ export const initAdMob = async (): Promise<void> => {
             console.log("[AdMob] Initializing...");
 
             const {
-
                 AdMob,
-
                 InterstitialAdPluginEvents,
-
                 RewardAdPluginEvents,
-
             } = await getAdMob();
 
             await requestUMPConsent();
@@ -133,7 +119,6 @@ export const initAdMob = async (): Promise<void> => {
             if (!listenersRegistered) {
 
                 listenersRegistered = true;
-
                 console.log("[AdMob] Registering listeners...");
 
                 /* ==========================
@@ -286,7 +271,6 @@ export const initAdMob = async (): Promise<void> => {
 
             void preloadInterstitial();
             void preloadRewarded();
-            void preloadAppOpen();
 
             console.log("✅ AdMob Ready");
 
@@ -307,6 +291,7 @@ export const initAdMob = async (): Promise<void> => {
     return initPromise;
 
 };
+
 /* ============================================================
  * PRELOADERS
  * ============================================================ */
@@ -328,10 +313,6 @@ export const preloadInterstitial = async () => {
         await AdMob.prepareInterstitial({
             adId: INTERSTITIAL_AD_ID,
         });
-
-        interstitialLoaded = true;
-
-        console.log("✅ Interstitial Ready");
 
     } catch (e) {
 
@@ -367,10 +348,6 @@ export const preloadRewarded = async () => {
             adId: REWARDED_AD_ID,
         });
 
-        rewardedLoaded = true;
-
-        console.log("✅ Rewarded Ready");
-
     } catch (e) {
 
         rewardedLoaded = false;
@@ -382,130 +359,6 @@ export const preloadRewarded = async () => {
     } finally {
 
         rewardedLoading = false;
-
-    }
-
-};
-
-export const preloadAppOpen = async () => {
-
-    if (!isNative()) return;
-
-    if (appOpenLoaded || appOpenLoading) return;
-
-    appOpenLoading = true;
-
-    console.log("[AdMob] Loading App Open...");
-
-    try {
-
-        const { AdMob } = await getAdMob();
-
-        await AdMob.prepareInterstitial({
-
-            adId: APP_OPEN_AD_ID,
-
-        });
-
-        appOpenLoaded = true;
-
-        console.log("✅ App Open Ready");
-
-    } catch (e) {
-
-        appOpenLoaded = false;
-
-        logAdMobError("Preload App Open", e);
-
-        alert(JSON.stringify(e, null, 2));
-
-    } finally {
-
-        appOpenLoading = false;
-
-    }
-
-};
-
-/* ============================================================
- * APP OPEN
- * ============================================================ */
-
-export const showAppOpenAdIfDue = async () => {
-
-    if (!isNative()) return;
-
-    if (anyFullscreenAdShowing) {
-
-        console.warn("[AdMob] Another fullscreen ad is already showing.");
-
-        return;
-
-    }
-
-    const last = Number(localStorage.getItem(LAST_APP_OPEN_KEY) || 0);
-
-    if (Date.now() - last < APP_OPEN_COOLDOWN_MS) {
-
-        console.log("[AdMob] App Open Cooldown");
-
-        return;
-
-    }
-
-    try {
-
-        await initAdMob();
-
-        const { AdMob } = await getAdMob();
-
-        if (!appOpenLoaded) {
-
-            await preloadAppOpen();
-
-        }
-
-        if (!appOpenLoaded) {
-
-            console.error("[AdMob] App Open NOT Loaded");
-
-            alert("App Open Ad is not loaded");
-
-            return;
-
-        }
-
-        console.log("▶ Showing App Open");
-
-        anyFullscreenAdShowing = true;
-
-        await AdMob.showInterstitial();
-
-        console.log("✅ App Open Finished");
-
-        appOpenLoaded = false;
-
-        anyFullscreenAdShowing = false;
-
-        localStorage.setItem(
-
-            LAST_APP_OPEN_KEY,
-
-            String(Date.now())
-
-        );
-
-        void preloadAppOpen();
-
-    } catch (e) {
-
-    anyFullscreenAdShowing = false;
-
-    appOpenLoaded = false;
-
-    logAdMobError("Show App Open", e);
-
-    alert(e instanceof Error ? e.message : String(e));
 
     }
 
@@ -567,19 +420,20 @@ export const showInterstitial = async (): Promise<boolean> => {
 
     } catch (e) {
 
-    anyFullscreenAdShowing = false;
+        anyFullscreenAdShowing = false;
 
-    interstitialLoaded = false;
+        interstitialLoaded = false;
 
-    logAdMobError("Show Interstitial", e);
+        logAdMobError("Show Interstitial", e);
 
-    alert(e instanceof Error ? e.message : String(e));
+        alert(e instanceof Error ? e.message : String(e));
 
-    return false;
+        return false;
 
     }
 
 };
+
 /* ============================================================
  * REWARDED
  * ============================================================ */
@@ -596,9 +450,9 @@ export const showRewarded = async (opts?: {
 
     if (anyFullscreenAdShowing) {
 
-    console.warn("[AdMob] Another fullscreen ad is already showing.");
+        console.warn("[AdMob] Another fullscreen ad is already showing.");
 
-    return true;
+        return false;
 
     }
 
@@ -622,7 +476,7 @@ export const showRewarded = async (opts?: {
 
             opts?.onEnd?.();
 
-            return true;
+            return false;
 
         }
 
@@ -650,35 +504,35 @@ export const showRewarded = async (opts?: {
 
         } catch (e) {
 
-    rewardedLoaded = false;
+            rewardedLoaded = false;
 
-    anyFullscreenAdShowing = false;
+            anyFullscreenAdShowing = false;
 
-    logAdMobError("Rewarded Show", e);
+            logAdMobError("Rewarded Show", e);
 
-    alert(e instanceof Error ? e.message : String(e));
+            alert(e instanceof Error ? e.message : String(e));
 
-    void preloadRewarded();
+            void preloadRewarded();
 
-    opts?.onEnd?.();
+            opts?.onEnd?.();
 
-    return true;
+            return false;
 
         }
 
     } catch (e) {
 
-    rewardedLoaded = false;
+        rewardedLoaded = false;
 
-    anyFullscreenAdShowing = false;
+        anyFullscreenAdShowing = false;
 
-    logAdMobError("Rewarded Error", e);
+        logAdMobError("Rewarded Error", e);
 
-    alert(e instanceof Error ? e.message : String(e));
+        alert(e instanceof Error ? e.message : String(e));
 
-    opts?.onEnd?.();
+        opts?.onEnd?.();
 
-    return true;
+        return false;
 
     }
 
@@ -699,13 +553,9 @@ export const showBannerAd = async () => {
         await initAdMob();
 
         const {
-
             AdMob,
-
             BannerAdPosition,
-
             BannerAdSize,
-
         } = await getAdMob();
 
         console.log("[AdMob] Showing Banner");
@@ -728,11 +578,11 @@ export const showBannerAd = async () => {
 
     } catch (e) {
 
-    bannerVisible = false;
+        bannerVisible = false;
 
-    logAdMobError("Banner Show", e);
+        logAdMobError("Banner Show", e);
 
-    alert(e instanceof Error ? e.message : String(e));
+        alert(e instanceof Error ? e.message : String(e));
 
     }
 
