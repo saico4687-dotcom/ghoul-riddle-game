@@ -297,9 +297,21 @@ export const showInterstitial = async (): Promise<boolean> => {
         }
 
         console.log("▶ Showing Interstitial");
-        anyFullscreenAdShowing = true;
-        await AdMob.showInterstitial();
-        return true;
+anyFullscreenAdShowing = true;
+
+await AdMob.showInterstitial();
+
+// انتظر حتى يغلق المستخدم الإعلان
+await new Promise<void>((resolve) => {
+    const check = setInterval(() => {
+        if (!anyFullscreenAdShowing) {
+            clearInterval(check);
+            resolve();
+        }
+    }, 100);
+});
+
+return true;
     } catch (e) {
         logAdMobError("Show Interstitial", e);
         alert("Interstitial Error: " + (e?.message || e));
