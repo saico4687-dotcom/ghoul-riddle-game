@@ -73,7 +73,6 @@ const HorrorClock = ({
         pauseStartedRef.current = null;
 
       }
-
     }
 
   }, [paused, isActive]);
@@ -81,21 +80,17 @@ const HorrorClock = ({
   // Timer
   useEffect(() => {
 
-    if (!isActive || paused) {
-
+    if (!isActive) {
       if (timerRef.current) {
-
         clearInterval(timerRef.current);
-
         timerRef.current = null;
-
       }
-
       return;
-
     }
 
     timerRef.current = window.setInterval(() => {
+      // حماية إضافية ضد تأخير React في إيقاف الـ interval
+      if (paused) return;
 
       const remain = Math.max(
         0,
@@ -105,59 +100,43 @@ const HorrorClock = ({
       setTimeLeft(remain);
 
       if (remain <= 0 && !firedRef.current) {
-
         firedRef.current = true;
-
         if (timerRef.current) {
-
           clearInterval(timerRef.current);
-
         }
-
         onTimeUp?.();
-
       }
-
     }, 100);
 
     return () => {
-
       if (timerRef.current) {
-
         clearInterval(timerRef.current);
-
+        timerRef.current = null;
       }
-
     };
-
   }, [isActive, paused, onTimeUp]);
 
   const total = duration + extraTime;
-
   const progress =
-    ((total - timeLeft) / total) * 100;
+    total > 0 ? ((total - timeLeft) / total) * 100 : 0;
 
   const angle =
-    ((total - timeLeft) / total) * 360;
+    total > 0 ? ((total - timeLeft) / total) * 360 : 0;
 
   const urgent = timeLeft <= 10;
 
   return (
-
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="flex flex-col items-center gap-2"
     >
-
       <div
         className={`relative w-24 h-24 rounded-full border-4 ${
           urgent ? "border-red-600" : "border-primary"
         }`}
       >
-
         {[...Array(12)].map((_, i) => (
-
           <div
             key={i}
             className="absolute w-1 h-3 bg-gray-400"
@@ -168,7 +147,6 @@ const HorrorClock = ({
               transformOrigin: "center 42px",
             }}
           />
-
         ))}
 
         <div
@@ -181,8 +159,7 @@ const HorrorClock = ({
           }}
         />
 
-        <div className="absolute w-3 h-3 bg-red-600 rounded-full left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"/>
-
+        <div className="absolute w-3 h-3 bg-red-600 rounded-full left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
       </div>
 
       <div
@@ -195,21 +172,17 @@ const HorrorClock = ({
       </div>
 
       <div className="w-24 h-2 bg-gray-700 rounded-full overflow-hidden">
-
         <div
           className={`h-full ${
             urgent ? "bg-red-600" : "bg-primary"
           }`}
           style={{
-            width: `${progress}%`,
+            width: `${Math.min(100, Math.max(0, progress))}%`,
             transition: "width .1s linear",
           }}
         />
-
       </div>
-
     </motion.div>
-
   );
 };
 
