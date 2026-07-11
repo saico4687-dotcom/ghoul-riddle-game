@@ -45,7 +45,7 @@ const queryClient = new QueryClient();
 const App = () => {
   const [showSplash, setShowSplash] = useState(true);
 
-  useuseEffect(() => {
+  useEffect(() => {
   let splashTimer: number;
 
   const init = async () => {
