@@ -3,7 +3,7 @@ import { Capacitor } from "@capacitor/core";
 /* ============================================================
  *  AdMob unit IDs (production)
  * ============================================================ */
-export const ADMOB_APP_ID = "ca-app-pub-4098736191122679\~4275235624";
+export const ADMOB_APP_ID = "ca-app-pub-4098736191122679~4275235624";
 export const INTERSTITIAL_AD_ID = "ca-app-pub-3940256099942544/1033173712";
 export const REWARDED_AD_ID = "ca-app-pub-3940256099942544/5224354917";
 export const BANNER_AD_ID = "ca-app-pub-3940256099942544/6300978111";
@@ -227,7 +227,7 @@ export const preloadRewarded = async () => {
 
     try {
         const { AdMob } = await getAdMob();
-        await AdMob.prepareRewardedAd({ adId: REWARDED_AD_ID });   // تم التصحيح
+        await AdMob.prepareRewardVideoAd({ adId: REWARDED_AD_ID });   // تم التصحيح
     } catch (e) {
         rewardedLoaded = false;
         logAdMobError("Preload Rewarded", e);
