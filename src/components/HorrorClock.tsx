@@ -1,255 +1,215 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 
 interface HorrorClockProps {
   duration: number;
   isActive: boolean;
-  paused?: boolean; // إيقاف المؤقت أثناء إعلان Rewarded
+  paused?: boolean;
+  extraTime?: number;
   onTimeUp?: () => void;
   isMuted?: boolean;
-  extraTime?: number;
 }
 
 const HorrorClock = ({
   duration,
   isActive,
   paused = false,
-  onTimeUp,
-  isMuted = false,
   extraTime = 0,
+  onTimeUp,
 }: HorrorClockProps) => {
+
   const [timeLeft, setTimeLeft] = useState(duration);
-  const [secondHandAngle, setSecondHandAngle] = useState(0);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const tickIntervalRef = useRef<number | null>(null);
-  const timeLeftRef = useRef(duration);
-  useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
 
+  const endTimeRef = useRef(0);
+  const pauseStartedRef = useRef<number | null>(null);
+  const timerRef = useRef<number | null>(null);
+  const lastExtraRef = useRef(0);
+  const firedRef = useRef(false);
 
-  const getAudioContext = useCallback(() => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    return audioContextRef.current;
-  }, []);
-
-  // Horror tick sound
-  const playTickSound = useCallback(() => {
-    if (isMuted) return;
-    
-    const ctx = getAudioContext();
-    const now = ctx.currentTime;
-    
-    // Deep tick sound
-    const tick = ctx.createOscillator();
-    const tickGain = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
-    
-    tick.connect(filter);
-    filter.connect(tickGain);
-    tickGain.connect(ctx.destination);
-    
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(800, now);
-    
-    tick.type = "square";
-    tick.frequency.setValueAtTime(80, now);
-    tick.frequency.exponentialRampToValueAtTime(40, now + 0.1);
-    
-    tickGain.gain.setValueAtTime(0.15, now);
-    tickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-    
-    tick.start(now);
-    tick.stop(now + 0.15);
-    
-    // Creepy resonance
-    const resonance = ctx.createOscillator();
-    const resGain = ctx.createGain();
-    const resFilter = ctx.createBiquadFilter();
-    
-    resonance.connect(resFilter);
-    resFilter.connect(resGain);
-    resGain.connect(ctx.destination);
-    
-    resFilter.type = "bandpass";
-    resFilter.frequency.setValueAtTime(150, now);
-    resFilter.Q.setValueAtTime(10, now);
-    
-    resonance.type = "sine";
-    resonance.frequency.setValueAtTime(100, now);
-    
-    resGain.gain.setValueAtTime(0.05, now);
-    resGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-    
-    resonance.start(now);
-    resonance.stop(now + 0.2);
-
-    // Add eerie whisper-like undertone every few seconds
-    if (timeLeftRef.current <= 10 && timeLeftRef.current > 0) {
-      const whisper = ctx.createOscillator();
-      const whisperGain = ctx.createGain();
-      const whisperFilter = ctx.createBiquadFilter();
-      
-      whisper.connect(whisperFilter);
-      whisperFilter.connect(whisperGain);
-      whisperGain.connect(ctx.destination);
-      
-      whisperFilter.type = "bandpass";
-      whisperFilter.frequency.setValueAtTime(600 + Math.random() * 200, now);
-      whisperFilter.Q.setValueAtTime(5, now);
-      
-      whisper.type = "sawtooth";
-      whisper.frequency.setValueAtTime(200, now);
-      whisper.frequency.linearRampToValueAtTime(150, now + 0.3);
-      
-      whisperGain.gain.setValueAtTime(0.03, now);
-      whisperGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-      
-      whisper.start(now);
-      whisper.stop(now + 0.3);
-    }
-  }, [isMuted, getAudioContext]);
-
+  // بدء مؤقت جديد عند بداية اللغز
   useEffect(() => {
+    endTimeRef.current = Date.now() + duration * 1000;
+
     setTimeLeft(duration);
-    setSecondHandAngle(0);
+
+    firedRef.current = false;
+
+    lastExtraRef.current = 0;
+
   }, [duration]);
 
-  // Apply extra time when lifeline used
-  const lastExtraRef = useRef(0);
+  // إضافة وقت
   useEffect(() => {
+
     if (extraTime > lastExtraRef.current) {
-      const delta = extraTime - lastExtraRef.current;
+
+      const diff = extraTime - lastExtraRef.current;
+
+      endTimeRef.current += diff * 1000;
+
       lastExtraRef.current = extraTime;
-      setTimeLeft((prev) => prev + delta);
+
     }
-    if (extraTime === 0) lastExtraRef.current = 0;
+
   }, [extraTime]);
 
+  // Pause
   useEffect(() => {
-    if (!isActive || paused) {
-      if (tickIntervalRef.current) {
-        clearInterval(tickIntervalRef.current);
-        tickIntervalRef.current = null;
+
+    if (!isActive) return;
+
+    if (paused) {
+
+      pauseStartedRef.current = Date.now();
+
+    } else {
+
+      if (pauseStartedRef.current !== null) {
+
+        const pausedFor = Date.now() - pauseStartedRef.current;
+
+        endTimeRef.current += pausedFor;
+
+        pauseStartedRef.current = null;
+
       }
-      return;
+
     }
 
-    tickIntervalRef.current = window.setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          if (tickIntervalRef.current) {
-            clearInterval(tickIntervalRef.current);
-          }
-          onTimeUp?.();
-          return 0;
-        }
-        return prev - 1;
-      });
-      
-      setSecondHandAngle((prev) => prev + 6); // 360 / 60 = 6 degrees per second
-      playTickSound();
-    }, 1000);
+  }, [paused, isActive]);
 
-    // Play initial tick
-    playTickSound();
+  // Timer
+  useEffect(() => {
+
+    if (!isActive || paused) {
+
+      if (timerRef.current) {
+
+        clearInterval(timerRef.current);
+
+        timerRef.current = null;
+
+      }
+
+      return;
+
+    }
+
+    timerRef.current = window.setInterval(() => {
+
+      const remain = Math.max(
+        0,
+        Math.ceil((endTimeRef.current - Date.now()) / 1000)
+      );
+
+      setTimeLeft(remain);
+
+      if (remain <= 0 && !firedRef.current) {
+
+        firedRef.current = true;
+
+        if (timerRef.current) {
+
+          clearInterval(timerRef.current);
+
+        }
+
+        onTimeUp?.();
+
+      }
+
+    }, 100);
 
     return () => {
-      if (tickIntervalRef.current) {
-        clearInterval(tickIntervalRef.current);
-      }
-    };
-  }, [isActive, paused, onTimeUp, playTickSound]); 
 
-  const progress = ((duration - timeLeft) / duration) * 100;
-  const isUrgent = timeLeft <= 10;
+      if (timerRef.current) {
+
+        clearInterval(timerRef.current);
+
+      }
+
+    };
+
+  }, [isActive, paused, onTimeUp]);
+
+  const total = duration + extraTime;
+
+  const progress =
+    ((total - timeLeft) / total) * 100;
+
+  const angle =
+    ((total - timeLeft) / total) * 360;
+
+  const urgent = timeLeft <= 10;
 
   return (
+
     <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       className="flex flex-col items-center gap-2"
     >
-      {/* Clock Face */}
-      <div 
+
+      <div
         className={`relative w-24 h-24 rounded-full border-4 ${
-          isUrgent ? 'border-blood animate-pulse' : 'border-primary'
-        } bg-secondary/50 backdrop-blur-sm shadow-[0_0_20px_rgba(139,0,0,0.5)]`}
+          urgent ? "border-red-600" : "border-primary"
+        }`}
       >
-        {/* Hour marks */}
+
         {[...Array(12)].map((_, i) => (
+
           <div
             key={i}
-            className="absolute w-1 h-3 bg-muted-foreground"
+            className="absolute w-1 h-3 bg-gray-400"
             style={{
-              top: '8px',
-              left: '50%',
+              top: 6,
+              left: "50%",
               transform: `translateX(-50%) rotate(${i * 30}deg)`,
-              transformOrigin: 'center 40px',
+              transformOrigin: "center 42px",
             }}
           />
+
         ))}
-        
-        {/* Center dot */}
-        <div className={`absolute top-1/2 left-1/2 w-3 h-3 rounded-full ${
-          isUrgent ? 'bg-blood' : 'bg-primary'
-        } -translate-x-1/2 -translate-y-1/2 z-20`} />
-        
-        {/* Minute hand (static for visual) */}
+
         <div
-          className="absolute w-1 h-8 bg-muted-foreground rounded-full"
+          className="absolute w-1 h-10 bg-red-500 rounded-full"
           style={{
-            bottom: '50%',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            transformOrigin: 'bottom center',
-          }}
-        />
-        
-        {/* Second hand */}
-        <motion.div
-          className={`absolute w-0.5 h-10 ${isUrgent ? 'bg-blood' : 'bg-primary'} rounded-full`}
-          style={{
-            bottom: '50%',
-            left: '50%',
-            transformOrigin: 'bottom center',
-          }}
-          animate={{ 
-            rotate: secondHandAngle,
-            scale: isUrgent ? [1, 1.02, 1] : 1
-          }}
-          transition={{ 
-            rotate: { duration: 0.1, ease: "easeOut" },
-            scale: { duration: 0.5, repeat: Infinity }
+            left: "50%",
+            bottom: "50%",
+            transformOrigin: "bottom center",
+            transform: `translateX(-50%) rotate(${angle}deg)`,
           }}
         />
 
-        {/* Glowing effect when urgent */}
-        {isUrgent && (
-          <div className="absolute inset-0 rounded-full animate-pulse bg-blood/20" />
-        )}
+        <div className="absolute w-3 h-3 bg-red-600 rounded-full left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"/>
+
       </div>
 
-      {/* Time display */}
-      <motion.div 
-        className={`font-horror text-2xl ${isUrgent ? 'text-blood animate-pulse' : 'text-primary'}`}
-        animate={isUrgent ? { scale: [1, 1.1, 1] } : {}}
-        transition={{ duration: 0.5, repeat: Infinity }}
+      <div
+        className={`text-2xl font-bold ${
+          urgent ? "text-red-600" : "text-primary"
+        }`}
       >
-        {Math.floor(timeLeft / 60).toString().padStart(2, '0')}:
-        {(timeLeft % 60).toString().padStart(2, '0')}
-      </motion.div>
-
-      {/* Progress bar */}
-      <div className="w-24 h-1.5 bg-secondary rounded-full overflow-hidden">
-        <motion.div
-          className={`h-full ${isUrgent ? 'bg-blood' : 'bg-primary'}`}
-          initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.3 }}
-        />
+        {String(Math.floor(timeLeft / 60)).padStart(2, "0")}:
+        {String(timeLeft % 60).padStart(2, "0")}
       </div>
+
+      <div className="w-24 h-2 bg-gray-700 rounded-full overflow-hidden">
+
+        <div
+          className={`h-full ${
+            urgent ? "bg-red-600" : "bg-primary"
+          }`}
+          style={{
+            width: `${progress}%`,
+            transition: "width .1s linear",
+          }}
+        />
+
+      </div>
+
     </motion.div>
+
   );
 };
 
