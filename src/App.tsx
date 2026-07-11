@@ -45,35 +45,36 @@ const queryClient = new QueryClient();
 const App = () => {
   const [showSplash, setShowSplash] = useState(true);
 
-  useEffect(() => {
-    let splashTimer: number;
+  useuseEffect(() => {
+  let splashTimer: number;
 
-    const init = async () => {
-      try {
-        if (isNativePlatform()) {
-          void registerNativeGoogleAuth();
-        }
+  const init = async () => {
+    try {
+      if (isNativePlatform()) {
+        void registerNativeGoogleAuth();
+      }
 
-        // splash timeout
-        splashTimer = window.setTimeout(() => {
-          setShowSplash(false);
-        }, 2500);
+      splashTimer = window.setTimeout(() => {
+        setShowSplash(false);
+      }, 2500);
 
-        // AdMob flow
+      // AdMob Initialization Flow
+      if (isNativePlatform()) {
+        console.log("[App] Starting AdMob initialization...");
         await requestUMPConsent();
         await initAdMob();
-
-      } catch (err) {
-        console.error("[App Init Error]", err);
+        console.log("[App] AdMob initialization completed");
       }
-    };
 
-    init();
+    } catch (err) {
+      console.error("[App Init Error]", err);
+    }
+  };
 
-    return () => {
-      clearTimeout(splashTimer);
-    };
-  }, []);
+  init();
+
+  return () => clearTimeout(splashTimer);
+}, []);
 
 
   return (
