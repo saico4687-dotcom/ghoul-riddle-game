@@ -34,7 +34,6 @@ import UsernameSetup from "./pages/chat/UsernameSetup";
 
 import {
   initAdMob,
-  showAppOpenAdIfDue,
   requestUMPConsent,
 } from "./lib/ads";
 
@@ -48,7 +47,6 @@ const App = () => {
 
   useEffect(() => {
     let splashTimer: number;
-    let removeAppListener: (() => void) | null = null;
 
     const init = async () => {
       try {
@@ -65,28 +63,6 @@ const App = () => {
         await requestUMPConsent();
         await initAdMob();
 
-        // Cold launch App Open ad
-        await showAppOpenAdIfDue();
-
-        // Return-from-background App Open (5h cooldown enforced internally)
-        if (isNativePlatform()) {
-          try {
-            const { App: CapApp } = await import("@capacitor/app");
-            const handle = await CapApp.addListener(
-              "appStateChange",
-              async (state) => {
-                if (state.isActive) {
-                  await showAppOpenAdIfDue();
-                }
-              },
-            );
-            removeAppListener = () => {
-              void handle.remove();
-            };
-          } catch (e) {
-            console.warn("[App] appStateChange listener failed", e);
-          }
-        }
       } catch (err) {
         console.error("[App Init Error]", err);
       }
@@ -96,7 +72,6 @@ const App = () => {
 
     return () => {
       clearTimeout(splashTimer);
-      removeAppListener?.();
     };
   }, []);
 
@@ -108,13 +83,13 @@ const App = () => {
         <Sonner />
 
         <AnimatePresence>
-  {showSplash && <SplashScreen />}
-</AnimatePresence>
+          {showSplash && <SplashScreen />}
+        </AnimatePresence>
 
-<BrowserRouter>
-  <AdsConsentDialog />
+        <BrowserRouter>
+          <AdsConsentDialog />
 
-  <DesktopFrame>
+          <DesktopFrame>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/privacy" element={<Privacy />} />
