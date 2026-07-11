@@ -433,20 +433,25 @@ if (!data) return;
       // Show interstitial every 5 completed riddles, before loading next
       const solved = currentRiddleIndex + 1;
 
-if (solved % 5 === 0) {
-    await showInterstitial();
+const nextIdx = currentRiddleIndex + 1;
+
+setCurrentRiddleIndex(nextIdx);
+void persistLastPuzzleIndex(nextIdx);
+
+if (!user) {
+    saveGuestProgress({
+        currentRiddleIndex: nextIdx,
+        score,
+        totalPoints,
+        timeBonus,
+    });
 }
-      const nextIdx = currentRiddleIndex + 1;
-      setCurrentRiddleIndex(nextIdx);
-      void persistLastPuzzleIndex(nextIdx);
-      if (!user) {
-        saveGuestProgress({
-          currentRiddleIndex: nextIdx,
-          score,
-          totalPoints,
-          timeBonus,
-        });
-      }
+
+if (solved % 5 === 0) {
+    setTimeout(() => {
+        void showInterstitial();
+    }, 500);
+}
     } else {
 
       // Finished the last riddle (e.g. #400) → lock account and show final result
