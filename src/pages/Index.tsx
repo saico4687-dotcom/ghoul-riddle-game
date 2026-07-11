@@ -431,10 +431,11 @@ if (!data) return;
   const handleNext = async () => {
     if (currentRiddleIndex < allRiddles.length - 1) {
       // Show interstitial every 5 completed riddles, before loading next
-      if (answeredCount > 0 && answeredCount % 5 === 0) {
-        await showInterstitial();
-        setAnsweredCount(0);
-      }
+      const solved = currentRiddleIndex + 1;
+
+if (solved % 5 === 0) {
+    await showInterstitial();
+}
       const nextIdx = currentRiddleIndex + 1;
       setCurrentRiddleIndex(nextIdx);
       void persistLastPuzzleIndex(nextIdx);
