@@ -4,10 +4,9 @@ import { Capacitor } from "@capacitor/core";
  *  AdMob unit IDs (production)
  * ============================================================ */
 export const ADMOB_APP_ID = "ca-app-pub-4098736191122679\~4275235624";
-export const INTERSTITIAL_AD_ID = "ca-app-pub-4098736191122679/7153504814";
-export const REWARDED_AD_ID = "ca-app-pub-4098736191122679/2165516995";
-export const BANNER_AD_ID = "ca-app-pub-4098736191122679/3034179835";
-
+export const INTERSTITIAL_AD_ID = "ca-app-pub-3940256099942544/1033173712";
+export const REWARDED_AD_ID = "ca-app-pub-3940256099942544/5224354917";
+export const BANNER_AD_ID = "ca-app-pub-3940256099942544/6300978111";
 /* ============================================================
  * Internal State
  * ============================================================ */
