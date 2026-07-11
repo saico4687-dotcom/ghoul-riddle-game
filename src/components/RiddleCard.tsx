@@ -16,9 +16,6 @@ import { showRewarded, showBannerAd, hideBannerAd } from "@/lib/ads";
 
 import moneyBg from "@/assets/money-bg.jpg";
 
-
-
-
 interface RiddleCardProps {
   riddle: Riddle;
   riddleNumber: number;
@@ -47,14 +44,12 @@ const RiddleCard = ({
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [isTypingComplete, setIsTypingComplete] = useState(false);
-  const [clockKey, setClockKey] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [lifelineUsed, setLifelineUsed] = useState<null | "fifty" | "time">(null);
   const [removedOptions, setRemovedOptions] = useState<number[]>([]);
   const [extraTime, setExtraTime] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [adPaused, setAdPaused] = useState(false);
-
 
   const { playSound, setMuted } = useHorrorSounds();
   const { setVolume: setMusicVolume } = useHorrorBackgroundMusic();
@@ -70,7 +65,6 @@ const RiddleCard = ({
     setSelectedOption(null);
     setShowResult(false);
     setIsTypingComplete(false);
-    setClockKey((prev) => prev + 1);
     setLifelineUsed(null);
     setRemovedOptions([]);
     setExtraTime(0);
@@ -94,69 +88,68 @@ const RiddleCard = ({
   }, []);
 
   const handleUseFifty = async () => {
-  if (lifelineUsed || showResult) return;
+    if (lifelineUsed || showResult) return;
 
-  const before = Date.now();
+    const before = Date.now();
 
-  const earned = await showRewarded({
-    onStart: () => setAdPaused(true),
-    onEnd: () => setAdPaused(false),
-  });
+    const earned = await showRewarded({
+      onStart: () => setAdPaused(true),
+      onEnd: () => setAdPaused(false),
+    });
 
-  console.log("[Rewarded] earned =", earned);
+    console.log("[Rewarded] earned =", earned);
 
-  if (startTime !== null) {
-    setStartTime(startTime + (Date.now() - before));
-  }
+    if (startTime !== null) {
+      setStartTime(startTime + (Date.now() - before));
+    }
 
-  if (!earned) {
-    console.error("[Rewarded] Failed to show rewarded ad.");
-    alert("لم يتم عرض إعلان المكافأة. راجع سجل الأخطاء (Logcat).");
-    return;
-  }
+    if (!earned) {
+      console.error("[Rewarded] Failed to show rewarded ad.");
+      alert("لم يتم عرض إعلان المكافأة. راجع سجل الأخطاء (Logcat).");
+      return;
+    }
 
-  const wrongIndices = riddle.options
-    .map((_, i) => i)
-    .filter((i) => i !== riddle.correctIndex);
+    const wrongIndices = riddle.options
+      .map((_, i) => i)
+      .filter((i) => i !== riddle.correctIndex);
 
-  const toRemove = [...wrongIndices]
-    .sort(() => Math.random() - 0.5)
-    .slice(0, 2);
+    const toRemove = [...wrongIndices]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 2);
 
-  setRemovedOptions(toRemove);
-  setLifelineUsed("fifty");
+    setRemovedOptions(toRemove);
+    setLifelineUsed("fifty");
 
-  if (selectedOption !== null && toRemove.includes(selectedOption)) {
-    setSelectedOption(null);
-  }
-};
+    if (selectedOption !== null && toRemove.includes(selectedOption)) {
+      setSelectedOption(null);
+    }
+  };
 
   const handleAddTime = async () => {
-  if (lifelineUsed || showResult) return;
+    if (lifelineUsed || showResult) return;
 
-  const before = Date.now();
+    const before = Date.now();
 
-  const earned = await showRewarded({
-    onStart: () => setAdPaused(true),
-    onEnd: () => setAdPaused(false),
-  });
+    const earned = await showRewarded({
+      onStart: () => setAdPaused(true),
+      onEnd: () => setAdPaused(false),
+    });
 
-  console.log("[Rewarded] earned =", earned);
+    console.log("[Rewarded] earned =", earned);
 
-  if (startTime !== null) {
-    setStartTime(startTime + (Date.now() - before));
-  }
+    if (startTime !== null) {
+      setStartTime(startTime + (Date.now() - before));
+    }
 
-  if (!earned) {
-    console.error("[Rewarded] Failed to show rewarded ad.");
-    alert("لم يتم عرض إعلان المكافأة. راجع سجل الأخطاء (Logcat).");
-    return;
-  }
+    if (!earned) {
+      console.error("[Rewarded] Failed to show rewarded ad.");
+      alert("لم يتم عرض إعلان المكافأة. راجع سجل الأخطاء (Logcat).");
+      return;
+    }
 
-  setExtraTime((p) => p + 60);
-  setLifelineUsed("time");
-};
-
+    setExtraTime((p) => p + 60);
+    setLifelineUsed("time");
+  };
 
   const handleTimeUp = () => {
     if (!showResult && selectedOption === null) {
@@ -209,7 +202,7 @@ const RiddleCard = ({
         className="flex flex-col items-center gap-4 mb-8"
       >
         <HorrorClock
-    key={`${clockKey}-${extraTime}`}
+          key={riddleNumber}
           duration={60}
           isActive={isTypingComplete && !showResult}
           paused={adPaused}
@@ -217,7 +210,6 @@ const RiddleCard = ({
           isMuted={isMuted}
           extraTime={extraTime}
         />
-
 
         {gameMode === "fun" && (
           <div className="flex items-center gap-3">
@@ -269,7 +261,6 @@ const RiddleCard = ({
           </button>
         </div>
       </motion.div>
-
 
       {riddle.image && (
         <motion.div
