@@ -1,6 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import * as SplashScreen from 'expo-splash-screen';
 
 import WelcomeScreen, { GameMode } from "@/components/WelcomeScreen";
 import EmailAuthScreen from "@/components/EmailAuthScreen";
@@ -63,11 +62,6 @@ const Index = () => {
   const { user } = useAuth();
 
   const allRiddles = useMemo(() => riddles.slice(0, 400), []);
-
-  // إخفاء Splash Screen فوراً
-  useEffect(() => {
-    SplashScreen.hideAsync().catch((e) => console.warn("Splash hide error:", e));
-  }, []);
 
   const ensureProfile = useCallback(async () => {
     if (!user) return null;
