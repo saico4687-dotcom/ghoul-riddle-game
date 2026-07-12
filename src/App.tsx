@@ -20,7 +20,17 @@ import DesktopFrame from "./components/DesktopFrame";
 import RequireCompletion from "./components/RequireCompletion";
 
 import ChatLayout from "./pages/chat/ChatLayout";
-// ... باقي الـ imports
+import ChatHome from "./pages/chat/ChatHome";
+import ChatSearch from "./pages/chat/ChatSearch";
+import ChatProfile from "./pages/chat/ChatProfile";
+import ChatConversation from "./pages/chat/ChatConversation";
+import ChatFriends from "./pages/chat/ChatFriends";
+import ChatNotifications from "./pages/chat/ChatNotifications";
+import ChatSettings from "./pages/chat/ChatSettings";
+import ChatSafety from "./pages/chat/ChatSafety";
+import ChatGuidelines from "./pages/chat/ChatGuidelines";
+import ChatPrivacy from "./pages/chat/ChatPrivacy";
+import UsernameSetup from "./pages/chat/UsernameSetup";
 
 import {
   initAdMob,
@@ -44,7 +54,6 @@ const App = () => {
           void registerNativeGoogleAuth();
         }
 
-        // تهيئة AdMob
         if (isNativePlatform()) {
           console.log("[App] Starting AdMob initialization...");
           await requestUMPConsent();
@@ -52,15 +61,14 @@ const App = () => {
           console.log("[App] AdMob initialization completed");
         }
 
-        // إخفاء Splash بعد التهيئة (وليس بعد وقت ثابت)
+        // إخفاء Splash Screen بعد التهيئة
         splashTimer = window.setTimeout(() => {
           setShowSplash(false);
-        }, 1800); // خفضناه شوية
+        }, 1500); // 1.5 ثانية كافية
 
       } catch (err) {
         console.error("[App Init Error]", err);
-        // لو حصل خطأ، نخفي السپلاش بعد 3 ثواني كحد أقصى
-        setTimeout(() => setShowSplash(false), 3000);
+        setTimeout(() => setShowSplash(false), 2500);
       }
     };
 
@@ -86,7 +94,30 @@ const App = () => {
           <DesktopFrame>
             <Routes>
               <Route path="/" element={<Index />} />
-              {/* باقي الروتات ... */}
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="/delete-account" element={<DeleteAccount />} />
+              <Route path="/auth/callback" element={<OAuthCallback />} />
+              <Route path="/\~oauth/callback" element={<OAuthCallback />} />
+              <Route path="/auth/*" element={<OAuthCallback />} />
+
+              <Route path="/chat/setup" element={<UsernameSetup />} />
+
+              <Route path="/chat" element={<RequireCompletion><ChatLayout /></RequireCompletion>}>
+                <Route index element={<ChatHome />} />
+                <Route path="search" element={<ChatSearch />} />
+                <Route path="friends" element={<ChatFriends />} />
+                <Route path="notifications" element={<ChatNotifications />} />
+                <Route path="settings" element={<ChatSettings />} />
+                <Route path="safety" element={<ChatSafety />} />
+                <Route path="guidelines" element={<ChatGuidelines />} />
+                <Route path="privacy" element={<ChatPrivacy />} />
+                <Route path="u/:username" element={<ChatProfile />} />
+                <Route path="c/:id" element={<ChatConversation />} />
+              </Route>
+
               <Route path="*" element={<Index />} />
             </Routes>
           </DesktopFrame>
