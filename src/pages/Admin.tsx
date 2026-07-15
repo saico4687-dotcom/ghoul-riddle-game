@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { ArrowRight, Loader2, RefreshCw, Trophy, Zap } from "lucide-react";
+import { ArrowRight, Loader2, RefreshCw, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -22,12 +22,10 @@ interface Score {
   created_at: string;
 }
 
-interface FastAnswer {
-  id: string;
+interface WeeklyWinner {
   user_id: string;
-  riddle_index: number;
-  elapsed_ms: number;
-  created_at: string;
+  riddles_solved: number;
+  fastest_answer_ms: number;
   full_name?: string | null;
   email?: string | null;
 }
@@ -36,7 +34,7 @@ const Admin = () => {
   const { user, loading: authLoading } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [scores, setScores] = useState<Score[]>([]);
-  const [weeklyFastest, setWeeklyFastest] = useState<FastAnswer[]>([]);
+  const [weeklyWinner, setWeeklyWinner] = useState<WeeklyWinner | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,7 +48,7 @@ const Admin = () => {
       .then(({ data }) => setIsAdmin(!!data));
   }, [user]);
 
-  const fetchWeeklyFastest = async () => {
+  const fetchWeeklyWinner = async () => {
     // Start of current ISO week (Monday 00:00 local)
     const now = new Date();
     const day = now.getDay(); // 0=Sun..6=Sat
@@ -59,31 +57,32 @@ const Admin = () => {
     weekStart.setDate(now.getDate() - diff);
     weekStart.setHours(0, 0, 0, 0);
 
-    const { data, error } = await supabase
-      .from("answer_times")
-      .select("id, user_id, riddle_index, elapsed_ms, created_at")
-      .gte("created_at", weekStart.toISOString())
-      .order("elapsed_ms", { ascending: true })
-      .limit(20);
+    const { data, error } = await supabase.rpc("get_weekly_winner", {
+      p_week_start: weekStart.toISOString(),
+    });
 
-    if (error || !data) return;
+    if (error || !data || data.length === 0) {
+      setWeeklyWinner(null);
+      return;
+    }
 
-    // Enrich with profile name/email
-    const userIds = Array.from(new Set(data.map((d) => d.user_id)));
-    const { data: profs } = await supabase
+    const winner = data[0] as {
+      user_id: string;
+      riddles_solved: number;
+      fastest_answer_ms: number;
+    };
+
+    const { data: prof } = await supabase
       .from("profiles")
       .select("user_id, full_name, name, email")
-      .in("user_id", userIds);
-    const map = new Map(
-      (profs ?? []).map((p: any) => [p.user_id, { name: p.full_name || p.name, email: p.email }])
-    );
-    setWeeklyFastest(
-      data.map((d) => ({
-        ...d,
-        full_name: map.get(d.user_id)?.name ?? null,
-        email: map.get(d.user_id)?.email ?? null,
-      }))
-    );
+      .eq("user_id", winner.user_id)
+      .maybeSingle();
+
+    setWeeklyWinner({
+      ...winner,
+      full_name: (prof as any)?.full_name || (prof as any)?.name || null,
+      email: prof?.email || null,
+    });
   };
 
   const fetchScores = async () => {
@@ -95,7 +94,7 @@ const Admin = () => {
       .order("time_bonus", { ascending: false });
     if (error) toast.error("فشل تحميل البيانات");
     else setScores((data as Score[]) ?? []);
-    await fetchWeeklyFastest();
+    await fetchWeeklyWinner();
     setLoading(false);
   };
 
@@ -169,39 +168,27 @@ const Admin = () => {
           <TabsContent value="scores" className="mt-6 space-y-8">
             <section className="bg-card/60 border border-primary/30 rounded-xl p-4 backdrop-blur-sm">
               <h2 className="font-horror text-xl text-blood mb-3 flex items-center gap-2">
-                <Zap className="w-5 h-5" />
-                أسرع إجابات صحيحة هذا الأسبوع
+                <Trophy className="w-5 h-5" />
+                فائز الأسبوع
               </h2>
-              {weeklyFastest.length === 0 ? (
+              {!weeklyWinner ? (
                 <p className="text-sm text-muted-foreground font-typewriter">
-                  لا توجد إجابات مسجّلة هذا الأسبوع بعد.
+                  لسه محدش سجّل إجابات الأسبوع ده.
                 </p>
               ) : (
-                <ol className="space-y-2">
-                  {weeklyFastest.map((a, i) => (
-                    <li
-                      key={a.id}
-                      className="flex items-center justify-between gap-3 bg-background/40 rounded-lg px-3 py-2 text-sm font-typewriter"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="font-horror text-blood text-lg w-6 shrink-0">
-                          {i === 0 ? <Trophy className="w-5 h-5 inline" /> : `#${i + 1}`}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-foreground truncate">
-                            {a.full_name || "مستخدم"}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {a.email || "—"} · لغز #{a.riddle_index}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-blood font-bold whitespace-nowrap">
-                        {(a.elapsed_ms / 1000).toFixed(2)} ث
-                      </span>
-                    </li>
-                  ))}
-                </ol>
+                <div className="flex items-center justify-between gap-3 bg-background/40 rounded-lg px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-foreground font-typewriter truncate">
+                      {weeklyWinner.full_name || "مستخدم"}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {weeklyWinner.email || "—"} · حل {weeklyWinner.riddles_solved} لغز
+                    </p>
+                  </div>
+                  <span className="text-blood font-bold whitespace-nowrap font-typewriter">
+                    {(weeklyWinner.fastest_answer_ms / 1000).toFixed(2)} ث
+                  </span>
+                </div>
               )}
             </section>
 
