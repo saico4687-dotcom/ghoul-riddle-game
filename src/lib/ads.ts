@@ -115,7 +115,7 @@ export const initAdMob = async (): Promise<void> => {
         try {
             console.log("[AdMob] Initializing...");
 
-            const { AdMob, InterstitialAdPluginEvents, RewardAdPluginEvents, BannerAdPosition, BannerAdSize } = await getAdMob();
+            const { AdMob, InterstitialAdPluginEvents, RewardAdPluginEvents, BannerAdPluginEvents } = await getAdMob();
 
             await requestUMPConsent();
 
@@ -129,6 +129,19 @@ export const initAdMob = async (): Promise<void> => {
             if (!listenersRegistered) {
                 listenersRegistered = true;
                 console.log("[AdMob] Registering listeners...");
+
+                // Banner Listeners — عشان نعرف هل الإعلان اتحمّل فعلاً ولا "No Fill" زي الباقي
+                AdMob.addListener(BannerAdPluginEvents.Loaded, () => {
+                    console.log("✅✅ Banner AD ACTUALLY LOADED (real ad received)");
+                });
+
+                AdMob.addListener(BannerAdPluginEvents.FailedToLoad, (e) => {
+                    logAdMobError("Banner Load FAILED (No real ad)", e);
+                });
+
+                AdMob.addListener(BannerAdPluginEvents.SizeChanged, (info) => {
+                    console.log("[AdMob] Banner Size Changed:", info);
+                });
 
                 // Interstitial Listeners
                 AdMob.addListener(InterstitialAdPluginEvents.Loaded, () => {
@@ -207,7 +220,6 @@ export const initAdMob = async (): Promise<void> => {
             initialized = true;
             console.log("[AdMob] Preloading ads...");
 
-            void prepareBanner();
             void preloadInterstitial();
             void preloadRewarded();
 
@@ -227,23 +239,25 @@ export const initAdMob = async (): Promise<void> => {
  * PRELOADERS
  * ============================================================ */
 
-export const prepareBanner = async () => {
-    if (!isNative()) return;
-    try {
-        const { AdMob, BannerAdSize } = await getAdMob();
-        console.log("[AdMob] Preparing Banner...");
-        await AdMob.prepareBanner({
-            adId: BANNER_AD_ID,
-            adSize: BannerAdSize.ADAPTIVE_BANNER,
-        });
-        console.log("✅ Banner Prepared");
-    } catch (e) {
-        logAdMobError("Prepare Banner", e);
-    }
-};
+// ملحوظة: دالة prepareBanner القديمة اتشالت — showBanner() بتحمّل وتعرض
+// البانر في خطوة واحدة، ومفيش داعي لاستدعاء prepareBanner (اللي كانت
+// بترجع خطأ "not implemented on android" في نسخة الـ plugin دي أصلاً).
+
+// أقل فترة مسموح بيها بين محاولتين تحميل، عشان منضربش Rate limit بتاع AdMob
+// ("Too many recently failed requests for ad unit ID")
+const MIN_PRELOAD_GAP = 30_000;
+let lastInterstitialAttempt = 0;
+let lastRewardedAttempt = 0;
 
 export const preloadInterstitial = async () => {
     if (!isNative() || interstitialLoaded || interstitialLoading) return;
+
+    const now = Date.now();
+    if (now - lastInterstitialAttempt < MIN_PRELOAD_GAP) {
+        console.log("[AdMob] Skipping Interstitial preload (cooldown active)");
+        return;
+    }
+    lastInterstitialAttempt = now;
 
     interstitialLoading = true;
     console.log("[AdMob] Loading Interstitial...");
@@ -261,6 +275,13 @@ export const preloadInterstitial = async () => {
 
 export const preloadRewarded = async () => {
     if (!isNative() || rewardedLoaded || rewardedLoading) return;
+
+    const now = Date.now();
+    if (now - lastRewardedAttempt < MIN_PRELOAD_GAP) {
+        console.log("[AdMob] Skipping Rewarded preload (cooldown active)");
+        return;
+    }
+    lastRewardedAttempt = now;
 
     rewardedLoading = true;
     console.log("[AdMob] Loading Rewarded...");
