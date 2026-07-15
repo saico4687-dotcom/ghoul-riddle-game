@@ -105,7 +105,7 @@ const RiddleCard = ({
 
     if (!earned) {
       console.error("[Rewarded] Failed to show rewarded ad.");
-      alert("لم يتم عرض إعلان المكافأة. راجع سجل الأخطاء (Logcat).");
+      alert("تعذر عرض الإعلان حاليًا، حاول مرة أخرى بعد قليل.");
       return;
     }
 
