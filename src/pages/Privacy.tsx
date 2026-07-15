@@ -154,7 +154,25 @@ const Privacy = () => {
           </p>
         </Section>
 
-        <Section title="12. حذف الحساب / تسجيل الخروج">
+        <Section title="12. خيارات الخصوصية والإعلانات">
+          <p>
+            يمكنك في أي وقت مراجعة أو تغيير اختياراتك بخصوص الإعلانات
+            المخصّصة عن طريق الزر التالي:
+          </p>
+          <div className="mt-4">
+            <button
+              onClick={async () => {
+                const { showPrivacyOptions } = await import("@/lib/ads");
+                await showPrivacyOptions();
+              }}
+              className="inline-flex items-center justify-center px-5 py-3 rounded-md bg-primary text-primary-foreground hover:opacity-90 transition font-typewriter"
+            >
+              خيارات الخصوصية (Privacy Options)
+            </button>
+          </div>
+        </Section>
+
+        <Section title="13. حذف الحساب / تسجيل الخروج">
           <p>
             يمكنك حذف حسابك أو تسجيل الخروج في أي وقت من خلال الأزرار التالية:
           </p>
