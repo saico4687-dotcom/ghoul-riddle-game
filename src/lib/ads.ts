@@ -177,7 +177,6 @@ export const initAdMob = async (): Promise<void> => {
             initialized = false;
             initPromise = null;
             logAdMobError("Initialization", e);
-            alert("AdMob initialization failed: " + (e?.message || e));
         }
     })();
 
@@ -215,7 +214,6 @@ export const preloadInterstitial = async () => {
     } catch (e) {
         interstitialLoaded = false;
         logAdMobError("Preload Interstitial", e);
-        alert("Interstitial Load Error: " + JSON.stringify(e, null, 2));
     } finally {
         interstitialLoading = false;
     }
@@ -233,7 +231,6 @@ export const preloadRewarded = async () => {
     } catch (e) {
         rewardedLoaded = false;
         logAdMobError("Preload Rewarded", e);
-        alert("Rewarded Load Error: " + JSON.stringify(e, null, 2));
     } finally {
         rewardedLoading = false;
     }
@@ -264,7 +261,6 @@ export const showBannerAd = async () => {
     } catch (e) {
         bannerVisible = false;
         logAdMobError("Banner Show", e);
-        alert("Banner Show Error: " + (e?.message || e));
     }
 };
 
@@ -294,7 +290,6 @@ export const showInterstitial = async (): Promise<boolean> => {
 
         if (!interstitialLoaded) {
             console.error("[AdMob] Interstitial NOT Loaded");
-            alert("Interstitial Ad is not loaded");
             return false;
         }
 
@@ -316,7 +311,6 @@ await new Promise<void>((resolve) => {
 return true;
     } catch (e) {
         logAdMobError("Show Interstitial", e);
-        alert("Interstitial Error: " + (e?.message || e));
         return false;
     } finally {
         anyFullscreenAdShowing = false;
@@ -353,7 +347,6 @@ export const showRewarded = async (opts?: { onStart?: () => void; onEnd?: () => 
         return true;
     } catch (e) {
         logAdMobError("Show Rewarded", e);
-        alert("Rewarded Error: " + (e?.message || e));
         return false;
     } finally {
         anyFullscreenAdShowing = false;
