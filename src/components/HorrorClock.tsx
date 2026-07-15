@@ -20,15 +20,19 @@ const HorrorClock = ({
 
   const [timeLeft, setTimeLeft] = useState(duration);
 
-  const endTimeRef = useRef(0);
-  const pauseStartedRef = useRef<number | null>(null);
+  // رصيد الوقت المتبقي بالميلي ثانية. لا يُخصم منه إلا وقت "التكة"
+  // الفعلي أثناء العد الحقيقي (isActive && !paused). أي وقت يمر أثناء
+  // كتابة اللغز أو أثناء ظهور إعلان لا يُخصم منه إطلاقًا (وقف حقيقي).
+  const remainingMsRef = useRef(duration * 1000);
+  const lastTickRef = useRef<number | null>(null);
   const timerRef = useRef<number | null>(null);
   const lastExtraRef = useRef(0);
   const firedRef = useRef(false);
 
   // بدء مؤقت جديد عند بداية اللغز
   useEffect(() => {
-    endTimeRef.current = Date.now() + duration * 1000;
+    remainingMsRef.current = duration * 1000;
+    lastTickRef.current = null;
 
     setTimeLeft(duration);
 
@@ -38,49 +42,32 @@ const HorrorClock = ({
 
   }, [duration]);
 
-  // إضافة وقت
+  // إضافة وقت (مكافأة "أضف دقيقة") تُضاف مباشرة إلى الرصيد المتبقي
   useEffect(() => {
 
     if (extraTime > lastExtraRef.current) {
 
       const diff = extraTime - lastExtraRef.current;
 
-      endTimeRef.current += diff * 1000;
+      remainingMsRef.current += diff * 1000;
 
       lastExtraRef.current = extraTime;
+
+      setTimeLeft(Math.max(0, Math.ceil(remainingMsRef.current / 1000)));
 
     }
 
   }, [extraTime]);
 
-  // Pause
+  // Timer: يعمل فقط أثناء isActive && !paused، ويخصم الوقت الفعلي
+  // الذي مرّ بين كل "تكة" وأخرى من رصيد الوقت المتبقي. أي توقف
+  // (كتابة اللغز أو إعلان) يعني ببساطة توقف هذا الـ effect تمامًا
+  // بلا أي حساب لاحق للزمن الذي مرّ أثناء التوقف.
   useEffect(() => {
 
-    if (!isActive) return;
-
-    if (paused) {
-
-      pauseStartedRef.current = Date.now();
-
-    } else {
-
-      if (pauseStartedRef.current !== null) {
-
-        const pausedFor = Date.now() - pauseStartedRef.current;
-
-        endTimeRef.current += pausedFor;
-
-        pauseStartedRef.current = null;
-
-      }
-    }
-
-  }, [paused, isActive]);
-
-  // Timer
-  useEffect(() => {
-
-    if (!isActive) {
+    if (!isActive || paused) {
+      // عند التوقف نُصفّر "آخر تكة" حتى لا يُحتسب وقت التوقف عند الاستئناف
+      lastTickRef.current = null;
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -88,21 +75,24 @@ const HorrorClock = ({
       return;
     }
 
+    lastTickRef.current = Date.now();
+
     timerRef.current = window.setInterval(() => {
-      // حماية إضافية ضد تأخير React في إيقاف الـ interval
-      if (paused) return;
+      const now = Date.now();
+      const last = lastTickRef.current ?? now;
+      const delta = now - last;
+      lastTickRef.current = now;
 
-      const remain = Math.max(
-        0,
-        Math.ceil((endTimeRef.current - Date.now()) / 1000)
-      );
+      remainingMsRef.current = Math.max(0, remainingMsRef.current - delta);
 
-      setTimeLeft(remain);
+      const remainSec = Math.ceil(remainingMsRef.current / 1000);
+      setTimeLeft(remainSec);
 
-      if (remain <= 0 && !firedRef.current) {
+      if (remainingMsRef.current <= 0 && !firedRef.current) {
         firedRef.current = true;
         if (timerRef.current) {
           clearInterval(timerRef.current);
+          timerRef.current = null;
         }
         onTimeUp?.();
       }
