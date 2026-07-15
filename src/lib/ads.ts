@@ -97,6 +97,21 @@ export const requestUMPConsent = async () => {
     }
 };
 
+// نقطة الدخول المطلوبة من AdMob: تسمح للمستخدم إنه يفتح نموذج
+// خيارات الخصوصية تاني في أي وقت بعد أول مرة (لازمة عشان تقدر
+// تنشر رسالة الـ US/EEA من AdMob Console).
+export const showPrivacyOptions = async () => {
+    if (!isNative()) return;
+
+    try {
+        const { AdMob } = await getAdMob();
+        console.log("[AdMob] Showing Privacy Options form...");
+        await AdMob.showPrivacyOptionsForm();
+    } catch (e) {
+        logAdMobError("Show Privacy Options", e);
+    }
+};
+
 /* ============================================================
  * Initialization
  * ============================================================ */
