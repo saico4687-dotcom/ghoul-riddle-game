@@ -22,6 +22,11 @@ let interstitialLoading = false;
 let rewardedLoaded = false;
 let rewardedLoading = false;
 
+// يُضبط على true فقط عند وصول حدث المكافأة الحقيقي من AdMob
+// (onRewardedVideoAdReward)، ويُستخدم لمعرفة هل استحق المستخدم
+// المكافأة فعلًا وقت إغلاقه للإعلان بنفسه.
+let rewardEarnedFlag = false;
+
 let bannerVisible = false;
 let anyFullscreenAdShowing = false;
 
@@ -160,6 +165,11 @@ export const initAdMob = async (): Promise<void> => {
                 });
 
                 // Rewarded Listeners
+                AdMob.addListener(RewardAdPluginEvents.Rewarded, () => {
+                    console.log("✅ Rewarded: user earned reward");
+                    rewardEarnedFlag = true;
+                });
+
                 AdMob.addListener(RewardAdPluginEvents.Loaded, () => {
                     console.log("✅ Rewarded Loaded");
                     rewardedLoaded = true;
@@ -364,17 +374,29 @@ export const showRewarded = async (opts?: { onStart?: () => void; onEnd?: () => 
 
         if (!rewardedLoaded) {
             console.error("[AdMob] Rewarded NOT Loaded");
-            opts?.onEnd?.();
             return false;
         }
 
         opts?.onStart?.();
         console.log("▶ Showing Rewarded");
         anyFullscreenAdShowing = true;
+        rewardEarnedFlag = false;
 
         await AdMob.showRewardVideoAd();
-        console.log("✅ Rewarded Completed");
-        return true;
+
+        // انتظر حتى يغلق المستخدم الإعلان بنفسه فعليًا (حدث Dismissed)
+        // قبل إرجاع النتيجة — حتى لا تُستأنف الساعة قبل الإغلاق الحقيقي.
+        await new Promise<void>((resolve) => {
+            const check = setInterval(() => {
+                if (!anyFullscreenAdShowing) {
+                    clearInterval(check);
+                    resolve();
+                }
+            }, 100);
+        });
+
+        console.log("✅ Rewarded Completed, earned =", rewardEarnedFlag);
+        return rewardEarnedFlag;
     } catch (e) {
         logAdMobError("Show Rewarded", e);
         return false;
@@ -382,5 +404,6 @@ export const showRewarded = async (opts?: { onStart?: () => void; onEnd?: () => 
         anyFullscreenAdShowing = false;
         rewardedLoaded = false;
         void preloadRewarded();
+        opts?.onEnd?.();
     }
 };
