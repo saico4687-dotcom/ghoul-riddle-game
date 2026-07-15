@@ -27,6 +27,32 @@ let anyFullscreenAdShowing = false;
 
 let listenersRegistered = false;
 
+let interstitialRetryDelay = 30_000; // يبدأ بـ 30 ثانية ويتضاعف حتى 5 دقائق
+let interstitialRetryTimer: ReturnType<typeof setTimeout> | null = null;
+
+let rewardedRetryDelay = 30_000;
+let rewardedRetryTimer: ReturnType<typeof setTimeout> | null = null;
+
+const MAX_RETRY_DELAY = 5 * 60_000; // 5 دقائق كحد أقصى بين المحاولات
+
+const scheduleInterstitialRetry = () => {
+    if (interstitialRetryTimer) return; // في انتظار محاولة سابقة بالفعل
+    interstitialRetryTimer = setTimeout(() => {
+        interstitialRetryTimer = null;
+        interstitialRetryDelay = Math.min(interstitialRetryDelay * 2, MAX_RETRY_DELAY);
+        void preloadInterstitial();
+    }, interstitialRetryDelay);
+};
+
+const scheduleRewardedRetry = () => {
+    if (rewardedRetryTimer) return;
+    rewardedRetryTimer = setTimeout(() => {
+        rewardedRetryTimer = null;
+        rewardedRetryDelay = Math.min(rewardedRetryDelay * 2, MAX_RETRY_DELAY);
+        void preloadRewarded();
+    }, rewardedRetryDelay);
+};
+
 const isNative = () => Capacitor.isNativePlatform();
 
 async function getAdMob() {
@@ -104,12 +130,14 @@ export const initAdMob = async (): Promise<void> => {
                     console.log("✅ Interstitial Loaded");
                     interstitialLoaded = true;
                     interstitialLoading = false;
+                    interstitialRetryDelay = 30_000;
                 });
 
                 AdMob.addListener(InterstitialAdPluginEvents.FailedToLoad, (e) => {
                     interstitialLoaded = false;
                     interstitialLoading = false;
                     logAdMobError("Interstitial Load", e);
+                    scheduleInterstitialRetry();
                 });
 
                 AdMob.addListener(InterstitialAdPluginEvents.Showed, () => {
@@ -136,12 +164,14 @@ export const initAdMob = async (): Promise<void> => {
                     console.log("✅ Rewarded Loaded");
                     rewardedLoaded = true;
                     rewardedLoading = false;
+                    rewardedRetryDelay = 30_000;
                 });
 
                 AdMob.addListener(RewardAdPluginEvents.FailedToLoad, (e) => {
                     rewardedLoaded = false;
                     rewardedLoading = false;
                     logAdMobError("Rewarded Load", e);
+                    scheduleRewardedRetry();
                 });
 
                 AdMob.addListener(RewardAdPluginEvents.Showed, () => {
@@ -294,21 +324,21 @@ export const showInterstitial = async (): Promise<boolean> => {
         }
 
         console.log("▶ Showing Interstitial");
-anyFullscreenAdShowing = true;
+        anyFullscreenAdShowing = true;
 
-await AdMob.showInterstitial();
+        await AdMob.showInterstitial();
 
-// انتظر حتى يغلق المستخدم الإعلان
-await new Promise<void>((resolve) => {
-    const check = setInterval(() => {
-        if (!anyFullscreenAdShowing) {
-            clearInterval(check);
-            resolve();
-        }
-    }, 100);
-});
+        // انتظر حتى يغلق المستخدم الإعلان
+        await new Promise<void>((resolve) => {
+            const check = setInterval(() => {
+                if (!anyFullscreenAdShowing) {
+                    clearInterval(check);
+                    resolve();
+                }
+            }, 100);
+        });
 
-return true;
+        return true;
     } catch (e) {
         logAdMobError("Show Interstitial", e);
         return false;
