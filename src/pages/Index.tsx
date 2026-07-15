@@ -165,7 +165,6 @@ const Index = () => {
       totalTimeMsRef.current = Number(data?.total_time_ms ?? 0);
       setCurrentRiddleIndex(resumeIdx);
       setShowAuth(false);
-      setGameState("playing");
     })();
   }, [user, ensureProfile, allRiddles.length]);
 
