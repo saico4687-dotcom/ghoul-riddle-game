@@ -101,7 +101,12 @@ export const requestUMPConsent = async () => {
 // خيارات الخصوصية تاني في أي وقت بعد أول مرة (لازمة عشان تقدر
 // تنشر رسالة الـ US/EEA من AdMob Console).
 export const showPrivacyOptions = async () => {
-    if (!isNative()) return;
+    if (!isNative()) {
+        // على الويب مفيش AdMob SDK أصلاً، فمفيش فورم نعرضه.
+        // نرمي خطأ واضح عشان الواجهة تقدر تعرض رسالة للمستخدم
+        // بدل ما الزر "يفصل جسمه" من غير أي رد فعل.
+        throw new Error("NOT_NATIVE");
+    }
 
     try {
         const { AdMob } = await getAdMob();
@@ -109,6 +114,8 @@ export const showPrivacyOptions = async () => {
         await AdMob.showPrivacyOptionsForm();
     } catch (e) {
         logAdMobError("Show Privacy Options", e);
+        // نرمي تاني (بدل الاكتفاء باللوج) عشان المتصل يقدر يبلّغ المستخدم
+        throw e;
     }
 };
 
