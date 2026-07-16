@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 const APP_NAME = "ربح";
 const CONTACT_EMAIL = "support@rebh-app.com";
@@ -162,8 +163,25 @@ const Privacy = () => {
           <div className="mt-4">
             <button
               onClick={async () => {
-                const { showPrivacyOptions } = await import("@/lib/ads");
-                await showPrivacyOptions();
+                try {
+                  const { showPrivacyOptions } = await import("@/lib/ads");
+                  await showPrivacyOptions();
+                } catch (e: any) {
+                  if (e?.message === "NOT_NATIVE") {
+                    toast({
+                      title: "غير متاح على المتصفح",
+                      description:
+                        "خيارات الخصوصية الخاصة بالإعلانات متاحة فقط داخل تطبيق الجوال، وليس عبر المتصفح.",
+                    });
+                  } else {
+                    toast({
+                      title: "تعذّر فتح خيارات الخصوصية",
+                      description:
+                        "قد لا يكون هناك نموذج خصوصية متاح حاليًا لمنطقتك، أو حدث خطأ مؤقت. حاول لاحقًا.",
+                      variant: "destructive",
+                    });
+                  }
+                }
               }}
               className="inline-flex items-center justify-center px-5 py-3 rounded-md bg-primary text-primary-foreground hover:opacity-90 transition font-typewriter"
             >
