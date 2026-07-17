@@ -4,7 +4,8 @@ import { Capacitor } from "@capacitor/core";
  *  AdMob unit IDs (production)
  * ============================================================ */
 export const ADMOB_APP_ID = "ca-app-pub-4098736191122679~4275235624";
-export const INTERSTITIAL_AD_ID = "ca-app-pub-4098736191122679/2155375682";
+export const INTERSTITIAL_AD_ID =
+"ca-app-pub-3940256099942544/1033173712";
 
 export const REWARDED_AD_ID = "ca-app-pub-4098736191122679/5486713665";
 
