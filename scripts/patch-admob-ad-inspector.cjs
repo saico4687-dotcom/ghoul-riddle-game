@@ -8,10 +8,10 @@
  * كود React مباشرة.
  *
  * ليه سكريبت بدل patch-package؟ لأن patch-package بيعتمد على تطابق
- * الملف سطر بسطر، وأي فرق بسيط في المسافات بين نسخة الملف عندك
- * ونسخة الملف اللي اتعمل عليها الـ patch بيخلي التطبيق يفشل. السكريبت
- * ده بيدور على نص مميز (anchor) في الملف بدل أرقام سطور، فهو مش
- * بيتأثر بفروقات المسافات أو الأسطر.
+ * الملف سطر بسطر، وأي فرق بسيط بيخلي التطبيق يفشل. السكريبت ده بيدور
+ * على نص كود حقيقي (مش كومنت) كـ "مرساة" — نص مش من المفروض يتغير
+ * لأنه جزء من منطق الكود نفسه، فهو مش بيتأثر بفروقات المسافات أو
+ * صياغة الكومنتات.
  *
  * السكريبت آمن يتنفذ أكتر من مرة (idempotent): لو الكود مضاف بالفعل
  * مش هيضيفه تاني.
@@ -78,18 +78,33 @@ const newImports =
 content = content.replace(importAnchor, newImports);
 
 // ---------------------------------------------------------
-// 2) إضافة الدالة نفسها قبل قسم "USER CONSENT"
+// 2) إضافة الدالة نفسها
 // ---------------------------------------------------------
-const methodAnchor = "// USER CONSENT";
-if (!content.includes(methodAnchor)) {
+// بنستخدم سطر كود حقيقي (مش كومنت) كمرساة، لأن نص الكومنتات ممكن
+// يختلف شوية بين نسخة وتانية لكن الكود الوظيفي ده لازم يفضل ثابت.
+const codeAnchor = "AuthorizationStatusEnum.AUTHORIZED.getStatus()";
+const anchorIndex = content.indexOf(codeAnchor);
+
+if (anchorIndex === -1) {
     fail(
-        "مش لاقي علامة القسم المتوقعة:\n   " + methodAnchor +
-        "\n   يبدو إن نسخة الملف مختلفة عن المتوقع."
+        "مش لاقي سطر الكود المتوقع (مرساة الإدراج):\n   " + codeAnchor +
+        "\n   يبدو إن نسخة الملف مختلفة عن المتوقع بشكل جوهري."
     );
 }
 
+// أول قوس "}" بعد المرساة ده نهاية الدالة اللي المرساة جواها
+// (trackingAuthorizationStatus) — هنضيف الدالة الجديدة بعده مباشرة.
+const closeBraceIndex = content.indexOf("}", anchorIndex);
+if (closeBraceIndex === -1) {
+    fail("لقيت مرساة الإدراج بس مش لاقي نهاية الدالة (قوس '}') بعدها.");
+}
+
+const insertionPoint = closeBraceIndex + 1; // بعد الـ "}" مباشرة
+
 const newMethod =
-`    // ---------------------------------------------------------
+`
+
+    // ---------------------------------------------------------
     // AD INSPECTOR
     // ---------------------------------------------------------
     // بيفتح شاشة "مُفتش الإعلانات" الرسمية من جوجل، اللي بتوري
@@ -123,32 +138,9 @@ const newMethod =
 
         activity.runOnUiThread(openOnMain);
         call.resolve();
-    }
+    }`;
 
-    `;
-
-// بندوّر على السطر اللي فيه علامة القسم عشان نحط الدالة قبل أول سطر
-// من الكومنت بتاعه (بأقل مسافة بادئة ممكنة تسبقه في نفس السطر)
-const sectionCommentLine = content
-    .split("\n")
-    .find((line) => line.includes(methodAnchor) && line.trim().startsWith("//"));
-
-if (!sectionCommentLine) {
-    fail("لقيت النص لكن مش في شكل سطر كومنت متوقع.");
-}
-
-// نلاقي أول سطر فاصل "// ----" قبل سطر الكومنت ده (لو موجود) عشان
-// نحط الدالة الجديدة قبل بداية القسم بالكامل، مش نص فيه.
-const lines = content.split("\n");
-const commentIndex = lines.findIndex((line) => line.includes(methodAnchor) && line.trim().startsWith("//"));
-
-let insertAt = commentIndex;
-if (commentIndex > 0 && lines[commentIndex - 1].trim().startsWith("// ---")) {
-    insertAt = commentIndex - 1;
-}
-
-lines.splice(insertAt, 0, newMethod.replace(/\n$/, ""));
-content = lines.join("\n");
+content = content.slice(0, insertionPoint) + newMethod + content.slice(insertionPoint);
 
 fs.writeFileSync(TARGET, content, "utf8");
 console.log("✅ [patch-admob-ad-inspector] تمت إضافة openAdInspector بنجاح.");
