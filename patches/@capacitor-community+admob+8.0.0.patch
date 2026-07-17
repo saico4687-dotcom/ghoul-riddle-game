@@ -1,8 +1,8 @@
 diff --git a/node_modules/@capacitor-community/admob/android/src/main/java/com/getcapacitor/community/admob/AdMob.java b/node_modules/@capacitor-community/admob/android/src/main/java/com/getcapacitor/community/admob/AdMob.java
-index 0000000..0000000 100644
+index de1e3a3..bb9a270 100644
 --- a/node_modules/@capacitor-community/admob/android/src/main/java/com/getcapacitor/community/admob/AdMob.java
 +++ b/node_modules/@capacitor-community/admob/android/src/main/java/com/getcapacitor/community/admob/AdMob.java
-@@ -19,7 +19,9 @@
+@@ -19,7 +19,9 @@ import com.getcapacitor.community.admob.interstitial.AdInterstitialExecutor;
  import com.getcapacitor.community.admob.interstitial.InterstitialAdCallbackAndListeners;
  import com.getcapacitor.community.admob.rewarded.AdRewardExecutor;
  import com.getcapacitor.community.admob.rewardedinterstitial.AdRewardInterstitialExecutor;
@@ -12,10 +12,11 @@ index 0000000..0000000 100644
  import com.google.android.gms.ads.RequestConfiguration;
  import com.google.android.gms.ads.initialization.InitializationStatus;
  import com.google.android.gms.ads.initialization.OnInitializationCompleteListener;
-@@ -130,6 +132,42 @@
+@@ -129,6 +131,42 @@ public class AdMob extends Plugin {
+         call.resolve(response);
      }
  
-     // ---------------------------------------------------------
++    // ---------------------------------------------------------
 +    // AD INSPECTOR
 +    // ---------------------------------------------------------
 +    // بيفتح شاشة "مُفتش الإعلانات" الرسمية من جوجل، اللي بتوري
@@ -51,6 +52,6 @@ index 0000000..0000000 100644
 +        call.resolve();
 +    }
 +
-+    // ---------------------------------------------------------
+     // ---------------------------------------------------------
      // USER CONSENT
      // ---------------------------------------------------------
