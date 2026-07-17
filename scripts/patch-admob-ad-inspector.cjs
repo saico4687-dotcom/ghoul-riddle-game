@@ -113,7 +113,7 @@ const newMethod =
     // الإعلانية بتاعتك.
     @PluginMethod
     public void openAdInspector(final PluginCall call) {
-        Activity activity = getActivity();
+        android.app.Activity activity = getActivity();
         if (activity == null) {
             call.reject("Activity not available");
             return;
