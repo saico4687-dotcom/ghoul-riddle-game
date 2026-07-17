@@ -64,14 +64,148 @@ async function getAdMob() {
     return await import("@capacitor-community/admob");
 }
 
+/* ============================================================
+ * لوحة تشخيص بسيطة على الشاشة (بديل eruda)
+ * بتعرض تفاصيل كل خطأ حقيقي من AdMob SDK (code / message / details
+ * القادمين من Google نفسه، مش بس رقم 403) جوّه التطبيق مباشرة، من
+ * غير أي مكتبة خارجية. اضغطي مطولًا (نص ثانية) على زرار 🐞 عشان
+ * تفتحي "مُفتش الإعلانات" الرسمي (راجعي دالة openAdInspector تحت).
+ * ============================================================ */
+let debugPanelEl: HTMLDivElement | null = null;
+const debugLogLines: string[] = [];
+
+const ensureDebugPanel = () => {
+    if (typeof document === "undefined") return null;
+    if (debugPanelEl) return debugPanelEl;
+
+    const panel = document.createElement("div");
+    panel.id = "admob-debug-panel";
+    panel.style.cssText = `
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        max-height: 45vh;
+        overflow-y: auto;
+        background: rgba(0,0,0,0.88);
+        color: #0f0;
+        font-family: monospace;
+        font-size: 11px;
+        line-height: 1.5;
+        padding: 10px;
+        padding-bottom: 44px;
+        z-index: 999999;
+        display: none;
+        white-space: pre-wrap;
+        direction: ltr;
+        text-align: left;
+    `;
+    document.body.appendChild(panel);
+
+    // زرار صغير ثابت في ركن الشاشة يفتح/يقفل اللوحة
+    const toggle = document.createElement("div");
+    toggle.textContent = "🐞";
+    toggle.style.cssText = `
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        width: 34px;
+        height: 34px;
+        background: rgba(0,0,0,0.65);
+        color: #fff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 17px;
+        z-index: 1000000;
+        cursor: pointer;
+    `;
+    toggle.onclick = () => {
+        panel.style.display = panel.style.display === "none" ? "block" : "none";
+    };
+
+    // ضغطة مطوّلة (نص ثانية) على الزرار → تفتح مُفتش الإعلانات الرسمي مباشرة
+    let pressTimer: ReturnType<typeof setTimeout> | null = null;
+    const startPress = () => {
+        pressTimer = setTimeout(() => {
+            pressTimer = null;
+            void openAdInspector();
+        }, 500);
+    };
+    const cancelPress = () => {
+        if (pressTimer) {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+        }
+    };
+    toggle.addEventListener("touchstart", startPress, { passive: true });
+    toggle.addEventListener("touchend", cancelPress);
+    toggle.addEventListener("touchcancel", cancelPress);
+    toggle.addEventListener("mousedown", startPress);
+    toggle.addEventListener("mouseup", cancelPress);
+    toggle.addEventListener("mouseleave", cancelPress);
+
+    document.body.appendChild(toggle);
+
+    debugPanelEl = panel;
+    return panel;
+};
+
+const pushDebugLog = (line: string) => {
+    const time = new Date().toLocaleTimeString();
+    debugLogLines.push(`[${time}] ${line}`);
+    if (debugLogLines.length > 60) debugLogLines.shift();
+
+    const panel = ensureDebugPanel();
+    if (panel) panel.textContent = debugLogLines.join("\n\n");
+};
+
+// لوج عادي في الـ console + نفس السطر في اللوحة على الشاشة
+const logInfo = (msg: string) => {
+    console.log(msg);
+    pushDebugLog(msg);
+};
+
 const logAdMobError = (context: string, error: any) => {
-    console.error(`❌ [AdMob] ${context}`, {
+    const info = {
         message: error?.message ?? "Unknown Error",
         code: error?.code ?? "N/A",
         details: error?.details ?? error,
+    };
+    console.error(`❌ [AdMob] ${context}`, {
+        ...info,
         stack: error?.stack,
         raw: error,
     });
+    pushDebugLog(
+        `❌ ${context}\ncode: ${info.code}\nmessage: ${info.message}\ndetails: ${JSON.stringify(info.details)}`
+    );
+};
+
+/* ============================================================
+ * فتح "مُفتش الإعلانات" الرسمي من جوجل (Ad Inspector)
+ * ملحوظة: دي دالة native مُضافة يدويًا في الـ plugin (عن طريق
+ * patch-package — راجع patches/@capacitor-community+admob+8.0.0.patch)
+ * ومش موجودة في تعريفات TypeScript الأصلية بتاعة الـ plugin، فمحتاجين
+ * نتخطى فحص الأنواع هنا (as any) عشان ننادي عليها. برجّة Capacitor
+ * بتوصّل أي اسم دالة native بالاسم مباشرة، فده هيشتغل طالما الـ
+ * patch اتطبّق والتطبيق اتبنى من جديد.
+ * ============================================================ */
+export const openAdInspector = async (): Promise<void> => {
+    if (!isNative()) {
+        logInfo("[AdMob] Ad Inspector غير متاح على الويب — شغّال على تطبيق native بس.");
+        return;
+    }
+
+    try {
+        await initAdMob();
+        const { AdMob } = await getAdMob();
+        logInfo("[AdMob] Opening Ad Inspector...");
+        await (AdMob as any).openAdInspector();
+    } catch (e) {
+        logAdMobError("Open Ad Inspector", e);
+    }
 };
 
 /* ============================================================
@@ -83,13 +217,13 @@ export const requestUMPConsent = async () => {
 
     try {
         const { AdMob } = await getAdMob();
-        console.log("[AdMob] Requesting consent...");
+        logInfo("[AdMob] Requesting consent...");
 
         const consent = await AdMob.requestConsentInfo();
-        console.log("[AdMob] Consent Status:", consent);
+        logInfo(`[AdMob] Consent Status: ${JSON.stringify(consent)}`);
 
         if (consent.isConsentFormAvailable && consent.status === "REQUIRED") {
-            console.log("[AdMob] Showing consent form...");
+            logInfo("[AdMob] Showing consent form...");
             await AdMob.showConsentForm();
         }
     } catch (e) {
@@ -135,7 +269,7 @@ export const initAdMob = async (): Promise<void> => {
         }
 
         try {
-            console.log("[AdMob] Initializing...");
+            logInfo("[AdMob] Initializing...");
 
             const { AdMob, InterstitialAdPluginEvents, RewardAdPluginEvents, BannerAdPluginEvents } = await getAdMob();
 
@@ -145,16 +279,16 @@ export const initAdMob = async (): Promise<void> => {
                 initializeForTesting: false,   // غيّر إلى true أثناء الاختبار
             });
 
-            console.log("[AdMob] SDK initialized");
+            logInfo("[AdMob] SDK initialized");
 
             // Register listeners once
             if (!listenersRegistered) {
                 listenersRegistered = true;
-                console.log("[AdMob] Registering listeners...");
+                logInfo("[AdMob] Registering listeners...");
 
                 // Banner Listeners — عشان نعرف هل الإعلان اتحمّل فعلاً ولا "No Fill" زي الباقي
                 AdMob.addListener(BannerAdPluginEvents.Loaded, () => {
-                    console.log("✅✅ Banner AD ACTUALLY LOADED (real ad received)");
+                    logInfo("✅✅ Banner AD ACTUALLY LOADED (real ad received)");
                 });
 
                 AdMob.addListener(BannerAdPluginEvents.FailedToLoad, (e) => {
@@ -240,12 +374,12 @@ export const initAdMob = async (): Promise<void> => {
             }
 
             initialized = true;
-            console.log("[AdMob] Preloading ads...");
+            logInfo("[AdMob] Preloading ads...");
 
             void preloadInterstitial();
             void preloadRewarded();
 
-            console.log("✅ AdMob Ready");
+            logInfo("✅ AdMob Ready");
 
         } catch (e) {
             initialized = false;
@@ -282,7 +416,7 @@ export const preloadInterstitial = async () => {
     lastInterstitialAttempt = now;
 
     interstitialLoading = true;
-    console.log("[AdMob] Loading Interstitial...");
+    logInfo("[AdMob] Loading Interstitial...");
 
     try {
         const { AdMob } = await getAdMob();
@@ -306,7 +440,7 @@ export const preloadRewarded = async () => {
     lastRewardedAttempt = now;
 
     rewardedLoading = true;
-    console.log("[AdMob] Loading Rewarded...");
+    logInfo("[AdMob] Loading Rewarded...");
 
     try {
         const { AdMob } = await getAdMob();
