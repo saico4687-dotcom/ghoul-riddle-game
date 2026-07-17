@@ -9,7 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "postinstall": "node scripts/patch-admob-ad-inspector.js"
+    "postinstall": "node scripts/patch-admob-ad-inspector.cjs"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.0.0",
