@@ -8,12 +8,15 @@ interface Props {
   username?: string | null;
   size?: "sm" | "md" | "lg" | "xl";
   online?: boolean;
+  // true لو صاحب الصورة عنده مكافأة "دردشة بدون إعلانات" نشطة —
+  // بيظهر طوق ذهبي حوالين الصورة، ويبان لأي مستخدم تاني يشوفها.
+  adFree?: boolean;
   className?: string;
 }
 
 const sizes = { sm: "h-8 w-8", md: "h-10 w-10", lg: "h-14 w-14", xl: "h-24 w-24" };
 
-export default function UserAvatar({ url, username, size = "md", online, className }: Props) {
+export default function UserAvatar({ url, username, size = "md", online, adFree, className }: Props) {
   const [resolved, setResolved] = useState<string | null>(null);
   const initial = (username ?? "?").charAt(0).toUpperCase();
 
@@ -37,7 +40,14 @@ export default function UserAvatar({ url, username, size = "md", online, classNa
 
   return (
     <div className={cn("relative inline-block", className)}>
-      <Avatar className={cn(sizes[size], "border-2 border-primary/30")}>
+      <Avatar
+        className={cn(
+          sizes[size],
+          adFree
+            ? "border-4 border-yellow-400 shadow-[0_0_10px_2px_rgba(250,204,21,0.65)]"
+            : "border-2 border-primary/30"
+        )}
+      >
         {resolved && <AvatarImage src={resolved} alt={username ?? ""} />}
         <AvatarFallback className="bg-primary/20 text-primary font-horror">{initial}</AvatarFallback>
       </Avatar>
