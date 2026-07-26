@@ -82,6 +82,17 @@ export default function ChatHome() {
         </Link>
       )}
 
+      <Link
+        to="/chat/groups"
+        className="card-horror p-3 flex items-center gap-3 hover:border-primary/60 transition-colors"
+      >
+        <Users className="w-5 h-5 text-primary" />
+        <div className="flex-1">
+          <div className="font-horror text-primary text-sm">الجروبات</div>
+          <div className="text-[11px] text-muted-foreground font-typewriter">إنشاء جروب أو الانضمام برابط دعوة</div>
+        </div>
+      </Link>
+
       <div className="grid grid-cols-2 gap-3">
         <div className="card-horror p-4 text-center">
           <div className="text-3xl font-horror text-primary">{friends.length}</div>
