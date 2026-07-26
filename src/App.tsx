@@ -31,6 +31,8 @@ import ChatSafety from "./pages/chat/ChatSafety";
 import ChatGuidelines from "./pages/chat/ChatGuidelines";
 import ChatPrivacy from "./pages/chat/ChatPrivacy";
 import UsernameSetup from "./pages/chat/UsernameSetup";
+import CreateGroup from "./pages/chat/CreateGroup";
+import JoinGroup from "./pages/chat/JoinGroup";
 
 import {
   initAdMob,
@@ -115,6 +117,8 @@ const App = () => {
                 <Route path="guidelines" element={<ChatGuidelines />} />
                 <Route path="privacy" element={<ChatPrivacy />} />
                 <Route path="u/:username" element={<ChatProfile />} />
+                <Route path="groups/new" element={<CreateGroup />} />
+                <Route path="groups/join/:code?" element={<JoinGroup />} />
                 <Route path="c/:id" element={<ChatConversation />} />
               </Route>
 
