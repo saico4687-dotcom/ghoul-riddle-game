@@ -10,6 +10,7 @@ export type PublicProfile = {
   last_seen_at: string | null;
   is_muted_until: string | null;
   is_suspended_until: string | null;
+  ad_free_until: string | null;
 };
 
 export type Message = {
@@ -367,4 +368,4 @@ export async function avatarSignedUrl(path: string | null | undefined): Promise<
 export function invalidateAvatarCache(path?: string | null) {
   if (path) _avatarSignedCache.delete(path);
   else _avatarSignedCache.clear();
-}
+    }
