@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useAdFree } from "@/hooks/useAdFree";
+import { grantAdFreeReward } from "@/lib/chat/adFree";
+import { showRewarded } from "@/lib/ads";
 import {
   listBlocked,
   unblockUser,
@@ -25,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Upload, Shield, FileText, BookOpen } from "lucide-react";
+import { Loader2, Upload, Shield, FileText, BookOpen, Gift } from "lucide-react";
 
 const USERNAME_RE = /^[\p{L}0-9_]{3,20}$/u;
 
@@ -35,8 +38,34 @@ const VIS_LABEL: Record<ChatVisibility, string> = {
   none: "لا أحد",
 };
 
+// إعدادات إعلان المكافأة: لازم يشوف 5 إعلانات ورا بعض عشان ياخد
+// المكافأة. التقدم بيتخزن في localStorage، ولو فاتت 15 دقيقة من
+// غير مشاهدة بيرجع الصفر تاني عشان يفضل معنى "ورا بعض" له قيمة.
+const REWARD_GOAL = 5;
+const REWARD_PROGRESS_KEY = "chat_reward_ad_progress_v1";
+const REWARD_PROGRESS_TTL_MS = 15 * 60_000;
+
+function loadRewardProgress(): number {
+  try {
+    const raw = localStorage.getItem(REWARD_PROGRESS_KEY);
+    if (!raw) return 0;
+    const { count, ts } = JSON.parse(raw);
+    if (Date.now() - ts > REWARD_PROGRESS_TTL_MS) return 0;
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveRewardProgress(count: number) {
+  try {
+    localStorage.setItem(REWARD_PROGRESS_KEY, JSON.stringify({ count, ts: Date.now() }));
+  } catch {}
+}
+
 export default function ChatSettings() {
   const { user } = useAuth();
+  const { isAdFree, adFreeUntil, refresh: refreshAdFree } = useAdFree();
   const [username, setUsername] = useState("");
   const [originalUsername, setOriginalUsername] = useState("");
   const [bio, setBio] = useState("");
@@ -48,6 +77,13 @@ export default function ChatSettings() {
   const [privMessages, setPrivMessages] = useState<ChatVisibility>("friends");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const [rewardProgress, setRewardProgress] = useState(0);
+  const [watchingAd, setWatchingAd] = useState(false);
+
+  useEffect(() => {
+    setRewardProgress(loadRewardProgress());
+  }, []);
 
   const load = async () => {
     if (!user) return;
@@ -143,6 +179,34 @@ export default function ChatSettings() {
     localStorage.setItem("chat_notifs", v ? "on" : "off");
   };
 
+  const watchRewardAd = async () => {
+    if (watchingAd || isAdFree) return;
+    setWatchingAd(true);
+    try {
+      const earned = await showRewarded();
+      if (!earned) {
+        toast.error("تعذر عرض إعلان المكافأة الآن، حاول بعد قليل");
+        return;
+      }
+      const next = rewardProgress + 1;
+      if (next >= REWARD_GOAL) {
+        await grantAdFreeReward(12);
+        saveRewardProgress(0);
+        setRewardProgress(0);
+        await refreshAdFree();
+        toast.success("🎉 مبروك! حصلت على طوق ذهبي و12 ساعة دردشة بدون إعلانات");
+      } else {
+        saveRewardProgress(next);
+        setRewardProgress(next);
+        toast.success(`تم! شاهدت ${next} من ${REWARD_GOAL} إعلانات مكافأة`);
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "حصل خطأ أثناء عرض الإعلان");
+    } finally {
+      setWatchingAd(false);
+    }
+  };
+
   if (loading)
     return (
       <div className="flex justify-center pt-20">
@@ -155,7 +219,7 @@ export default function ChatSettings() {
       <section className="card-horror p-4">
         <h2 className="font-horror text-primary mb-4">البروفايل</h2>
         <div className="flex items-center gap-4 mb-4">
-          <UserAvatar url={avatarPath} username={username} size="lg" />
+          <UserAvatar url={avatarPath} username={username} adFree={isAdFree} size="lg" />
           <label className={`cursor-pointer text-sm text-primary inline-flex items-center gap-2 border border-primary/40 rounded-md px-3 py-1.5 ${uploadingAvatar ? "opacity-60 pointer-events-none" : ""}`}>
             <input type="file" accept="image/*" className="hidden" disabled={uploadingAvatar} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
             {uploadingAvatar ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
@@ -180,6 +244,32 @@ export default function ChatSettings() {
         <Button className="mt-3 w-full" onClick={save} disabled={saving}>
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "حفظ التغييرات"}
         </Button>
+      </section>
+
+      <section className="card-horror p-4 space-y-3">
+        <h2 className="font-horror text-primary mb-2 flex items-center gap-2">
+          <Gift className="w-4 h-4" /> إعلان المكافأة — دردشة بدون إعلانات
+        </h2>
+        {isAdFree ? (
+          <p className="text-sm font-typewriter text-yellow-500">
+            عندك حالياً دردشة بدون إعلانات مفعّلة
+            {adFreeUntil ? ` حتى ${new Date(adFreeUntil).toLocaleString("ar-EG")}` : ""}
+          </p>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground font-typewriter">
+              شاهد {REWARD_GOAL} إعلانات مكافأة ورا بعض عشان تاخد طوق ذهبي حول صورتك (يبان لكل المستخدمين) و12 ساعة دردشة من غير إعلانات.
+            </p>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: REWARD_GOAL }).map((_, i) => (
+                <div key={i} className={`h-2 flex-1 rounded-full ${i < rewardProgress ? "bg-yellow-400" : "bg-muted"}`} />
+              ))}
+            </div>
+            <Button className="w-full" onClick={watchRewardAd} disabled={watchingAd}>
+              {watchingAd ? <Loader2 className="w-4 h-4 animate-spin" /> : `شاهد إعلان مكافأة (${rewardProgress}/${REWARD_GOAL})`}
+            </Button>
+          </>
+        )}
       </section>
 
       <section className="card-horror p-4 space-y-3">
@@ -267,4 +357,4 @@ function PrivacyRow({
       </Select>
     </div>
   );
-}
+      }
