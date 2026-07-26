@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdFree } from "@/hooks/useAdFree";
+import { isAdFreeActive } from "@/lib/chat/adFree";
 import { useGroupChat } from "@/hooks/useGroupChat";
 import {
   sendGroupMessage,
@@ -12,6 +14,8 @@ import {
   updateGroup,
 } from "@/lib/chat/groupQueries";
 import { fetchPublicProfilesByIds, type PublicProfile } from "@/lib/chat/queries";
+import { checkSingleLine, MAX_LINE_CHARS } from "@/lib/chat/contentFilter";
+import { noteChatMessageSent, showInterstitial } from "@/lib/ads";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,6 +46,7 @@ import { toast } from "sonner";
 export default function GroupChat() {
   const { id: groupId } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { isAdFree } = useAdFree();
   const navigate = useNavigate();
   const { group, members, messages, loading, isMember, isBanned, isStaff, isOwner, canPost, setMessages } =
     useGroupChat(groupId);
@@ -65,11 +70,26 @@ export default function GroupChat() {
 
   const send = async () => {
     if (!text.trim() || !user || !groupId || sending) return;
+
+    // حد "سطر واحد" للرسالة — لو خالفت الشرط بيظهر تنبيه ومتتبعتش
+    // الرسالة للسيرفر أصلاً.
+    const lineCheck = checkSingleLine(text.trim());
+    if (!lineCheck.ok) {
+      toast.error(lineCheck.reason!);
+      return;
+    }
+
     setSending(true);
     try {
       const m = await sendGroupMessage(groupId, user.id, text.trim());
       setMessages((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, m]));
       setText("");
+
+      // إعلان فاصل كل 10 رسائل (خاص أو جروب) — إلا لو عنده دردشة
+      // بدون إعلانات نشطة حالياً.
+      if (noteChatMessageSent() && !isAdFree) {
+        void showInterstitial();
+      }
     } catch (e: any) {
       toast.error(e?.message ?? "تعذر إرسال الرسالة");
     } finally {
@@ -245,7 +265,14 @@ export default function GroupChat() {
           const mine = m.sender_id === user!.id;
           return (
             <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} gap-2`}>
-              {!mine && <UserAvatar url={sender?.avatar_url} username={sender?.username} size="sm" />}
+              {!mine && (
+                <UserAvatar
+                  url={sender?.avatar_url}
+                  username={sender?.username}
+                  adFree={isAdFreeActive((sender as any)?.ad_free_until)}
+                  size="sm"
+                />
+              )}
               <div
                 className={`max-w-[75%] rounded-lg px-3 py-2 ${
                   mine ? "bg-primary text-primary-foreground" : "bg-card border border-border"
@@ -263,26 +290,31 @@ export default function GroupChat() {
         <div ref={bottomRef} />
       </div>
 
-      <div className="border-t border-border p-2 flex gap-2 items-end bg-card">
+      <div className="border-t border-border p-2 bg-card">
         {canPost ? (
           <>
-            <Textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
-              placeholder="اكتب رسالة..."
-              rows={1}
-              className="resize-none min-h-[40px] max-h-32"
-              maxLength={2000}
-            />
-            <Button onClick={send} disabled={!text.trim() || sending} size="icon">
-              <Send className="w-4 h-4" />
-            </Button>
+            <div className="flex gap-2 items-end">
+              <Textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
+                placeholder="اكتب رسالة (سطر واحد)..."
+                rows={1}
+                className="resize-none min-h-[40px] max-h-32"
+                maxLength={MAX_LINE_CHARS}
+              />
+              <Button onClick={send} disabled={!text.trim() || sending} size="icon">
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+            {text.length > MAX_LINE_CHARS - 20 && (
+              <div className="text-[10px] text-muted-foreground text-left mt-1">{text.length}/{MAX_LINE_CHARS}</div>
+            )}
           </>
         ) : (
           <p className="text-xs text-muted-foreground font-typewriter w-full text-center py-2">
@@ -302,7 +334,12 @@ export default function GroupChat() {
               const isSelf = m.user_id === user!.id;
               return (
                 <div key={m.user_id} className="flex items-center gap-2 p-2 rounded-lg border border-border">
-                  <UserAvatar url={p?.avatar_url} username={p?.username} size="sm" />
+                  <UserAvatar
+                    url={p?.avatar_url}
+                    username={p?.username}
+                    adFree={isAdFreeActive((p as any)?.ad_free_until)}
+                    size="sm"
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-typewriter truncate">{p?.username ?? "..."}</div>
                     <div className="text-[10px] text-muted-foreground">
@@ -340,4 +377,4 @@ export default function GroupChat() {
       </Dialog>
     </div>
   );
-  }
+}
