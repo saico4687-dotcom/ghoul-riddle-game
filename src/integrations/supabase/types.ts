@@ -7,10 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -179,6 +177,198 @@ export type Database = {
           created_at?: string
           friend_id?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      group_bans: {
+        Row: {
+          banned_by: string | null
+          created_at: string
+          group_id: string
+          id: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          banned_by?: string | null
+          created_at?: string
+          group_id: string
+          id?: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          banned_by?: string | null
+          created_at?: string
+          group_id?: string
+          id?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_bans_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_members: {
+        Row: {
+          group_id: string
+          joined_at: string
+          role: Database["public"]["Enums"]["group_role"]
+          status: string
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          joined_at?: string
+          role?: Database["public"]["Enums"]["group_role"]
+          status?: string
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          joined_at?: string
+          role?: Database["public"]["Enums"]["group_role"]
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_messages: {
+        Row: {
+          body: string | null
+          created_at: string
+          deleted_at: string | null
+          group_id: string
+          id: string
+          image_url: string | null
+          sender_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          group_id: string
+          id?: string
+          image_url?: string | null
+          sender_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          group_id?: string
+          id?: string
+          image_url?: string | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_messages_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_reports: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          reason: string
+          reporter_id: string
+          status: string
+          target_message_id: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          reason: string
+          reporter_id: string
+          status?: string
+          target_message_id?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          reason?: string
+          reporter_id?: string
+          status?: string
+          target_message_id?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_reports_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_reports_target_message_id_fkey"
+            columns: ["target_message_id"]
+            isOneToOne: false
+            referencedRelation: "group_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          invite_code: string
+          invite_enabled: boolean
+          lock_chat: boolean
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          invite_code?: string
+          invite_enabled?: boolean
+          lock_chat?: boolean
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          invite_code?: string
+          invite_enabled?: boolean
+          lock_chat?: boolean
+          name?: string
+          owner_id?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -589,6 +779,26 @@ export type Database = {
     }
     Functions: {
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
+      ban_group_member: {
+        Args: { _group_id: string; _reason: string; _target_user: string }
+        Returns: undefined
+      }
+      can_post_in_group: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      get_fastest_answers: {
+        Args: never
+        Returns: {
+          elapsed_ms: number
+          riddle_index: number
+          user_id: string
+        }[]
+      }
+      get_group_role: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: Database["public"]["Enums"]["group_role"]
+      }
       get_or_create_conversation: { Args: { _other: string }; Returns: string }
       get_public_profile: {
         Args: { _uid: string }
@@ -603,6 +813,14 @@ export type Database = {
           username: string
         }[]
       }
+      get_weekly_winner: {
+        Args: { p_week_start: string }
+        Returns: {
+          fastest_answer_ms: number
+          riddles_solved: number
+          user_id: string
+        }[]
+      }
       has_completed_400: { Args: { _uid: string }; Returns: boolean }
       has_role: {
         Args: {
@@ -612,12 +830,36 @@ export type Database = {
         Returns: boolean
       }
       is_active_user: { Args: { _uid: string }; Returns: boolean }
+      is_admin: { Args: never; Returns: boolean }
       is_blocked: { Args: { _a: string; _b: string }; Returns: boolean }
+      is_group_banned: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_group_member: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_group_owner: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_group_staff: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      join_group_by_invite: { Args: { _invite_code: string }; Returns: string }
+      leave_group: { Args: { _group_id: string }; Returns: undefined }
       mark_conversation_read: {
         Args: { _conversation_id: string }
         Returns: undefined
       }
       presence_heartbeat: { Args: never; Returns: undefined }
+      regenerate_group_invite: { Args: { _group_id: string }; Returns: string }
+      remove_group_member: {
+        Args: { _group_id: string; _target_user: string }
+        Returns: undefined
+      }
       search_users: {
         Args: { _q: string }
         Returns: {
@@ -628,11 +870,20 @@ export type Database = {
           username: string
         }[]
       }
+      set_group_admin: {
+        Args: { _group_id: string; _make_admin: boolean; _target_user: string }
+        Returns: undefined
+      }
       set_username: { Args: { _new: string }; Returns: undefined }
+      unban_group_member: {
+        Args: { _group_id: string; _target_user: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"
       chat_visibility: "everyone" | "friends" | "none"
+      group_role: "owner" | "admin" | "member"
       todo_priority: "high" | "medium" | "low"
     }
     CompositeTypes: {
@@ -763,6 +1014,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user"],
       chat_visibility: ["everyone", "friends", "none"],
+      group_role: ["owner", "admin", "member"],
       todo_priority: ["high", "medium", "low"],
     },
   },
