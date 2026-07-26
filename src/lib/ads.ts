@@ -9,6 +9,12 @@ export const INTERSTITIAL_AD_ID = "ca-app-pub-4098736191122679/5640913874";
 export const REWARDED_AD_ID = "ca-app-pub-4098736191122679/5628325648";
 
 export const BANNER_AD_ID = "ca-app-pub-4098736191122679/7480609152";
+
+// المفتاح المستخدم لتخزين اختيار المستخدم في AdsConsentDialog —
+// مُصدَّر من هنا عشان يبقى مصدر واحد للحقيقة (بدل نسخة منفصلة
+// جوه المكوّن) وعشان App.tsx يقدر يتأكد هل المستخدم رد على نافذة
+// الموافقة قبل ما يبدأ تحميل أي إعلان.
+export const CONSENT_KEY = "ads_consent_v1";
 /* ============================================================
  * Internal State
  * ============================================================ */
@@ -29,6 +35,17 @@ let rewardEarnedFlag = false;
 
 let bannerVisible = false;
 let anyFullscreenAdShowing = false;
+
+// true = ابعت npa (non-personalized ads) مع كل طلب إعلان.
+// بيتحدد من اختيار المستخدم في AdsConsentDialog عن طريق
+// setAdsPersonalization، وقبل ما يتحدد بنفترض غير مخصص (الأكثر أمانًا).
+let nonPersonalizedAds = true;
+
+// بتتنادى من AdsConsentDialog (وعند بدء التطبيق لو فيه اختيار
+// محفوظ بالفعل) عشان طلبات الإعلانات فعليًا تحترم اختيار المستخدم.
+export const setAdsPersonalization = (personalized: boolean) => {
+    nonPersonalizedAds = !personalized;
+};
 
 let listenersRegistered = false;
 
@@ -420,7 +437,7 @@ export const preloadInterstitial = async () => {
 
     try {
         const { AdMob } = await getAdMob();
-        await AdMob.prepareInterstitial({ adId: INTERSTITIAL_AD_ID });
+        await AdMob.prepareInterstitial({ adId: INTERSTITIAL_AD_ID, npa: nonPersonalizedAds });
     } catch (e) {
         interstitialLoaded = false;
         logAdMobError("Preload Interstitial", e);
@@ -444,7 +461,7 @@ export const preloadRewarded = async () => {
 
     try {
         const { AdMob } = await getAdMob();
-        await AdMob.prepareRewardVideoAd({ adId: REWARDED_AD_ID });   // تم التصحيح
+        await AdMob.prepareRewardVideoAd({ adId: REWARDED_AD_ID, npa: nonPersonalizedAds });   // تم التصحيح
     } catch (e) {
         rewardedLoaded = false;
         logAdMobError("Preload Rewarded", e);
@@ -471,6 +488,7 @@ export const showBannerAd = async () => {
             adSize: BannerAdSize.ADAPTIVE_BANNER,
             position: BannerAdPosition.BOTTOM_CENTER,
             margin: 0,
+            npa: nonPersonalizedAds,
         });
 
         bannerVisible = true;
