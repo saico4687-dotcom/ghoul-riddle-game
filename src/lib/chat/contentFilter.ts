@@ -31,3 +31,22 @@ export function checkRateLimit(conversationId: string): { ok: boolean; retryInMs
   buckets.set(conversationId, arr);
   return { ok: true, retryInMs: 0 };
 }
+
+// حد "سطر واحد" للرسالة — ممنوع أي سطر جديد (Enter داخل الرسالة)،
+// وممنوع تتجاوز عدد الحروف ده حتى لو من غير سطر جديد صريح (زي لصق
+// نص طويل جداً). المكالمة دي بتتنفذ في الواجهة قبل الإرسال، ولو
+// فشلت لازم يظهر تنبيه للمستخدم ومتتبعتش الرسالة للسيرفر أصلاً.
+export const MAX_LINE_CHARS = 120;
+
+export function checkSingleLine(input: string): { ok: boolean; reason?: string } {
+  if (/[\r\n]/.test(input)) {
+    return { ok: false, reason: "الرسالة لازم تكون سطر واحد بس — من غير أسطر جديدة." };
+  }
+  if (input.length > MAX_LINE_CHARS) {
+    return {
+      ok: false,
+      reason: `الرسالة طويلة أكتر من سطر واحد — الحد الأقصى ${MAX_LINE_CHARS} حرف.`,
+    };
+  }
+  return { ok: true };
+}
