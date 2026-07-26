@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, ShieldCheck, Gift } from "lucide-react";
 import { Link } from "react-router-dom";
-
-const CONSENT_KEY = "ads_consent_v1";
+import { CONSENT_KEY, setAdsPersonalization } from "@/lib/ads";
 
 interface Props {
   onAccepted?: () => void;
@@ -28,6 +27,10 @@ const AdsConsentDialog = ({ onAccepted }: Props) => {
         ts: Date.now(),
       })
     );
+
+    // لازم يتحدد قبل initAdMob عشان أول preload للإعلانات (interstitial/rewarded)
+    // يبعت npa الصح من أول طلب، بدل ما يفضل الاختيار مسجل بس من غير تأثير فعلي.
+    setAdsPersonalization(personalized);
 
     try {
       const { initAdMob } = await import("@/lib/ads");
