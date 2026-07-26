@@ -3,6 +3,8 @@ import { Home, Users, MessageSquare, Bell, Settings as SettingsIcon, ArrowRight 
 import { usePresence } from "@/hooks/usePresence";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { cn } from "@/lib/utils";
+import AdFreeTimer from "@/components/chat/AdFreeTimer";
+import ChatBannerSlot, { BOTTOM_NAV_HEIGHT, BANNER_SLOT_HEIGHT } from "@/components/chat/ChatBannerSlot";
 
 export default function ChatLayout() {
   usePresence();
@@ -20,12 +22,26 @@ export default function ChatLayout() {
         <div className="w-16" />
       </header>
 
-      <main className="flex-1 pb-20 overflow-y-auto">
+      {/* مكان فاضي ثابت أعلى الصفحة لساعة العد التنازلي — بياخد مكانه
+          في التخطيط العادي (مش overlay) فمبيغطيش على أي حاجة، ومش
+          بيظهر أصلاً لو مفيش مكافأة "دردشة بدون إعلانات" نشطة */}
+      <AdFreeTimer />
+
+      <main className="flex-1 overflow-y-auto" style={{ paddingBottom: BOTTOM_NAV_HEIGHT + BANNER_SLOT_HEIGHT }}>
         <Outlet />
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border z-40">
-        <div className="grid grid-cols-5">
+      {/* مساحة فاضية محجوزة لبانر الإعلانات — فوق شريط التنقل السفلي
+          مباشرة، عشان الإعلان ميغطيش على أزرار التنقل ولا آخر رسالة */}
+      <div className="fixed left-0 right-0 z-30" style={{ bottom: BOTTOM_NAV_HEIGHT }}>
+        <ChatBannerSlot />
+      </div>
+
+      <nav
+        className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border z-40"
+        style={{ height: BOTTOM_NAV_HEIGHT }}
+      >
+        <div className="grid grid-cols-5 h-full">
           <TabLink to="/chat" icon={<Home className="w-5 h-5" />} label="الرئيسية" end />
           <TabLink to="/chat/friends" icon={<Users className="w-5 h-5" />} label="الأصدقاء" />
           <TabLink to="/chat/search" icon={<MessageSquare className="w-5 h-5" />} label="بحث" />
@@ -44,7 +60,7 @@ function TabLink({ to, icon, label, badge, end }: { to: string; icon: React.Reac
       end={end}
       className={({ isActive }) =>
         cn(
-          "flex flex-col items-center gap-1 py-2 text-[11px] font-typewriter",
+          "flex flex-col items-center justify-center gap-1 h-full text-[11px] font-typewriter",
           isActive ? "text-primary" : "text-muted-foreground"
         )
       }
