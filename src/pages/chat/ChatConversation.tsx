@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdFree } from "@/hooks/useAdFree";
+import { isAdFreeActive } from "@/lib/chat/adFree";
 import {
   fetchMessages,
   fetchMessagesBefore,
@@ -15,6 +17,8 @@ import {
   type Reaction,
   type PublicProfile,
 } from "@/lib/chat/queries";
+import { checkSingleLine, MAX_LINE_CHARS } from "@/lib/chat/contentFilter";
+import { noteChatMessageSent, showInterstitial } from "@/lib/ads";
 import MessageBubble from "@/components/chat/MessageBubble";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
@@ -34,6 +38,7 @@ import { toast } from "sonner";
 export default function ChatConversation() {
   const { id: conversationId } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { isAdFree } = useAdFree();
   const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
   const [reactions, setReactions] = useState<Reaction[]>([]);
@@ -156,11 +161,26 @@ export default function ChatConversation() {
 
   const send = async () => {
     if (!text.trim() || !user || !conversationId || sending) return;
+
+    // حد "سطر واحد" للرسالة — لو خالفت الشرط بيظهر تنبيه ومتتبعتش
+    // الرسالة للسيرفر أصلاً.
+    const lineCheck = checkSingleLine(text.trim());
+    if (!lineCheck.ok) {
+      toast.error(lineCheck.reason!);
+      return;
+    }
+
     setSending(true);
     try {
       const m = await sendMessage(conversationId, user.id, text.trim());
       setMessages((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, m]));
       setText("");
+
+      // إعلان فاصل كل 10 رسائل (خاص أو جروب) — إلا لو عنده دردشة
+      // بدون إعلانات نشطة حالياً.
+      if (noteChatMessageSent() && !isAdFree) {
+        void showInterstitial();
+      }
     } catch (e: any) {
       toast.error(e?.message ?? "تعذر إرسال الرسالة");
     } finally {
@@ -180,7 +200,13 @@ export default function ChatConversation() {
         <button onClick={() => navigate("/chat")} className="text-primary"><ArrowRight className="w-5 h-5" /></button>
         {other && (
           <button onClick={() => navigate(`/chat/u/${other.username}`)} className="flex items-center gap-2 flex-1">
-            <UserAvatar url={other.avatar_url} username={other.username} online={online} size="sm" />
+            <UserAvatar
+              url={other.avatar_url}
+              username={other.username}
+              online={online}
+              adFree={isAdFreeActive((other as any).ad_free_until)}
+              size="sm"
+            />
             <div className="text-right">
               <div className="font-horror text-primary text-sm">{other.username}</div>
               <div className="text-[10px] text-muted-foreground">
@@ -234,17 +260,22 @@ export default function ChatConversation() {
         <div ref={bottomRef} />
       </div>
 
-      <div className="border-t border-border p-2 flex gap-2 items-end bg-card">
-        <Textarea
-          value={text}
-          onChange={(e) => onTypingChange(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-          placeholder="اكتب رسالة..."
-          rows={1}
-          className="resize-none min-h-[40px] max-h-32"
-          maxLength={2000}
-        />
-        <Button onClick={send} disabled={!text.trim() || sending} size="icon"><Send className="w-4 h-4" /></Button>
+      <div className="border-t border-border p-2 bg-card">
+        <div className="flex gap-2 items-end">
+          <Textarea
+            value={text}
+            onChange={(e) => onTypingChange(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+            placeholder="اكتب رسالة (سطر واحد)..."
+            rows={1}
+            className="resize-none min-h-[40px] max-h-32"
+            maxLength={MAX_LINE_CHARS}
+          />
+          <Button onClick={send} disabled={!text.trim() || sending} size="icon"><Send className="w-4 h-4" /></Button>
+        </div>
+        {text.length > MAX_LINE_CHARS - 20 && (
+          <div className="text-[10px] text-muted-foreground text-left mt-1">{text.length}/{MAX_LINE_CHARS}</div>
+        )}
       </div>
 
       {other && (
@@ -259,4 +290,4 @@ export default function ChatConversation() {
       )}
     </div>
   );
-}
+      }
