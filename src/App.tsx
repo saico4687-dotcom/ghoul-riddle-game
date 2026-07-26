@@ -31,12 +31,16 @@ import ChatSafety from "./pages/chat/ChatSafety";
 import ChatGuidelines from "./pages/chat/ChatGuidelines";
 import ChatPrivacy from "./pages/chat/ChatPrivacy";
 import UsernameSetup from "./pages/chat/UsernameSetup";
-import CreateGroup from "./pages/chat/CreateGroup";
+import CreateGroup from "./pages/chat/Group";
 import JoinGroup from "./pages/chat/JoinGroup";
+import GroupsList from "./pages/chat/GroupsList";
+import GroupChat from "./pages/chat/GroupChat";
 
 import {
   initAdMob,
   requestUMPConsent,
+  setAdsPersonalization,
+  CONSENT_KEY,
 } from "./lib/ads";
 
 import { isNativePlatform } from "./lib/isNative";
@@ -57,10 +61,24 @@ const App = () => {
         }
 
         if (isNativePlatform()) {
-          console.log("[App] Starting AdMob initialization...");
-          await requestUMPConsent();
-          await initAdMob();
-          console.log("[App] AdMob initialization completed");
+          const storedConsent = localStorage.getItem(CONSENT_KEY);
+          if (storedConsent) {
+            try {
+              const parsed = JSON.parse(storedConsent);
+              setAdsPersonalization(!!parsed.personalized);
+            } catch {
+              // تجاهل قيمة تالفة في localStorage، هيفضل الافتراضي (غير مخصص)
+            }
+            console.log("[App] Starting AdMob initialization...");
+            await requestUMPConsent();
+            await initAdMob();
+            console.log("[App] AdMob initialization completed");
+          } else {
+            // لسه ملوش رد على AdsConsentDialog — سيبها هي اللي تبدأ
+            // initAdMob بعد ما ياخد قراره، عشان مفيش إعلانات تتحمّل
+            // قبل ما يوافق.
+            console.log("[App] Waiting for ads consent before AdMob init");
+          }
         }
 
         // إخفاء Splash Screen بعد التهيئة
@@ -117,9 +135,11 @@ const App = () => {
                 <Route path="guidelines" element={<ChatGuidelines />} />
                 <Route path="privacy" element={<ChatPrivacy />} />
                 <Route path="u/:username" element={<ChatProfile />} />
+                <Route path="groups" element={<GroupsList />} />
                 <Route path="groups/new" element={<CreateGroup />} />
                 <Route path="groups/join/:code?" element={<JoinGroup />} />
                 <Route path="c/:id" element={<ChatConversation />} />
+                <Route path="g/:id" element={<GroupChat />} />
               </Route>
 
               <Route path="*" element={<Index />} />
