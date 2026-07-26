@@ -474,7 +474,7 @@ export const preloadRewarded = async () => {
  * SHOW FUNCTIONS
  * ============================================================ */
 
-export const showBannerAd = async () => {
+export const showBannerAd = async (opts?: { marginBottom?: number }) => {
     if (!isNative() || bannerVisible) return;
 
     try {
@@ -487,7 +487,7 @@ export const showBannerAd = async () => {
             adId: BANNER_AD_ID,
             adSize: BannerAdSize.ADAPTIVE_BANNER,
             position: BannerAdPosition.BOTTOM_CENTER,
-            margin: 0,
+            margin: opts?.marginBottom ?? 0,
             npa: nonPersonalizedAds,
         });
 
@@ -601,4 +601,32 @@ export const showRewarded = async (opts?: { onStart?: () => void; onEnd?: () => 
         void preloadRewarded();
         opts?.onEnd?.();
     }
+};
+
+/* ============================================================
+ * عداد إعلانات الدردشة: إعلان فاصل (Interstitial) كل 10 رسائل
+ * مُرسَلة، سواء في دردشة خاصة أو في جروب — عداد واحد مشترك بين
+ * الاتنين. بيتخزن في localStorage عشان يفضل مستمر لو المستخدم قفل
+ * التطبيق وفتحه تاني.
+ * ============================================================ */
+const CHAT_MSG_AD_INTERVAL = 10;
+const CHAT_MSG_COUNTER_KEY = "chat_msg_ad_counter_v1";
+
+let chatMessageCounter = (() => {
+    try {
+        return Number(localStorage.getItem(CHAT_MSG_COUNTER_KEY) || "0") || 0;
+    } catch {
+        return 0;
+    }
+})();
+
+// نداديها بعد كل رسالة اتبعتت بنجاح (خاص أو جروب). بترجع true لو
+// وصلنا لمضاعف الـ 10 — وقتها المتصل هو اللي يقرر يعرض الإعلان
+// الفاصل (وعادي ميعرضوش لو المستخدم عنده "دردشة بدون إعلانات" شغالة).
+export const noteChatMessageSent = (): boolean => {
+    chatMessageCounter += 1;
+    try {
+        localStorage.setItem(CHAT_MSG_COUNTER_KEY, String(chatMessageCounter));
+    } catch {}
+    return chatMessageCounter % CHAT_MSG_AD_INTERVAL === 0;
 };
