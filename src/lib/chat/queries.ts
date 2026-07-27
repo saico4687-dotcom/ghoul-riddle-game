@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { ensureFreshSession, SESSION_EXPIRED_MESSAGE } from "@/lib/ensureSession";
 
 export type PublicProfile = {
   user_id: string;
@@ -142,6 +143,9 @@ export async function listOutgoingRequests(myId: string) {
 }
 
 export async function sendFriendRequest(toUser: string) {
+  const sessionOk = await ensureFreshSession();
+  if (!sessionOk) throw new Error(SESSION_EXPIRED_MESSAGE);
+
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("يجب تسجيل الدخول");
   if (u.user.id === toUser) throw new Error("لا يمكنك إرسال طلب لنفسك");
@@ -260,6 +264,9 @@ export async function markConversationRead(conversationId: string, _myId: string
 }
 
 export async function setUsernameRpc(newUsername: string) {
+  const sessionOk = await ensureFreshSession();
+  if (!sessionOk) throw new Error(SESSION_EXPIRED_MESSAGE);
+
   const { error } = await supabase.rpc("set_username", { _new: newUsername });
   if (error) throw error;
 }
@@ -272,6 +279,9 @@ export async function updateChatPrivacy(userId: string, opts: {
   privacy_messages?: ChatVisibility;
   bio?: string;
 }) {
+  const sessionOk = await ensureFreshSession();
+  if (!sessionOk) throw new Error(SESSION_EXPIRED_MESSAGE);
+
   const { error } = await supabase.from("profiles").update(opts as any).eq("user_id", userId);
   if (error) throw error;
 }
