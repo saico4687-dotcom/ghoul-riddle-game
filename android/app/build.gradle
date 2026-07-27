@@ -11,8 +11,8 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
 
-        versionCode = 46
-        versionName = "1.0.44"
+        versionCode = 47
+        versionName = "1.0.45"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -59,6 +59,9 @@ dependencies {
 
     implementation project(':capacitor-android')
     implementation project(':capacitor-cordova-android-plugins')
+
+    // Unity LevelPlay (ironSource) mediation SDK
+    implementation "com.unity3d.ads-mediation:mediation-sdk:$levelPlayMediationSdkVersion"
 
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
