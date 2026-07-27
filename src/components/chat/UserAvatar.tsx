@@ -26,7 +26,10 @@ export default function UserAvatar({ url, username, size = "md", online, adFree,
       setResolved(null);
       return;
     }
-    if (url.startsWith("http")) {
+    // روابط جاهزة للعرض مباشرة (http أو blob من URL.createObjectURL
+    // للمعاينة المحلية قبل الرفع) — من غير ما نحاول نعاملها كمسار
+    // تخزين في Supabase.
+    if (url.startsWith("http") || url.startsWith("blob:") || url.startsWith("data:")) {
       setResolved(url);
       return;
     }
