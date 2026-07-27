@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useAdFree } from "@/hooks/useAdFree";
-import { showBannerAd, hideBannerAd } from "@/lib/ads";
+import { showBannerAd, hideBannerAd } from "@/lib/adsMediation";
 
 // ارتفاع شريط التنقل السفلي بالبكسل — لازم يتطابق مع الرقم المستخدم
 // في ChatLayout.tsx
