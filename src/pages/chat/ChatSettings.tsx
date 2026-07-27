@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureFreshSession, SESSION_EXPIRED_MESSAGE } from "@/lib/ensureSession";
 import { useAdFree } from "@/hooks/useAdFree";
 import { grantAdFreeReward } from "@/lib/chat/adFree";
-import { showRewarded } from "@/lib/ads";
+import { showRewarded } from "@/lib/adsMediation";
 import {
   listBlocked,
   unblockUser,
@@ -125,6 +126,9 @@ export default function ChatSettings() {
     }
     setUploadingAvatar(true);
     try {
+      const sessionOk = await ensureFreshSession();
+      if (!sessionOk) throw new Error(SESSION_EXPIRED_MESSAGE);
+
       const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
       const path = `${user.id}/avatar-${Date.now()}.${ext}`;
       const { error: upErr } = await supabase.storage
@@ -183,7 +187,7 @@ export default function ChatSettings() {
     if (watchingAd || isAdFree) return;
     setWatchingAd(true);
     try {
-      const earned = await showRewarded();
+      const earned = await showRewarded(undefined, "chat");
       if (!earned) {
         toast.error("تعذر عرض إعلان المكافأة الآن، حاول بعد قليل");
         return;
