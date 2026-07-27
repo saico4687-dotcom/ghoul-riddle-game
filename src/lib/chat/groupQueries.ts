@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { ensureFreshSession, SESSION_EXPIRED_MESSAGE } from "@/lib/ensureSession";
 
 export type GroupRole = "owner" | "admin" | "member";
 export type GroupMemberStatus = "active" | "banned" | "left";
@@ -37,6 +38,9 @@ export type GroupMessage = {
 // ---------- Groups ----------
 
 export async function createGroup(input: { name: string; description?: string | null; avatarUrl?: string | null }) {
+  const sessionOk = await ensureFreshSession();
+  if (!sessionOk) throw new Error(SESSION_EXPIRED_MESSAGE);
+
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("يجب تسجيل الدخول");
 
