@@ -12,7 +12,7 @@ import { Brain, Mic, MicOff, Scissors, Clock } from "lucide-react";
 import { useHorrorSounds } from "@/hooks/useHorrorSounds";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
 
-import { showRewarded, showBannerAd, hideBannerAd } from "@/lib/ads";
+import { showRewarded, showBannerAd, hideBannerAd } from "@/lib/adsMediation";
 
 import moneyBg from "@/assets/money-bg.jpg";
 
