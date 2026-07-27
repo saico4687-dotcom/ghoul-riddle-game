@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, ShieldCheck, Gift } from "lucide-react";
 import { Link } from "react-router-dom";
-import { CONSENT_KEY, setAdsPersonalization } from "@/lib/ads";
+import { CONSENT_KEY, setAdsPersonalization } from "@/lib/adsMediation";
 
 interface Props {
   onAccepted?: () => void;
@@ -33,7 +33,7 @@ const AdsConsentDialog = ({ onAccepted }: Props) => {
     setAdsPersonalization(personalized);
 
     try {
-      const { initAdMob } = await import("@/lib/ads");
+      const { initAds: initAdMob } = await import("@/lib/adsMediation");
       await initAdMob();
     } catch (e) {
       console.warn("[AdsConsent]", e);
