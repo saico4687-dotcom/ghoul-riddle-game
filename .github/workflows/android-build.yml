@@ -25,6 +25,11 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      - name: Setup Gradle (with caching)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-home-cache-cleanup: true
+
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
@@ -46,10 +51,4 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew :app:bundleRelease --stacktrace
-
-      - name: Upload AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: signed-aab
-          path: android/app/build/outputs/bundle/release/*.aab
+          ./gradlew :app:bundleRelease --stacktrace --refresh-dependencies
