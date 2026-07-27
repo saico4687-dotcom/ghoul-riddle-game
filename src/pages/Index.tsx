@@ -10,7 +10,7 @@ import UserHeader from "@/components/UserHeader";
 import { riddles } from "@/data/riddles";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { showInterstitial } from "@/lib/ads";
+import { showInterstitial } from "@/lib/adsMediation";
 
 const LAST_PUZZLE_KEY = "rabh_last_puzzle_index_v1";
 
