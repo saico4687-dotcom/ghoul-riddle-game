@@ -15,7 +15,7 @@ import {
 } from "@/lib/chat/groupQueries";
 import { fetchPublicProfilesByIds, type PublicProfile } from "@/lib/chat/queries";
 import { checkSingleLine, MAX_LINE_CHARS } from "@/lib/chat/contentFilter";
-import { noteChatMessageSent, showInterstitial } from "@/lib/ads";
+import { noteChatMessageSent, showInterstitial } from "@/lib/adsMediation";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -88,7 +88,7 @@ export default function GroupChat() {
       // إعلان فاصل كل 10 رسائل (خاص أو جروب) — إلا لو عنده دردشة
       // بدون إعلانات نشطة حالياً.
       if (noteChatMessageSent() && !isAdFree) {
-        void showInterstitial();
+        void showInterstitial("chat");
       }
     } catch (e: any) {
       toast.error(e?.message ?? "تعذر إرسال الرسالة");
@@ -377,4 +377,4 @@ export default function GroupChat() {
       </Dialog>
     </div>
   );
-}
+    }
