@@ -23,4 +23,7 @@ ext {
     // بتاعة البلجن، وهي أقدم من أحدث إصدار فعلي متاح — وده كان سبب تحذير
     // AdMob "يجب تثبيت أحدث إصدار من حزمة SDK لإعلانات Google الجوّالة").
     playServicesAdsVersion = '25.0.0'
+
+    // Unity LevelPlay (ironSource) mediation SDK
+    levelPlayMediationSdkVersion = '9.4.0'
 }
