@@ -37,11 +37,11 @@ import GroupsList from "./pages/chat/GroupsList";
 import GroupChat from "./pages/chat/GroupChat";
 
 import {
-  initAdMob,
+  initAds as initAdMob,
   requestUMPConsent,
   setAdsPersonalization,
   CONSENT_KEY,
-} from "./lib/ads";
+} from "./lib/adsMediation";
 
 import { isNativePlatform } from "./lib/isNative";
 import { registerNativeGoogleAuth } from "./lib/nativeGoogleAuth";
