@@ -57,12 +57,26 @@ export default function CreateGroup() {
 
       if (pendingFile) {
         const ext = (pendingFile.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+        // هذا المسار مطابق لـ storage policy "group avatars: staff upload"
+        // (بتشترط is_group_staff على أول عضو owner بيتضاف تلقائيًا فور
+        // إنشاء الجروب عن طريق trigger on_group_created).
         const path = `groups/${group.id}/avatar/avatar-${Date.now()}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from("avatars")
           .upload(path, pendingFile, { upsert: true, contentType: pendingFile.type, cacheControl: "3600" });
-        if (!upErr) {
-          await supabase.from("groups").update({ avatar_url: path }).eq("id", group.id);
+
+        if (upErr) {
+          console.error("[CreateGroup] avatar upload failed", upErr);
+          toast.error("تم إنشاء الجروب، لكن تعذر حفظ الصورة");
+        } else {
+          const { error: updateErr } = await supabase
+            .from("groups")
+            .update({ avatar_url: path })
+            .eq("id", group.id);
+          if (updateErr) {
+            console.error("[CreateGroup] avatar_url update failed", updateErr);
+            toast.error("تم إنشاء الجروب، لكن تعذر حفظ الصورة");
+          }
         }
       }
 
@@ -120,4 +134,4 @@ export default function CreateGroup() {
       </Button>
     </div>
   );
-        }
+}
