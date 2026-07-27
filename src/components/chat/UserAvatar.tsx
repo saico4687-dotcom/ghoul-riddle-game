@@ -33,9 +33,14 @@ export default function UserAvatar({ url, username, size = "md", online, adFree,
       setResolved(url);
       return;
     }
-    avatarSignedUrl(url).then((u) => {
-      if (!cancelled) setResolved(u);
-    });
+    avatarSignedUrl(url)
+      .then((u) => {
+        if (!cancelled) setResolved(u);
+      })
+      .catch((err) => {
+        console.error("Failed to resolve avatar URL:", err);
+        if (!cancelled) setResolved(null);
+      });
     return () => {
       cancelled = true;
     };
