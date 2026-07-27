@@ -630,3 +630,9 @@ export const noteChatMessageSent = (): boolean => {
     } catch {}
     return chatMessageCounter % CHAT_MSG_AD_INTERVAL === 0;
 };
+
+// دوال قراءة فقط (بضيفهم آخر الملف من غير أي تعديل على أي حاجة
+// تانية) — لازمين عشان طبقة المزاد (adsMediation.ts) تعرف هل عند
+// AdMob إعلان جاهز قبل ما تقرر مين يظهر.
+export const isInterstitialReady = () => interstitialLoaded;
+export const isRewardedReady = () => rewardedLoaded;
