@@ -51,7 +51,9 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew :app:dependencyInsight --configuration releaseCompileClasspath --dependency mediation-sdk --stacktrace
+          ./gradlew :app:dependencies --configuration releaseCompileClasspath > deps.txt
+          echo "===== FULL MATCHES ====="
+          grep -i -A3 -B3 "mediation-sdk\|unity3d" deps.txt || echo "NO MATCH FOUND — the dependency isn't resolving at all"
 
       - name: Build Signed AAB
         run: |
