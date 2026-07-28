@@ -276,7 +276,7 @@ public class LevelPlayAdsPlugin extends Plugin {
                 }
 
                 @Override
-                public void onAdDisplayFailed(@NonNull LevelPlayAdError error, @NonNull LevelPlayAdInfo adInfo) {
+                public void onAdDisplayFailed(@NonNull LevelPlayAdInfo adInfo, @NonNull LevelPlayAdError error) {
                 }
 
                 @Override
@@ -336,4 +336,4 @@ public class LevelPlayAdsPlugin extends Plugin {
         if (error != null) data.put("error", error);
         notifyListeners("levelPlayEvent", data);
     }
-                         }
+        }
