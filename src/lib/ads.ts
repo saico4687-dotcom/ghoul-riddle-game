@@ -82,106 +82,14 @@ async function getAdMob() {
 }
 
 /* ============================================================
- * لوحة تشخيص بسيطة على الشاشة (بديل eruda)
- * بتعرض تفاصيل كل خطأ حقيقي من AdMob SDK (code / message / details
- * القادمين من Google نفسه، مش بس رقم 403) جوّه التطبيق مباشرة، من
- * غير أي مكتبة خارجية. اضغطي مطولًا (نص ثانية) على زرار 🐞 عشان
- * تفتحي "مُفتش الإعلانات" الرسمي (راجعي دالة openAdInspector تحت).
+ * لوجات AdMob الداخلية
+ * اللوحة المرئية على الشاشة (زرار 🐞 + panel) اتشالت بناءً على طلب
+ * المستخدم — كانت بتظهر فوق واجهة التطبيق لكل الناس بدل ما تبقى أداة
+ * تشخيص داخلية بس. اللوج بقى بيروح للـ console فقط (زي أي console.log
+ * عادي)، تقدري تشوفيه من Android Studio / Xcode logcat وقت التطوير.
  * ============================================================ */
-let debugPanelEl: HTMLDivElement | null = null;
-const debugLogLines: string[] = [];
-
-const ensureDebugPanel = () => {
-    if (typeof document === "undefined") return null;
-    if (debugPanelEl) return debugPanelEl;
-
-    const panel = document.createElement("div");
-    panel.id = "admob-debug-panel";
-    panel.style.cssText = `
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        max-height: 45vh;
-        overflow-y: auto;
-        background: rgba(0,0,0,0.88);
-        color: #0f0;
-        font-family: monospace;
-        font-size: 11px;
-        line-height: 1.5;
-        padding: 10px;
-        padding-bottom: 44px;
-        z-index: 999999;
-        display: none;
-        white-space: pre-wrap;
-        direction: ltr;
-        text-align: left;
-    `;
-    document.body.appendChild(panel);
-
-    // زرار صغير ثابت في ركن الشاشة يفتح/يقفل اللوحة
-    const toggle = document.createElement("div");
-    toggle.textContent = "🐞";
-    toggle.style.cssText = `
-        position: fixed;
-        bottom: 10px;
-        right: 10px;
-        width: 34px;
-        height: 34px;
-        background: rgba(0,0,0,0.65);
-        color: #fff;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 17px;
-        z-index: 1000000;
-        cursor: pointer;
-    `;
-    toggle.onclick = () => {
-        panel.style.display = panel.style.display === "none" ? "block" : "none";
-    };
-
-    // ضغطة مطوّلة (نص ثانية) على الزرار → تفتح مُفتش الإعلانات الرسمي مباشرة
-    let pressTimer: ReturnType<typeof setTimeout> | null = null;
-    const startPress = () => {
-        pressTimer = setTimeout(() => {
-            pressTimer = null;
-            void openAdInspector();
-        }, 500);
-    };
-    const cancelPress = () => {
-        if (pressTimer) {
-            clearTimeout(pressTimer);
-            pressTimer = null;
-        }
-    };
-    toggle.addEventListener("touchstart", startPress, { passive: true });
-    toggle.addEventListener("touchend", cancelPress);
-    toggle.addEventListener("touchcancel", cancelPress);
-    toggle.addEventListener("mousedown", startPress);
-    toggle.addEventListener("mouseup", cancelPress);
-    toggle.addEventListener("mouseleave", cancelPress);
-
-    document.body.appendChild(toggle);
-
-    debugPanelEl = panel;
-    return panel;
-};
-
-const pushDebugLog = (line: string) => {
-    const time = new Date().toLocaleTimeString();
-    debugLogLines.push(`[${time}] ${line}`);
-    if (debugLogLines.length > 60) debugLogLines.shift();
-
-    const panel = ensureDebugPanel();
-    if (panel) panel.textContent = debugLogLines.join("\n\n");
-};
-
-// لوج عادي في الـ console + نفس السطر في اللوحة على الشاشة
 const logInfo = (msg: string) => {
     console.log(msg);
-    pushDebugLog(msg);
 };
 
 const logAdMobError = (context: string, error: any) => {
@@ -195,9 +103,6 @@ const logAdMobError = (context: string, error: any) => {
         stack: error?.stack,
         raw: error,
     });
-    pushDebugLog(
-        `❌ ${context}\ncode: ${info.code}\nmessage: ${info.message}\ndetails: ${JSON.stringify(info.details)}`
-    );
 };
 
 /* ============================================================
