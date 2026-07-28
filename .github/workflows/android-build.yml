@@ -47,8 +47,13 @@ jobs:
         run: |
           ls -la android/app
 
-      - name: Build Signed AAB
+      - name: Diagnose LevelPlay dependency
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew :app:bundleRelease --stacktrace --refresh-dependencies
+          ./gradlew :app:diagnoseLevelPlay --stacktrace
+
+      - name: Build Signed AAB
+        run: |
+          cd android
+          ./gradlew :app:bundleRelease --stacktrace
