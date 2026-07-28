@@ -16,17 +16,17 @@ import com.unity3d.mediation.LevelPlay;
 import com.unity3d.mediation.LevelPlayAdError;
 import com.unity3d.mediation.LevelPlayAdInfo;
 import com.unity3d.mediation.LevelPlayAdSize;
-import com.unity3d.mediation.LevelPlayBannerAdView;
-import com.unity3d.mediation.LevelPlayBannerAdViewListener;
 import com.unity3d.mediation.LevelPlayConfiguration;
 import com.unity3d.mediation.LevelPlayInitError;
 import com.unity3d.mediation.LevelPlayInitListener;
 import com.unity3d.mediation.LevelPlayInitRequest;
-import com.unity3d.mediation.LevelPlayInterstitialAd;
-import com.unity3d.mediation.LevelPlayInterstitialAdListener;
-import com.unity3d.mediation.LevelPlayReward;
-import com.unity3d.mediation.LevelPlayRewardedAd;
-import com.unity3d.mediation.LevelPlayRewardedAdListener;
+import com.unity3d.mediation.banner.LevelPlayBannerAdView;
+import com.unity3d.mediation.banner.LevelPlayBannerAdViewListener;
+import com.unity3d.mediation.interstitial.LevelPlayInterstitialAd;
+import com.unity3d.mediation.interstitial.LevelPlayInterstitialAdListener;
+import com.unity3d.mediation.rewarded.LevelPlayReward;
+import com.unity3d.mediation.rewarded.LevelPlayRewardedAd;
+import com.unity3d.mediation.rewarded.LevelPlayRewardedAdListener;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -336,4 +336,4 @@ public class LevelPlayAdsPlugin extends Plugin {
         if (error != null) data.put("error", error);
         notifyListeners("levelPlayEvent", data);
     }
-        }
+                }
