@@ -78,3 +78,51 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
+
+/* =====================================================================
+ * Diagnostic task مؤقت: بيفحص إذا كانت مكتبة mediation-sdk فعلاً
+ * موجودة في releaseCompileClasspath، وبيفتحها ويشوف هل فيها كلاسات
+ * com.unity3d.mediation.* ولا لأ. شيله بعد ما تتحل المشكلة.
+ * ===================================================================== */
+tasks.register('diagnoseLevelPlay') {
+    doLast {
+        def config = configurations.getByName('releaseCompileClasspath')
+        def resolved = config.resolvedConfiguration.resolvedArtifacts
+
+        println "===== كل الـ dependencies اللي فيها unity3d ====="
+        resolved.findAll { it.file.name.toLowerCase().contains('unity3d') || it.file.name.toLowerCase().contains('mediation') }
+                .each { println "  -> ${it.file.absolutePath} (${it.file.length()} bytes)" }
+
+        def mediationArtifact = resolved.find { it.file.name.contains('mediation-sdk') }
+
+        if (mediationArtifact == null) {
+            println "===== mediation-sdk مش موجودة في releaseCompileClasspath خالص! ====="
+            println "===== القائمة الكاملة للـ classpath: ====="
+            config.files.sort { it.name }.each { println "  ${it.name}" }
+        } else {
+            def aarFile = mediationArtifact.file
+            println "===== لقيت mediation-sdk: ${aarFile.absolutePath} (${aarFile.length()} bytes) ====="
+
+            def tmpDir = file("${buildDir}/levelplay-diagnose")
+            tmpDir.deleteDir()
+            tmpDir.mkdirs()
+            copy {
+                from zipTree(aarFile)
+                into tmpDir
+            }
+
+            def classesJar = file("${tmpDir}/classes.jar")
+            if (!classesJar.exists()) {
+                println "===== !! مفيش classes.jar جوه الـ AAR !! محتويات الـ AAR: ====="
+                tmpDir.eachFileRecurse { println "  ${it.path.replace(tmpDir.path, '')}" }
+            } else {
+                println "===== classes.jar موجود (${classesJar.length()} bytes) — بندور جوه على com/unity3d/mediation ====="
+                def zf = new java.util.zip.ZipFile(classesJar)
+                def entries = zf.entries().findAll { it.name.startsWith('com/unity3d/mediation/') }
+                println "===== عدد الكلاسات في com/unity3d/mediation: ${entries.size()} ====="
+                entries.take(40).each { println "  ${it.name}" }
+                zf.close()
+            }
+        }
+    }
+}
