@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { avatarSignedUrl } from "@/lib/chat/queries";
+import { avatarPublicUrl } from "@/lib/chat/queries";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -21,7 +21,6 @@ export default function UserAvatar({ url, username, size = "md", online, adFree,
   const initial = (username ?? "?").charAt(0).toUpperCase();
 
   useEffect(() => {
-    let cancelled = false;
     if (!url) {
       setResolved(null);
       return;
@@ -33,17 +32,12 @@ export default function UserAvatar({ url, username, size = "md", online, adFree,
       setResolved(url);
       return;
     }
-    avatarSignedUrl(url)
-      .then((u) => {
-        if (!cancelled) setResolved(u);
-      })
-      .catch((err) => {
-        console.error("Failed to resolve avatar URL:", err);
-        if (!cancelled) setResolved(null);
-      });
-    return () => {
-      cancelled = true;
-    };
+    // الـ bucket "avatars" عام (public)، فبنستخدم getPublicUrl مباشرة
+    // بدل createSignedUrl. كنا بنستخدم رابط موقّع (signed URL) قبل كده،
+    // لكن ده كان محتاج صلاحية SELECT عبر RLS على storage.objects مش
+    // موجودة أصلاً، فكان بيفشل بصمت وترجع الصورة null دايماً — فكانت
+    // الصورة "بتتحفظ" فعلياً في قاعدة البيانات لكن محدش يقدر يشوفها.
+    setResolved(avatarPublicUrl(url));
   }, [url]);
 
   return (
