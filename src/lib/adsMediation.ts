@@ -267,13 +267,15 @@ export const showBannerAd = async (opts?: { marginBottom?: number }) => {
         }
     }
 
+    // مفيش تأكيد لسه إن بانر LevelPlay فعلاً حمّل بنجاح، فبنعرض AdMob
+    // كخيار مضمون دايمًا. وبنجرب LevelPlay في الخلفية بالتوازي: لو نجح
+    // فعلاً، حدث "loaded" الحقيقي (معالَج فوق في initLevelPlay) هو اللي
+    // بيحدّث lpReady["banner"] — مش مجرد إن الـ promise اترجع، عشان
+    // كانت بترجع "نجاح" حتى لو التحميل فشل فعليًا وده كان بيمنع أي
+    // fallback حقيقي لـ AdMob في المرة الجاية.
     void admobShowBanner(opts);
     if (isNative()) {
-        void LevelPlayAds.showBanner({ adUnitId: LP_BANNER_AD_UNIT, marginBottom: opts?.marginBottom })
-            .then(() => {
-                lpReady["banner"] = true;
-            })
-            .catch(() => {});
+        void LevelPlayAds.showBanner({ adUnitId: LP_BANNER_AD_UNIT, marginBottom: opts?.marginBottom }).catch(() => {});
     }
 };
 
