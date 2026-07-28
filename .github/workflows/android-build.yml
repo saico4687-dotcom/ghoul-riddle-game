@@ -55,33 +55,13 @@ jobs:
           echo "===== RESOLVED VERSION ====="
           grep -i -A2 -B2 "mediation-sdk" deps.txt || echo "NOT FOUND IN DEPENDENCY TREE"
 
-          echo ""
-          echo "===== LOOKING FOR THE ACTUAL AAR FILE ====="
-          AAR_PATH=$(find ~/.gradle/caches/modules-2 -iname "mediation-sdk-9.4.0.aar" 2>/dev/null | head -1)
-          echo "AAR found at: $AAR_PATH"
-
-          if [ -n "$AAR_PATH" ]; then
-            echo ""
-            echo "===== LISTING CLASSES INSIDE THE AAR ====="
-            mkdir -p /tmp/aar_inspect
-            cp "$AAR_PATH" /tmp/aar_inspect/mediation-sdk.zip
-            cd /tmp/aar_inspect
-            unzip -o mediation-sdk.zip -d extracted > /dev/null
-            echo "--- Top-level contents of AAR ---"
-            ls -la extracted
-            if [ -f extracted/classes.jar ]; then
-              echo "--- Packages inside classes.jar (grep LevelPlay) ---"
-              unzip -l extracted/classes.jar | grep -i "LevelPlay\|unity3d/mediation" | head -50
-              echo "--- Total class count ---"
-              unzip -l extracted/classes.jar | grep -c "\.class$"
-            else
-              echo "NO classes.jar FOUND INSIDE THE AAR!"
-            fi
-          else
-            echo "AAR file not found in Gradle cache — cannot inspect."
-          fi
-
       - name: Build Signed AAB
         run: |
           cd android
           ./gradlew :app:bundleRelease --stacktrace
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
