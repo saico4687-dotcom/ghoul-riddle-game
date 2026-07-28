@@ -51,7 +51,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew :app:diagnoseLevelPlay --stacktrace
+          ./gradlew :app:dependencyInsight --configuration releaseCompileClasspath --dependency mediation-sdk --stacktrace
 
       - name: Build Signed AAB
         run: |
