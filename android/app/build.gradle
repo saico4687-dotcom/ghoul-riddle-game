@@ -63,6 +63,9 @@ dependencies {
     // Unity LevelPlay (ironSource) mediation SDK
     implementation "com.unity3d.ads-mediation:mediation-sdk:$levelPlayMediationSdkVersion"
 
+    // Kotlin stdlib - required by LevelPlay SDK 7.0.4+
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.24"
+
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
