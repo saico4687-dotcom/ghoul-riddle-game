@@ -37,8 +37,7 @@ import GroupsList from "./pages/chat/GroupsList";
 import GroupChat from "./pages/chat/GroupChat";
 
 import {
-  initAds as initAdMob,
-  requestUMPConsent,
+  initAds,
   setAdsPersonalization,
   CONSENT_KEY,
 } from "./lib/adsMediation";
@@ -69,15 +68,14 @@ const App = () => {
             } catch {
               // تجاهل قيمة تالفة في localStorage، هيفضل الافتراضي (غير مخصص)
             }
-            console.log("[App] Starting AdMob initialization...");
-            await requestUMPConsent();
-            await initAdMob();
-            console.log("[App] AdMob initialization completed");
+            console.log("[App] Starting LevelPlay initialization...");
+            await initAds();
+            console.log("[App] LevelPlay initialization completed");
           } else {
             // لسه ملوش رد على AdsConsentDialog — سيبها هي اللي تبدأ
-            // initAdMob بعد ما ياخد قراره، عشان مفيش إعلانات تتحمّل
+            // initAds بعد ما ياخد قراره، عشان مفيش إعلانات تتحمّل
             // قبل ما يوافق.
-            console.log("[App] Waiting for ads consent before AdMob init");
+            console.log("[App] Waiting for ads consent before LevelPlay init");
           }
         }
 
