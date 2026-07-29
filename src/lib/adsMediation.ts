@@ -1,33 +1,10 @@
-import {
-    initAdMob,
-    showBannerAd as admobShowBanner,
-    hideBannerAd as admobHideBanner,
-    showInterstitial as admobShowInterstitial,
-    showRewarded as admobShowRewarded,
-    isInterstitialReady as admobInterstitialReady,
-    isRewardedReady as admobRewardedReady,
-    noteChatMessageSent,
-    requestUMPConsent,
-    showPrivacyOptions,
-    openAdInspector,
-    setAdsPersonalization,
-    CONSENT_KEY,
-} from "./ads";
-
 import { LevelPlayAds, isNative, LevelPlayEvent, LevelPlayFormat } from "./levelplayAds";
 
-// بنمرر الدوال دي زي ما هي بالظبط من غير أي تغيير
-export {
-    noteChatMessageSent,
-    requestUMPConsent,
-    showPrivacyOptions,
-    openAdInspector,
-    setAdsPersonalization,
-    CONSENT_KEY,
-};
-
 /* ============================================================
- * إعدادات ironSource / Unity LevelPlay
+ * Unity LevelPlay (ironSource) — المصدر الوحيد للإعلانات في
+ * التطبيق. تم إلغاء AdMob (@capacitor-community/admob) نهائيًا:
+ * لا استيراد، لا مفاتيح، لا مزاد بين شبكتين — LevelPlay هو اللي
+ * بيتكفّل بالـ mediation بين شبكات الإعلانات المختلفة داخليًا.
  * ============================================================ */
 const LEVELPLAY_APP_KEY = "275ab5f05";
 
@@ -37,51 +14,21 @@ const LP_INTERSTITIAL_CHAT_AD_UNIT = "44okuay8c4lvv5us";
 const LP_REWARDED_MAIN_AD_UNIT = "8687xc91zz0g0jbb";
 const LP_REWARDED_CHAT_AD_UNIT = "bk6q4274l0mg6x3r";
 
-/* ============================================================
- * تقييم "السعر" لكل شبكة/فورمات:
- * - ironSource: بيترصد فعليًا من قيمة "revenue" الحقيقية اللي
- *   بترجع مع كل إعلان يتحمّل (متوسط متحرك EMA عشان يبقى مستقر).
- * - AdMob: لسه مفيش عندنا قراءة سعر حقيقي منه (محتاجة تعديل إضافي
- *   على مستوى الـ plugin نفسه)، فمستخدمين تقدير ثابت قابل للتعديل.
- *   لو عايزة نضيف قراءة حقيقية من AdMob كمان تقوليلي وهنضيفها.
- * ============================================================ */
-const ADMOB_DEFAULT_SCORE: Record<LevelPlayFormat, number> = {
-    interstitial: 0.01,
-    rewarded: 0.02,
-    banner: 0.003,
+// المفتاح المستخدم لتخزين اختيار المستخدم في AdsConsentDialog —
+// مُصدَّر من هنا عشان يبقى مصدر واحد للحقيقة، وعشان App.tsx يقدر
+// يتأكد هل المستخدم رد على نافذة الموافقة قبل ما يبدأ تحميل أي إعلان.
+export const CONSENT_KEY = "ads_consent_v1";
+
+// true = نطلب إعلانات غير مخصصة. بيتحدد من اختيار المستخدم في
+// AdsConsentDialog عن طريق setAdsPersonalization، وقبل ما يتحدد
+// بنفترض غير مخصص (الأكثر أمانًا).
+let nonPersonalizedAds = true;
+export const setAdsPersonalization = (personalized: boolean) => {
+    nonPersonalizedAds = !personalized;
 };
-
-const SCORE_KEY = "ads_mediation_scores_v1";
-type Scores = Record<string, number>;
-
-const loadScores = (): Scores => {
-    try {
-        return JSON.parse(localStorage.getItem(SCORE_KEY) || "{}");
-    } catch {
-        return {};
-    }
-};
-
-const saveScores = (scores: Scores) => {
-    try {
-        localStorage.setItem(SCORE_KEY, JSON.stringify(scores));
-    } catch {}
-};
-
-const updateScore = (key: string, revenue: number) => {
-    if (!revenue || revenue <= 0) return;
-    const scores = loadScores();
-    const prev = scores[key];
-    scores[key] = prev == null ? revenue : prev * 0.7 + revenue * 0.3;
-    saveScores(scores);
-};
-
-const getLpScore = (format: LevelPlayFormat) => loadScores()[`levelplay_${format}`] ?? 0;
-const getAdmobScore = (format: LevelPlayFormat) =>
-    loadScores()[`admob_${format}`] ?? ADMOB_DEFAULT_SCORE[format];
 
 /* ============================================================
- * حالة جاهزية إعلانات ironSource (بالـ tag: interstitial_main،
+ * حالة جاهزية إعلانات LevelPlay (بالـ tag: interstitial_main،
  * interstitial_chat، rewarded_main، rewarded_chat، banner)
  * ============================================================ */
 const lpReady: Record<string, boolean> = {};
@@ -89,17 +36,17 @@ const lpReady: Record<string, boolean> = {};
 let lpInitialized = false;
 let lpInitPromise: Promise<void> | null = null;
 
-const reloadLpInterstitial = (tag: string, adUnitId: string) => {
+const reloadInterstitial = (tag: string, adUnitId: string) => {
     lpReady[tag] = false;
     void LevelPlayAds.loadInterstitial({ adUnitId, tag });
 };
 
-const reloadLpRewarded = (tag: string, adUnitId: string) => {
+const reloadRewarded = (tag: string, adUnitId: string) => {
     lpReady[tag] = false;
     void LevelPlayAds.loadRewarded({ adUnitId, tag });
 };
 
-const initLevelPlay = async (): Promise<void> => {
+export const initAds = async (): Promise<void> => {
     if (!isNative()) return;
     if (lpInitialized) return;
     if (lpInitPromise) return lpInitPromise;
@@ -109,9 +56,6 @@ const initLevelPlay = async (): Promise<void> => {
             await LevelPlayAds.addListener("levelPlayEvent", (e: LevelPlayEvent) => {
                 if (e.type === "loaded") {
                     lpReady[e.tag] = true;
-                    if (typeof e.revenue === "number") {
-                        updateScore(`levelplay_${e.format}`, e.revenue);
-                    }
                 } else if (e.type === "failedToLoad" || e.type === "displayFailed") {
                     lpReady[e.tag] = false;
                 } else if (e.type === "closed") {
@@ -127,6 +71,8 @@ const initLevelPlay = async (): Promise<void> => {
             void LevelPlayAds.loadRewarded({ adUnitId: LP_REWARDED_MAIN_AD_UNIT, tag: "rewarded_main" });
             void LevelPlayAds.loadRewarded({ adUnitId: LP_REWARDED_CHAT_AD_UNIT, tag: "rewarded_chat" });
         } catch (e) {
+            lpInitialized = false;
+            lpInitPromise = null;
             console.error("[LevelPlay] init failed", e);
         }
     })();
@@ -134,75 +80,46 @@ const initLevelPlay = async (): Promise<void> => {
     return lpInitPromise;
 };
 
-export const initAds = async (): Promise<void> => {
-    await Promise.all([initAdMob(), initLevelPlay()]);
-};
-
-/* ============================================================
- * "المزاد": مين يظهر الأول؟
- * - الاتنين جاهزين → اللي متوسط سعره أعلى (بيتحسب فعليًا من بيانات
- *   حقيقية بمرور الوقت).
- * - واحد بس جاهز → هو اللي يظهر.
- * - محدش جاهز → مفيش إعلان.
- * ============================================================ */
-const decideWinner = (
-    admobReady: boolean,
-    lpReadyFlag: boolean,
-    format: LevelPlayFormat
-): "admob" | "levelplay" | null => {
-    if (admobReady && lpReadyFlag) {
-        return getAdmobScore(format) >= getLpScore(format) ? "admob" : "levelplay";
-    }
-    if (admobReady) return "admob";
-    if (lpReadyFlag) return "levelplay";
-    return null;
-};
-
 /* ============================================================
  * Interstitial
  * ============================================================ */
 export const showInterstitial = async (variant: "main" | "chat" = "main"): Promise<boolean> => {
+    if (!isNative()) return false;
     await initAds();
 
     const tag = variant === "chat" ? "interstitial_chat" : "interstitial_main";
     const adUnitId = variant === "chat" ? LP_INTERSTITIAL_CHAT_AD_UNIT : LP_INTERSTITIAL_MAIN_AD_UNIT;
 
-    const winner = decideWinner(admobInterstitialReady(), !!lpReady[tag], "interstitial");
-
-    if (winner === "levelplay") {
-        try {
-            const shown = await new Promise<boolean>((resolve, reject) => {
-                let handle: { remove: () => void } | null = null;
-                LevelPlayAds.addListener("levelPlayEvent", (e) => {
-                    if (e.tag !== tag) return;
-                    if (e.type === "closed") {
-                        handle?.remove();
-                        resolve(true);
-                    }
-                    if (e.type === "displayFailed") {
-                        handle?.remove();
-                        reject(new Error(e.error || "displayFailed"));
-                    }
-                }).then((h) => (handle = h));
-
-                void LevelPlayAds.showInterstitial({ tag }).catch(reject);
-            });
-            reloadLpInterstitial(tag, adUnitId);
-            return shown;
-        } catch (e) {
-            console.error("[LevelPlay] Interstitial show failed, falling back to AdMob", e);
-            return admobShowInterstitial();
-        }
+    if (!lpReady[tag]) {
+        // مش جاهز — نجرب نحمّله للمرة الجاية ونرجع false دلوقتي
+        void LevelPlayAds.loadInterstitial({ adUnitId, tag });
+        return false;
     }
 
-    if (winner === "admob") {
-        return admobShowInterstitial();
-    }
+    try {
+        const shown = await new Promise<boolean>((resolve, reject) => {
+            let handle: { remove: () => void } | null = null;
+            LevelPlayAds.addListener("levelPlayEvent", (e) => {
+                if (e.tag !== tag) return;
+                if (e.type === "closed") {
+                    handle?.remove();
+                    resolve(true);
+                }
+                if (e.type === "displayFailed") {
+                    handle?.remove();
+                    reject(new Error(e.error || "displayFailed"));
+                }
+            }).then((h) => (handle = h));
 
-    // محدش جاهز — نجرب نحمّل ironSource للمرة الجاية، وAdMob بيحاول
-    // بنفسه (بيعمل preload تلقائي جوه showInterstitial بتاعته)
-    void LevelPlayAds.loadInterstitial({ adUnitId, tag });
-    return admobShowInterstitial();
+            void LevelPlayAds.showInterstitial({ tag }).catch(reject);
+        });
+        reloadInterstitial(tag, adUnitId);
+        return shown;
+    } catch (e) {
+        console.error("[LevelPlay] Interstitial show failed", e);
+        reloadInterstitial(tag, adUnitId);
+        return false;
+    }
 };
 
 /* ============================================================
@@ -212,73 +129,107 @@ export const showRewarded = async (
     opts?: { onStart?: () => void; onEnd?: () => void },
     variant: "main" | "chat" = "main"
 ): Promise<boolean> => {
+    if (!isNative()) {
+        console.log("[LevelPlay] Web Preview -> Reward Granted");
+        opts?.onEnd?.();
+        return true;
+    }
+
     await initAds();
 
     const tag = variant === "chat" ? "rewarded_chat" : "rewarded_main";
     const adUnitId = variant === "chat" ? LP_REWARDED_CHAT_AD_UNIT : LP_REWARDED_MAIN_AD_UNIT;
 
-    const winner = decideWinner(admobRewardedReady(), !!lpReady[tag], "rewarded");
-
-    if (winner === "levelplay") {
-        opts?.onStart?.();
-        try {
-            const earned = await new Promise<boolean>((resolve, reject) => {
-                let rewarded = false;
-                let handle: { remove: () => void } | null = null;
-                LevelPlayAds.addListener("levelPlayEvent", (e) => {
-                    if (e.tag !== tag) return;
-                    if (e.type === "rewarded") rewarded = true;
-                    if (e.type === "closed") {
-                        handle?.remove();
-                        resolve(rewarded);
-                    }
-                    if (e.type === "displayFailed") {
-                        handle?.remove();
-                        reject(new Error(e.error || "displayFailed"));
-                    }
-                }).then((h) => (handle = h));
-
-                void LevelPlayAds.showRewarded({ tag }).catch(reject);
-            });
-            reloadLpRewarded(tag, adUnitId);
-            opts?.onEnd?.();
-            return earned;
-        } catch (e) {
-            console.error("[LevelPlay] Rewarded show failed, falling back to AdMob", e);
-            return admobShowRewarded(opts);
-        }
+    if (!lpReady[tag]) {
+        void LevelPlayAds.loadRewarded({ adUnitId, tag });
+        return false;
     }
 
-    return admobShowRewarded(opts);
+    opts?.onStart?.();
+    try {
+        const earned = await new Promise<boolean>((resolve, reject) => {
+            let rewarded = false;
+            let handle: { remove: () => void } | null = null;
+            LevelPlayAds.addListener("levelPlayEvent", (e) => {
+                if (e.tag !== tag) return;
+                if (e.type === "rewarded") rewarded = true;
+                if (e.type === "closed") {
+                    handle?.remove();
+                    resolve(rewarded);
+                }
+                if (e.type === "displayFailed") {
+                    handle?.remove();
+                    reject(new Error(e.error || "displayFailed"));
+                }
+            }).then((h) => (handle = h));
+
+            void LevelPlayAds.showRewarded({ tag }).catch(reject);
+        });
+        reloadRewarded(tag, adUnitId);
+        opts?.onEnd?.();
+        return earned;
+    } catch (e) {
+        console.error("[LevelPlay] Rewarded show failed", e);
+        reloadRewarded(tag, adUnitId);
+        opts?.onEnd?.();
+        return false;
+    }
 };
 
 /* ============================================================
  * Banner
  * ============================================================ */
 export const showBannerAd = async (opts?: { marginBottom?: number }) => {
+    if (!isNative()) return;
     await initAds();
 
-    if (!!lpReady["banner"] && getLpScore("banner") > getAdmobScore("banner")) {
-        try {
-            await LevelPlayAds.showBanner({ adUnitId: LP_BANNER_AD_UNIT, marginBottom: opts?.marginBottom });
-            return;
-        } catch (e) {
-            console.error("[LevelPlay] Banner show failed, falling back to AdMob", e);
-        }
-    }
-
-    // مفيش تأكيد لسه إن بانر LevelPlay فعلاً حمّل بنجاح، فبنعرض AdMob
-    // كخيار مضمون دايمًا. وبنجرب LevelPlay في الخلفية بالتوازي: لو نجح
-    // فعلاً، حدث "loaded" الحقيقي (معالَج فوق في initLevelPlay) هو اللي
-    // بيحدّث lpReady["banner"] — مش مجرد إن الـ promise اترجع، عشان
-    // كانت بترجع "نجاح" حتى لو التحميل فشل فعليًا وده كان بيمنع أي
-    // fallback حقيقي لـ AdMob في المرة الجاية.
-    void admobShowBanner(opts);
-    if (isNative()) {
-        void LevelPlayAds.showBanner({ adUnitId: LP_BANNER_AD_UNIT, marginBottom: opts?.marginBottom }).catch(() => {});
+    try {
+        await LevelPlayAds.showBanner({ adUnitId: LP_BANNER_AD_UNIT, marginBottom: opts?.marginBottom });
+    } catch (e) {
+        console.error("[LevelPlay] Banner show failed", e);
     }
 };
 
 export const hideBannerAd = async () => {
-    await Promise.all([admobHideBanner(), LevelPlayAds.hideBanner().catch(() => {})]);
+    if (!isNative()) return;
+    await LevelPlayAds.hideBanner().catch(() => {});
+};
+
+/* ============================================================
+ * خيارات الخصوصية: مفيش Google UMP بعد إلغاء AdMob، فبدل نموذج
+ * الخصوصية الرسمي بنمسح اختيار الموافقة المحفوظ ونعيد تحميل
+ * التطبيق عشان نافذة AdsConsentDialog تظهر تاني ويقدر المستخدم
+ * يغيّر اختياره (مخصصة / غير مخصصة).
+ * ============================================================ */
+export const showPrivacyOptions = async () => {
+    if (!isNative()) {
+        throw new Error("NOT_NATIVE");
+    }
+    localStorage.removeItem(CONSENT_KEY);
+    window.location.reload();
+};
+
+/* ============================================================
+ * عداد إعلانات الدردشة: إعلان فاصل (Interstitial) كل 10 رسائل
+ * مُرسَلة، سواء في دردشة خاصة أو في جروب — عداد واحد مشترك بين
+ * الاتنين. بيتخزن في localStorage عشان يفضل مستمر لو المستخدم قفل
+ * التطبيق وفتحه تاني.
+ * ============================================================ */
+const CHAT_MSG_AD_INTERVAL = 10;
+const CHAT_MSG_COUNTER_KEY = "chat_msg_ad_counter_v1";
+
+let chatMessageCounter = (() => {
+    try {
+        return Number(localStorage.getItem(CHAT_MSG_COUNTER_KEY) || "0") || 0;
+    } catch {
+        return 0;
+    }
+})();
+
+export const noteChatMessageSent = (): boolean => {
+    chatMessageCounter += 1;
+    try {
+        localStorage.setItem(CHAT_MSG_COUNTER_KEY, String(chatMessageCounter));
+    } catch {}
+    return chatMessageCounter % CHAT_MSG_AD_INTERVAL === 0;
 };
