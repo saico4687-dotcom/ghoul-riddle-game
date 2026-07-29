@@ -142,7 +142,10 @@ export default function ChatSettings() {
       setAvatarPath(path);
       toast.success("تم تحديث الصورة");
     } catch (e: any) {
-      toast.error(e?.message ?? "تعذر رفع الصورة");
+      const msg = String(e?.message ?? "");
+      toast.error(
+        msg.toLowerCase().includes("row-level security") ? SESSION_EXPIRED_MESSAGE : msg || "تعذر رفع الصورة"
+      );
     } finally {
       setUploadingAvatar(false);
     }
