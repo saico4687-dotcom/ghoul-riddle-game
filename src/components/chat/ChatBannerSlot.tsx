@@ -5,7 +5,7 @@ import { showBannerAd, hideBannerAd } from "@/lib/adsMediation";
 // ارتفاع شريط التنقل السفلي بالبكسل — لازم يتطابق مع الرقم المستخدم
 // في ChatLayout.tsx
 export const BOTTOM_NAV_HEIGHT = 64;
-// المساحة الفاضية المحجوزة لبانر AdMob التكيفي فوق شريط التنقل مباشرة
+// المساحة الفاضية المحجوزة لبانر Unity LevelPlay فوق شريط التنقل مباشرة
 export const BANNER_SLOT_HEIGHT = 56;
 
 // بيعرض البانر برفع (margin) يساوي ارتفاع شريط التنقل، عشان البانر
