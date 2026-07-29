@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useGroups } from "@/hooks/useGroups";
 import { supabase } from "@/integrations/supabase/client";
 import { filterMessage } from "@/lib/chat/contentFilter";
+import { ensureFreshSession, SESSION_EXPIRED_MESSAGE } from "@/lib/ensureSession";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -50,6 +51,15 @@ export default function CreateGroup() {
     }
     setSaving(true);
     try {
+      // نتأكد إن جلسة الدخول لسه سارية قبل أي كتابة تعتمد على auth.uid()
+      // (إنشاء الجروب + رفع الصورة). لو الـ token انتهت صلاحيته من غير
+      // ما الواجهة تلاحظ (بيحصل جوّه WebView التطبيق لو فضل في الخلفية
+      // فترة)، auth.uid() هيرجع null على السيرفر وهيفشل بـ RLS برسالة
+      // غامضة "new row violates row-level security policy" بدل رسالة
+      // واضحة إن الجلسة خلصت.
+      const sessionOk = await ensureFreshSession();
+      if (!sessionOk) throw new Error(SESSION_EXPIRED_MESSAGE);
+
       const cleanName = filterMessage(name.trim());
       const cleanDesc = description.trim() ? filterMessage(description.trim()) : null;
 
@@ -67,7 +77,12 @@ export default function CreateGroup() {
 
         if (upErr) {
           console.error("[CreateGroup] avatar upload failed", upErr);
-          toast.error("تم إنشاء الجروب، لكن تعذر حفظ الصورة");
+          const msg = String((upErr as any)?.message ?? "");
+          toast.error(
+            msg.toLowerCase().includes("row-level security")
+              ? SESSION_EXPIRED_MESSAGE
+              : "تم إنشاء الجروب، لكن تعذر حفظ الصورة"
+          );
         } else {
           const { error: updateErr } = await supabase
             .from("groups")
@@ -75,7 +90,12 @@ export default function CreateGroup() {
             .eq("id", group.id);
           if (updateErr) {
             console.error("[CreateGroup] avatar_url update failed", updateErr);
-            toast.error("تم إنشاء الجروب، لكن تعذر حفظ الصورة");
+            const msg = String((updateErr as any)?.message ?? "");
+            toast.error(
+              msg.toLowerCase().includes("row-level security")
+                ? SESSION_EXPIRED_MESSAGE
+                : "تم إنشاء الجروب، لكن تعذر حفظ الصورة"
+            );
           }
         }
       }
