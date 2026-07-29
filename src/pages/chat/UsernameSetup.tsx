@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Upload } from "lucide-react";
 import UserAvatar from "@/components/chat/UserAvatar";
+import { hasPassedAllPuzzles } from "@/hooks/useChatProfile";
 
 // Arabic + English + digits + underscore, 3-20 chars. Any script letter is allowed via \p{L}.
 const USERNAME_RE = /^[\p{L}0-9_]{3,20}$/u;
@@ -25,12 +26,12 @@ export default function UsernameSetup() {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("username, avatar_url, completed")
+      .select("username, avatar_url, completed, last_puzzle_index")
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
         if (data?.username) navigate("/chat", { replace: true });
-        else if (!data?.completed) navigate("/", { replace: true });
+        else if (!hasPassedAllPuzzles(data)) navigate("/", { replace: true });
         if (data?.avatar_url) setAvatarPath(data.avatar_url);
       });
   }, [user, navigate]);
@@ -164,4 +165,4 @@ export default function UsernameSetup() {
       </div>
     </div>
   );
-}
+            }
