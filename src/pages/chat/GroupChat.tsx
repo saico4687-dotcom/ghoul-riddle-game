@@ -16,6 +16,7 @@ import {
 import { fetchPublicProfilesByIds, type PublicProfile } from "@/lib/chat/queries";
 import { checkSingleLine, MAX_LINE_CHARS } from "@/lib/chat/contentFilter";
 import { noteChatMessageSent, showInterstitial } from "@/lib/adsMediation";
+import { APP_WEB_ORIGIN } from "@/lib/appOrigin";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -99,7 +100,7 @@ export default function GroupChat() {
 
   const copyInvite = async () => {
     if (!group) return;
-    const link = `${window.location.origin}/chat/groups/join/${group.invite_code}`;
+    const link = `${APP_WEB_ORIGIN}/chat/groups/join/${group.invite_code}`;
     try {
       await navigator.clipboard.writeText(link);
       toast.success("تم نسخ رابط الدعوة");
@@ -377,4 +378,4 @@ export default function GroupChat() {
       </Dialog>
     </div>
   );
-    }
+      }
