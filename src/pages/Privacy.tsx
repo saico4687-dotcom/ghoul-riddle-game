@@ -67,7 +67,7 @@ const Privacy = () => {
           <ul className="list-disc pr-6 space-y-2 mt-2">
             <li><strong>Google Sign-In:</strong> للمصادقة وتسجيل الدخول.</li>
             <li><strong>خدمة قاعدة البيانات السحابية:</strong> لتخزين بياناتك بشكل آمن.</li>
-            <li><strong>Google AdMob:</strong> لعرض الإعلانات داخل التطبيق.</li>
+            <li><strong>Unity LevelPlay:</strong> لعرض الإعلانات داخل التطبيق.</li>
           </ul>
         </Section>
 
@@ -112,30 +112,30 @@ const Privacy = () => {
         <Section title="8. الأذونات المطلوبة">
           <ul className="list-disc pr-6 space-y-2">
             <li><strong>الإنترنت:</strong> للاتصال بخوادمنا وحفظ تقدمك.</li>
-            <li><strong>معرّف الإعلانات (Advertising ID):</strong> لعرض إعلانات Google AdMob.</li>
+            <li><strong>معرّف الإعلانات (Advertising ID):</strong> لعرض إعلانات Unity LevelPlay.</li>
           </ul>
         </Section>
 
-        <Section title="9. الإعلانات (Google AdMob)">
+        <Section title="9. الإعلانات (Unity LevelPlay)">
           <p>
-            يعتمد التطبيق على إعلانات <strong>Google AdMob</strong> للحفاظ على
-            مجانيته. قد تقوم Google ومزوّدوها بجمع واستخدام معرّف الإعلانات
+            يعتمد التطبيق على إعلانات <strong>Unity LevelPlay</strong> للحفاظ على
+            مجانيته. قد تقوم Unity وشبكات الإعلانات المتوسّطة معها بجمع واستخدام معرّف الإعلانات
             الخاص بجهازك لعرض إعلانات أكثر ملاءمة وقياس أدائها، وذلك وفقًا
             لـ{" "}
             <a
-              href="https://policies.google.com/technologies/ads"
+              href="https://unity.com/legal/game-player-and-app-user-privacy-policy"
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary hover:underline"
             >
-              سياسة Google للشركاء الإعلانيين
+              سياسة خصوصية Unity لمستخدمي التطبيقات
             </a>
             . يمكنك في أي وقت اختيار إعلانات غير مخصّصة من شاشة الموافقة داخل
             التطبيق، أو إعادة ضبط/تعطيل معرّف الإعلانات من إعدادات جهازك.
           </p>
           <p className="mt-2">
-            داخل الاتحاد الأوروبي والمملكة المتحدة، نعرض شاشة موافقة (UMP) من
-            Google قبل تحميل أي إعلانات.
+            نعرض شاشة موافقة خاصة بالتطبيق قبل تحميل أي إعلانات، ويمكنك تغيير
+            اختيارك (إعلانات مخصّصة / غير مخصّصة) فى أي وقت من نفس الزر أدناه.
           </p>
         </Section>
 
@@ -164,7 +164,7 @@ const Privacy = () => {
             <button
               onClick={async () => {
                 try {
-                  const { showPrivacyOptions } = await import("@/lib/ads");
+                  const { showPrivacyOptions } = await import("@/lib/adsMediation");
                   await showPrivacyOptions();
                 } catch (e: any) {
                   if (e?.message === "NOT_NATIVE") {
