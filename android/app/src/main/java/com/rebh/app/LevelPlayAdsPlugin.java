@@ -33,8 +33,8 @@ import java.util.Map;
 
 /**
  * بلجن Capacitor مخصوص (كتبناه إحنا، مش من مكتبة جاهزة) بيوصل تطبيق
- * الويب بـ Unity LevelPlay (ironSource) SDK جنبًا إلى جنب مع AdMob
- * اللي شغال بالفعل في src/lib/ads.ts من غير ما نلمسه.
+ * الويب بـ Unity LevelPlay (ironSource) SDK — وهو مصدر الإعلانات
+ * الوحيد فى التطبيق بعد إلغاء AdMob نهائيًا.
  *
  * كل الأحداث (تحميل / فشل / عرض / إغلاق / مكافأة) بترجع لجافاسكريبت
  * عن طريق حدث واحد اسمه "levelPlayEvent" عشان يبقى بسيط، وJS هو اللي
@@ -336,4 +336,4 @@ public class LevelPlayAdsPlugin extends Plugin {
         if (error != null) data.put("error", error);
         notifyListeners("levelPlayEvent", data);
     }
-                }
+}
