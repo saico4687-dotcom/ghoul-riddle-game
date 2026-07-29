@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { useMyChatProfile } from "@/hooks/useChatProfile";
+import { useMyChatProfile, hasPassedAllPuzzles } from "@/hooks/useChatProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 
@@ -42,10 +42,11 @@ export default function RequireCompletion({ children }: Props) {
       </div>
     );
   }
-  if (!profile?.completed) {
-    console.warn("[RequireCompletion] profile.completed=false → /", {
+  if (!hasPassedAllPuzzles(profile)) {
+    console.warn("[RequireCompletion] user hasn't passed 400 puzzles → /", {
       userId: user.id,
       completed: profile.completed,
+      last_puzzle_index: profile.last_puzzle_index,
       currentPath: location.pathname,
     });
     return <Navigate to="/" replace />;
