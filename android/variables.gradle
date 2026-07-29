@@ -19,11 +19,6 @@ ext {
 
     cordovaAndroidVersion = '14.0.1'
 
-    // أحدث إصدار من Google Mobile Ads SDK (كان متسيب على 24.9.+ الافتراضية
-    // بتاعة البلجن، وهي أقدم من أحدث إصدار فعلي متاح — وده كان سبب تحذير
-    // AdMob "يجب تثبيت أحدث إصدار من حزمة SDK لإعلانات Google الجوّالة").
-    playServicesAdsVersion = '25.0.0'
-
     // Unity LevelPlay (ironSource) mediation SDK
     levelPlayMediationSdkVersion = '9.4.0'
 }
