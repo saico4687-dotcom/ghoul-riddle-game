@@ -28,13 +28,13 @@ const AdsConsentDialog = ({ onAccepted }: Props) => {
       })
     );
 
-    // لازم يتحدد قبل initAdMob عشان أول preload للإعلانات (interstitial/rewarded)
+    // لازم يتحدد قبل initAds عشان أول تحميل للإعلانات (interstitial/rewarded)
     // يبعت npa الصح من أول طلب، بدل ما يفضل الاختيار مسجل بس من غير تأثير فعلي.
     setAdsPersonalization(personalized);
 
     try {
-      const { initAds: initAdMob } = await import("@/lib/adsMediation");
-      await initAdMob();
+      const { initAds } = await import("@/lib/adsMediation");
+      await initAds();
     } catch (e) {
       console.warn("[AdsConsent]", e);
     }
@@ -75,8 +75,8 @@ const AdsConsentDialog = ({ onAccepted }: Props) => {
             </div>
 
             <p className="font-typewriter text-sm text-foreground leading-relaxed">
-              هذا التطبيق مجاني بالكامل، ويتم تمويله من خلال إعلانات Google
-              AdMob حتى نستطيع إضافة ألغاز ومميزات جديدة باستمرار.
+              هذا التطبيق مجاني بالكامل، ويتم تمويله من خلال إعلانات Unity
+              LevelPlay حتى نستطيع إضافة ألغاز ومميزات جديدة باستمرار.
             </p>
 
             <div className="space-y-2 text-sm font-typewriter">
