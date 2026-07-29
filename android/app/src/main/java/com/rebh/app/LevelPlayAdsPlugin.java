@@ -336,4 +336,4 @@ public class LevelPlayAdsPlugin extends Plugin {
         if (error != null) data.put("error", error);
         notifyListeners("levelPlayEvent", data);
     }
-}
+                }
