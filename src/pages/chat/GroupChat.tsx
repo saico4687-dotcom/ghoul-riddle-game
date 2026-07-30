@@ -12,6 +12,7 @@ import {
   removeGroupMember,
   regenerateGroupInvite,
   updateGroup,
+  markGroupRead,
 } from "@/lib/chat/groupQueries";
 import { fetchPublicProfilesByIds, type PublicProfile } from "@/lib/chat/queries";
 import { checkSingleLine, filterMessage, MAX_LINE_CHARS } from "@/lib/chat/contentFilter";
@@ -63,6 +64,11 @@ export default function GroupChat() {
   }, [messages.length]);
 
   useEffect(() => {
+    if (!user || !groupId) return;
+    markGroupRead(groupId);
+  }, [user, groupId, messages.length]);
+
+  useEffect(() => {
     if (members.length === 0) return;
     fetchPublicProfilesByIds(members.map((m) => m.user_id)).then((profs) => {
       setProfiles(new Map(profs.map((p) => [p.user_id, p])));
@@ -72,8 +78,6 @@ export default function GroupChat() {
   const send = async () => {
     if (!text.trim() || !user || !groupId || sending) return;
 
-    // حد "سطر واحد" للرسالة — لو خالفت الشرط بيظهر تنبيه ومتتبعتش
-    // الرسالة للسيرفر أصلاً.
     const lineCheck = checkSingleLine(text.trim());
     if (!lineCheck.ok) {
       toast.error(lineCheck.reason!);
@@ -86,8 +90,6 @@ export default function GroupChat() {
       setMessages((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, m]));
       setText("");
 
-      // إعلان فاصل كل 10 رسائل (خاص أو جروب) — إلا لو عنده دردشة
-      // بدون إعلانات نشطة حالياً.
       if (noteChatMessageSent() && !isAdFree) {
         void showInterstitial("chat");
       }
