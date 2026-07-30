@@ -1,3 +1,4 @@
+// src/pages/chat/ChatConversation.tsx
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,7 +24,7 @@ import MessageBubble from "@/components/chat/MessageBubble";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, ArrowRight, Ban, Flag, MoreVertical } from "lucide-react";
+import { Send, ArrowRight, Ban, Flag, MoreVertical, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +50,13 @@ export default function ChatConversation() {
   const [reportOpen, setReportOpen] = useState(false);
   const [reportMsgId, setReportMsgId] = useState<string | undefined>();
   const [otherTyping, setOtherTyping] = useState(false);
+  // الرسالة اللي المستخدم بيرد عليها دلوقتي (بعد ما سحبها/شدها زي واتساب
+  // أو ضغط على زرار "رد") — لو null يبقى مفيش رد جاري.
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  // كاش محلي للرسائل المقتبَسة اللي مش موجودة في نافذة الرسائل المحمّلة
+  // حالياً (مثلاً لو المستخدم رد على رسالة قديمة قبل ما يعمل scroll لفوق)
+  // عشان نقدر نعرض معاينة الاقتباس برضه.
+  const [repliedCache, setRepliedCache] = useState<Record<string, Message>>({});
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const typingChannelRef = useRef<ReturnType<typeof typingChannel> | null>(null);
@@ -124,6 +132,38 @@ export default function ChatConversation() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, otherTyping]);
 
+  // لو في رسائل بترد على رسائل مش محمّلة في الـ state الحالي (خارج نافذة
+  // الـ 50/30 رسالة اللي بنجيبها)، نجيبهم مرة واحدة عشان نعرض الاقتباس.
+  useEffect(() => {
+    const loadedIds = new Set(messages.map((m) => m.id));
+    const missing = Array.from(
+      new Set(
+        messages
+          .map((m) => m.reply_to_id)
+          .filter((id): id is string => !!id && !loadedIds.has(id) && !repliedCache[id])
+      )
+    );
+    if (missing.length === 0) return;
+    let active = true;
+    (async () => {
+      const { data } = await supabase.from("messages").select("*").in("id", missing);
+      if (!active || !data || data.length === 0) return;
+      setRepliedCache((cur) => {
+        const next = { ...cur };
+        (data as Message[]).forEach((m) => { next[m.id] = m; });
+        return next;
+      });
+    })();
+    return () => { active = false; };
+  }, [messages, repliedCache]);
+
+  const getReplied = (id: string | null): Message | null => {
+    if (!id) return null;
+    return messages.find((m) => m.id === id) ?? repliedCache[id] ?? null;
+  };
+
+  const senderLabel = (m: Message) => (m.sender_id === user!.id ? "أنت" : other?.username ?? "");
+
   const loadOlder = async () => {
     if (!conversationId || loadingMore || !hasMore || messages.length === 0) return;
     setLoadingMore(true);
@@ -172,9 +212,10 @@ export default function ChatConversation() {
 
     setSending(true);
     try {
-      const m = await sendMessage(conversationId, user.id, text.trim());
+      const m = await sendMessage(conversationId, user.id, text.trim(), replyTo?.id ?? null);
       setMessages((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, m]));
       setText("");
+      setReplyTo(null);
 
       if (noteChatMessageSent() && !isAdFree) {
         void showInterstitial("chat");
@@ -235,16 +276,22 @@ export default function ChatConversation() {
         {!hasMore && messages.length > 0 && (
           <div className="text-center text-[10px] text-muted-foreground/70 py-1">بداية المحادثة</div>
         )}
-        {messages.map((m) => (
-          <MessageBubble
-            key={m.id}
-            message={m}
-            mine={m.sender_id === user!.id}
-            reactions={reactions.filter((r) => r.message_id === m.id)}
-            myUserId={user!.id}
-            onReport={(msg) => { setReportMsgId(msg.id); setReportOpen(true); }}
-          />
-        ))}
+        {messages.map((m) => {
+          const replied = getReplied(m.reply_to_id);
+          return (
+            <MessageBubble
+              key={m.id}
+              message={m}
+              mine={m.sender_id === user!.id}
+              reactions={reactions.filter((r) => r.message_id === m.id)}
+              myUserId={user!.id}
+              onReport={(msg) => { setReportMsgId(msg.id); setReportOpen(true); }}
+              onReply={setReplyTo}
+              repliedMessage={replied}
+              repliedSenderLabel={replied ? senderLabel(replied) : undefined}
+            />
+          );
+        })}
         {otherTyping && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground font-typewriter animate-pulse">
             <span>{other?.username ?? "المستخدم"} يكتب</span>
@@ -259,6 +306,23 @@ export default function ChatConversation() {
       </div>
 
       <div className="border-t border-border p-2 bg-card">
+        {replyTo && (
+          <div className="flex items-center gap-2 bg-muted/60 border-r-2 border-primary rounded-md px-3 py-1.5 mb-2">
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-bold text-primary">{senderLabel(replyTo)}</div>
+              <div className="text-xs text-muted-foreground truncate">
+                {replyTo.deleted_at ? "تم حذف الرسالة" : replyTo.body}
+              </div>
+            </div>
+            <button
+              onClick={() => setReplyTo(null)}
+              className="p-1 text-muted-foreground hover:text-foreground shrink-0"
+              aria-label="إلغاء الرد"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         <div className="flex gap-2 items-end">
           <Textarea
             value={text}
@@ -288,4 +352,4 @@ export default function ChatConversation() {
       )}
     </div>
   );
-    }
+}
