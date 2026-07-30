@@ -1,8 +1,9 @@
+// src/pages/chat/ChatSettings.tsx
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { ensureFreshSession, SESSION_EXPIRED_MESSAGE } from "@/lib/ensureSession";
+import { SESSION_EXPIRED_MESSAGE } from "@/lib/ensureSession";
 import { useAdFree } from "@/hooks/useAdFree";
 import { grantAdFreeReward } from "@/lib/chat/adFree";
 import { showRewarded } from "@/lib/adsMediation";
@@ -114,6 +115,18 @@ export default function ChatSettings() {
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
+  // ملاحظة مهمة عن الباج القديم: الكود القديم كان بيعمل ensureFreshSession()
+  // *قبل* أي محاولة رفع، ولو رجعت false (حتى لو كان السبب لحظة شبكة عابرة
+  // مش انتهاء جلسة حقيقي — وده بالذات بيحصل كتير أول ما التطبيق يرجع من
+  // الخلفية على 4G) كان بيوقف العملية فوراً برسالة "انتهت الجلسة" من غير
+  // ما يجرب الرفع الفعلي أصلاً. فكانت النتيجة إن صورة البروفايل الخاصة
+  // (مش الجروب) بتفشل كتير مع إن الجلسة غالباً كانت لسه سليمة.
+  //
+  // الحل هنا: نجرب الرفع مباشرة الأول. الطلب الفعلي بياخد التوكن الحالي
+  // وقت التنفيذ (مش قبلها بلحظة)، فمعظم الوقت هينجح عادي. لو فشل فعلاً
+  // بخطأ يدل على مشكلة تسجيل دخول (RLS/JWT/401)، عندها بس نعمل
+  // refreshSession() مرة واحدة ونعيد نفس الرفع مرة واحدة كمان. لو ده كمان
+  // فشل، يبقى فعلاً الجلسة منتهية ومحتاج تسجيل دخول تاني.
   const upload = async (file: File) => {
     if (!user) return;
     if (!file.type.startsWith("image/")) {
@@ -125,26 +138,57 @@ export default function ChatSettings() {
       return;
     }
     setUploadingAvatar(true);
-    try {
-      const sessionOk = await ensureFreshSession();
-      if (!sessionOk) throw new Error(SESSION_EXPIRED_MESSAGE);
 
-      const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+    const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+
+    const doUpload = async () => {
       const { error: upErr } = await supabase.storage
         .from("avatars")
         .upload(path, file, { upsert: true, contentType: file.type, cacheControl: "3600" });
       if (upErr) throw upErr;
       const { error: dbErr } = await supabase.from("profiles").update({ avatar_url: path }).eq("user_id", user.id);
       if (dbErr) throw dbErr;
+    };
+
+    const looksLikeAuthIssue = (e: any) => {
+      const msg = String(e?.message ?? "").toLowerCase();
+      return (
+        e?.status === 401 ||
+        msg.includes("row-level security") ||
+        msg.includes("jwt") ||
+        msg.includes("401") ||
+        msg.includes("permission denied")
+      );
+    };
+
+    try {
+      try {
+        await doUpload();
+      } catch (firstErr: any) {
+        if (!looksLikeAuthIssue(firstErr)) throw firstErr;
+
+        // ممكن يكون التوكن فعلاً قرب ينتهي — نجرب تجديده مرة واحدة
+        // ونعيد نفس الرفع قبل ما نستسلم ونقول للمستخدم إن الجلسة انتهت.
+        console.error("[ChatSettings] avatar upload auth error, retrying after refresh:", firstErr);
+        const { error: refreshErr, data: refreshData } = await supabase.auth.refreshSession();
+        if (refreshErr || !refreshData.session) {
+          throw new Error(SESSION_EXPIRED_MESSAGE);
+        }
+        await doUpload();
+      }
+
       if (avatarPath) invalidateAvatarCache(avatarPath);
       invalidateAvatarCache(path);
       setAvatarPath(path);
       toast.success("تم تحديث الصورة");
     } catch (e: any) {
+      console.error("[ChatSettings] avatar upload failed:", e);
       const msg = String(e?.message ?? "");
       toast.error(
-        msg.toLowerCase().includes("row-level security") ? SESSION_EXPIRED_MESSAGE : msg || "تعذر رفع الصورة"
+        msg === SESSION_EXPIRED_MESSAGE || msg.toLowerCase().includes("row-level security")
+          ? SESSION_EXPIRED_MESSAGE
+          : msg || "تعذر رفع الصورة"
       );
     } finally {
       setUploadingAvatar(false);
@@ -364,4 +408,4 @@ function PrivacyRow({
       </Select>
     </div>
   );
-      }
+        }
