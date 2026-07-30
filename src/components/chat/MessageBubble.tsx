@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Smile, MoreVertical, Flag } from "lucide-react";
+import { useRef, useState } from "react";
+import { Smile, MoreVertical, Flag, Reply } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -12,16 +12,41 @@ import { toggleReaction } from "@/lib/chat/queries";
 
 const EMOJIS = ["👍", "❤️", "😂", "😮"];
 
+// أقل مسافة سحب (بالبكسل) عشان نعتبرها "طلب رد" — زي خاصية السحب
+// الموجودة في واتساب سواء في الشات الفردي أو الجروب
+const REPLY_THRESHOLD = 56;
+const MAX_DRAG = 84;
+
 interface Props {
   message: Message;
   mine: boolean;
   reactions: Reaction[];
   myUserId: string;
   onReport: (m: Message) => void;
+  // بينادَى لما اليوزر يسحب/يشد الرسالة كفاية عشان يرد عليها
+  onReply?: (m: Message) => void;
+  // الرسالة الأصلية اللي الرسالة دي رد عليها (لو موجودة) — الأب هو
+  // اللي بيجيبها من الماب المحلي بتاعه ويمررها هنا عشان نعرضها كاقتباس
+  repliedMessage?: Message | null;
+  // اسم صاحب الرسالة المقتبَسة يتعرض فوق الاقتباس ("أنت" أو اسم المستخدم)
+  repliedSenderLabel?: string;
 }
 
-export default function MessageBubble({ message, mine, reactions, myUserId, onReport }: Props) {
+export default function MessageBubble({
+  message,
+  mine,
+  reactions,
+  myUserId,
+  onReport,
+  onReply,
+  repliedMessage,
+  repliedSenderLabel,
+}: Props) {
   const [picker, setPicker] = useState(false);
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const startXRef = useRef<number | null>(null);
+  const triggeredRef = useRef(false);
 
   const grouped = reactions.reduce<Record<string, { count: number; mine: boolean }>>((acc, r) => {
     if (!acc[r.emoji]) acc[r.emoji] = { count: 0, mine: false };
@@ -30,9 +55,60 @@ export default function MessageBubble({ message, mine, reactions, myUserId, onRe
     return acc;
   }, {});
 
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (!onReply) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    startXRef.current = e.clientX;
+    triggeredRef.current = false;
+    setDragging(true);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!onReply || startXRef.current === null) return;
+    const delta = e.clientX - startXRef.current;
+    const clamped = Math.max(-MAX_DRAG, Math.min(MAX_DRAG, delta));
+    setDragX(clamped);
+    if (!triggeredRef.current && Math.abs(clamped) >= REPLY_THRESHOLD) {
+      triggeredRef.current = true;
+      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(15);
+      onReply(message);
+    }
+  };
+
+  const endDrag = () => {
+    startXRef.current = null;
+    setDragging(false);
+    setDragX(0);
+  };
+
+  const replyIconOpacity = Math.min(1, Math.abs(dragX) / REPLY_THRESHOLD);
+  const replyIconSide = dragX >= 0 ? "right" : "left";
+
   return (
-    <div className={cn("flex w-full", mine ? "justify-start" : "justify-end")} dir="rtl">
-      <div className={cn("max-w-[80%] group relative", mine && "order-2")}>
+    <div className={cn("flex w-full relative", mine ? "justify-start" : "justify-end")} dir="rtl">
+      {onReply && (
+        <div
+          className="absolute top-1/2 -translate-y-1/2 pointer-events-none text-primary"
+          style={{
+            opacity: replyIconOpacity,
+            [replyIconSide]: 4,
+          } as React.CSSProperties}
+        >
+          <Reply className="w-5 h-5" />
+        </div>
+      )}
+      <div
+        className={cn("max-w-[80%] group relative touch-pan-y select-none", mine && "order-2")}
+        style={{
+          transform: `translateX(${dragX}px)`,
+          transition: dragging ? "none" : "transform 0.2s ease",
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onPointerLeave={dragging ? endDrag : undefined}
+      >
         <div
           className={cn(
             "rounded-2xl px-4 py-2 shadow-md break-words whitespace-pre-wrap font-typewriter text-sm",
@@ -41,6 +117,19 @@ export default function MessageBubble({ message, mine, reactions, myUserId, onRe
               : "bg-card border border-primary/20 text-foreground rounded-br-sm"
           )}
         >
+          {repliedMessage && (
+            <div
+              className={cn(
+                "mb-1.5 rounded-md px-2 py-1 border-r-2 text-xs opacity-90 max-w-full overflow-hidden",
+                mine ? "border-primary-foreground/60 bg-black/10" : "border-primary/60 bg-primary/5"
+              )}
+            >
+              <div className="font-bold truncate">{repliedSenderLabel ?? "..."}</div>
+              <div className="truncate opacity-80">
+                {repliedMessage.deleted_at ? "تم حذف الرسالة" : repliedMessage.body}
+              </div>
+            </div>
+          )}
           {renderWithMentions(message.body)}
           <div className={cn("text-[10px] mt-1 opacity-70 flex items-center gap-1 justify-end", mine ? "text-primary-foreground" : "text-muted-foreground")}>
             <span>{new Date(message.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}</span>
@@ -78,6 +167,15 @@ export default function MessageBubble({ message, mine, reactions, myUserId, onRe
             mine ? "right-full mr-1" : "left-full ml-1"
           )}
         >
+          {onReply && (
+            <button
+              onClick={() => onReply(message)}
+              className="p-1 rounded-full bg-card border border-border hover:bg-muted"
+              aria-label="رد"
+            >
+              <Reply className="w-3 h-3" />
+            </button>
+          )}
           <button
             onClick={() => setPicker((p) => !p)}
             className="p-1 rounded-full bg-card border border-border hover:bg-muted"
