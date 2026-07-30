@@ -86,7 +86,9 @@ export default function ChatConversation() {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
         (payload) => {
           setMessages((m) => (m.some((x) => x.id === (payload.new as any).id) ? m : [...m, payload.new as Message]));
-          if ((payload.new as any).sender_id !== user.id) markConversationRead(conversationId, user.id);
+          if ((payload.new as any).sender_id !== user.id) {
+            markConversationRead(conversationId, user.id);
+          }
         })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
         (payload) => {
@@ -162,8 +164,6 @@ export default function ChatConversation() {
   const send = async () => {
     if (!text.trim() || !user || !conversationId || sending) return;
 
-    // حد "سطر واحد" للرسالة — لو خالفت الشرط بيظهر تنبيه ومتتبعتش
-    // الرسالة للسيرفر أصلاً.
     const lineCheck = checkSingleLine(text.trim());
     if (!lineCheck.ok) {
       toast.error(lineCheck.reason!);
@@ -176,8 +176,6 @@ export default function ChatConversation() {
       setMessages((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, m]));
       setText("");
 
-      // إعلان فاصل كل 10 رسائل (خاص أو جروب) — إلا لو عنده دردشة
-      // بدون إعلانات نشطة حالياً.
       if (noteChatMessageSent() && !isAdFree) {
         void showInterstitial("chat");
       }
