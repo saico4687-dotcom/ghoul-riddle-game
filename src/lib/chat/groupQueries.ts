@@ -42,6 +42,9 @@ export type GroupMessage = {
   // ban_group_member / remove_group_member) — لو موجودة يبقى الرسالة دي
   // رسالة نظام (انضم/غادر/حُظر/اتشال) مش رسالة عادية من اليوزر
   system_event?: GroupSystemEvent | null;
+  // معرّف رسالة الجروب اللي حصل عليها "رد" — بيتحط لما اليوزر يسحب/يشد
+  // رسالة في شات الجروب ويكتب تحتها زي واتساب. null لو مش رد.
+  reply_to_id: string | null;
 };
 
 // ---------- Groups ----------
@@ -190,12 +193,24 @@ export async function fetchGroupMessages(groupId: string, limit = 50) {
   return ((data ?? []) as GroupMessage[]).reverse();
 }
 
-export async function sendGroupMessage(groupId: string, senderId: string, body?: string | null, imageUrl?: string | null) {
+export async function sendGroupMessage(
+  groupId: string,
+  senderId: string,
+  body?: string | null,
+  imageUrl?: string | null,
+  replyToId?: string | null
+) {
   const { filterMessage } = await import("./contentFilter");
   const cleanBody = body?.trim() ? filterMessage(body.trim()) : null;
   const { data, error } = await supabase
     .from("group_messages")
-    .insert({ group_id: groupId, sender_id: senderId, body: cleanBody, image_url: imageUrl ?? null })
+    .insert({
+      group_id: groupId,
+      sender_id: senderId,
+      body: cleanBody,
+      image_url: imageUrl ?? null,
+      reply_to_id: replyToId ?? null,
+    })
     .select()
     .single();
   if (error) throw new Error(error.message || "تعذر إرسال الرسالة");
@@ -224,4 +239,4 @@ export async function reportGroupContent(input: {
     reason: input.reason.trim(),
   });
   if (error) throw new Error(error.message || "تعذر إرسال البلاغ");
-                                                              }
+                             }
