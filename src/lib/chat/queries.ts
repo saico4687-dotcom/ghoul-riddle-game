@@ -150,17 +150,8 @@ export async function sendFriendRequest(toUser: string) {
   if (!u.user) throw new Error("يجب تسجيل الدخول");
   if (u.user.id === toUser) throw new Error("لا يمكنك إرسال طلب لنفسك");
 
-  // ملحوظة مهمة: ما كانش لازم نقرا completed بتاع المستخدم التاني من
-  // جدول profiles مباشرة، لأن سياسة RLS بتاعة الجدول بتسمح للمستخدم يشوف
-  // صفه بس (مش أي حد تاني). فكان otherDone.data بيرجع null دايماً لأي حد
-  // مش انت، فكانت الدالة بترفض برسالة "لم يُكمل 400 لغز" حتى لو هو فعلاً
-  // خلص. الدالة has_completed_400 هي RPC آمنة (SECURITY DEFINER) بتتخطى
-  // RLS وترجع true/false بس من غير ما تكشف أي بيانات تانية، فهي الطريقة
-  // الصح للتأكد من حالة أي مستخدم غيرك.
   const [meDone, meCompleted, otherCompleted, blocked, existing] = await Promise.all([
     supabase.from("profiles").select("is_muted_until, is_suspended_until").eq("user_id", u.user.id).maybeSingle(),
-    // نفس معيار has_completed_400 بالظبط: last_puzzle_index >= 400 (تخطّى الـ400 لغز
-    // صح أو غلط) وليس عمود completed وحده، عشان محدش يترفض غلط زي اللي كان بيحصل هنا.
     supabase.rpc("has_completed_400", { _uid: u.user.id }),
     supabase.rpc("has_completed_400", { _uid: toUser }),
     supabase.from("blocked_users").select("blocker_id").or(`and(blocker_id.eq.${u.user.id},blocked_id.eq.${toUser}),and(blocker_id.eq.${toUser},blocked_id.eq.${u.user.id})`).limit(1),
@@ -206,7 +197,6 @@ export async function fetchFriendshipStatuses(myId: string, otherIds: string[]) 
   (bl.data ?? []).forEach((r: any) => map.set(r.blocked_id, { status: "blocked" }));
   return map;
 }
-
 
 export async function respondFriendRequest(requestId: string, accept: boolean) {
   const { error } = await supabase
@@ -347,6 +337,19 @@ export async function fetchUnreadCount(myId: string) {
   return count ?? 0;
 }
 
+// عدد الرسايل الغير مقروءة لكل محادثة خاصة على حدة — بيستخدم الـ RPC
+// الجاهزة على الداتابيز (get_my_conversation_unread_counts) اللي بتحسب
+// من عمود messages.read_at
+export async function fetchUnreadCountsByConversation() {
+  const { data, error } = await supabase.rpc("get_my_conversation_unread_counts");
+  if (error) throw error;
+  const counts = new Map<string, number>();
+  for (const row of (data ?? []) as { conversation_id: string; unread_count: number }[]) {
+    counts.set(row.conversation_id, Number(row.unread_count));
+  }
+  return counts;
+}
+
 export async function fetchPresenceForUsers(ids: string[]) {
   if (ids.length === 0) return [];
   const { data } = await supabase
@@ -387,4 +390,4 @@ export async function avatarSignedUrl(path: string | null | undefined): Promise<
 export function invalidateAvatarCache(path?: string | null) {
   if (path) _avatarSignedCache.delete(path);
   else _avatarSignedCache.clear();
-}
+      }
