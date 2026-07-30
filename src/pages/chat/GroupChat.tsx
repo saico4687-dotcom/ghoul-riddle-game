@@ -9,10 +9,12 @@ import {
   leaveGroup,
   setGroupAdmin,
   banGroupMember,
+  unbanGroupMember,
   removeGroupMember,
   regenerateGroupInvite,
   updateGroup,
   markGroupRead,
+  deleteGroup,
 } from "@/lib/chat/groupQueries";
 import { fetchPublicProfilesByIds, type PublicProfile } from "@/lib/chat/queries";
 import { checkSingleLine, filterMessage, MAX_LINE_CHARS } from "@/lib/chat/contentFilter";
@@ -22,6 +24,17 @@ import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,8 +55,19 @@ import {
   UserMinus,
   Loader2,
   RefreshCw,
+  Trash2,
+  UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
+
+// نصوص رسائل النظام (انضم/غادر/حُظر/اتشال) اللي بتتحط جوه الشات
+// نفسها زي واتساب، بدل ما تكون فقاعة رسالة عادية
+const SYSTEM_EVENT_LABEL: Record<string, (name: string) => string> = {
+  joined: (name) => `${name} انضم إلى الجروب`,
+  left: (name) => `${name} غادر الجروب`,
+  banned: (name) => `${name} تم حظره من الجروب`,
+  removed: (name) => `${name} تمت إزالته من الجروب`,
+};
 
 export default function GroupChat() {
   const { id: groupId } = useParams<{ id: string }>();
@@ -56,6 +80,9 @@ export default function GroupChat() {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [membersTab, setMembersTab] = useState<"active" | "banned">("active");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [profiles, setProfiles] = useState<Map<string, PublicProfile>>(new Map());
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -171,6 +198,29 @@ export default function GroupChat() {
     }
   };
 
+  const handleUnban = async (targetUser: string) => {
+    if (!groupId) return;
+    try {
+      await unbanGroupMember(groupId, targetUser);
+      toast.success("تم فك الحظر");
+    } catch (e: any) {
+      toast.error(e?.message ?? "فشل فك الحظر");
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!groupId || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteGroup(groupId);
+      toast.success("تم حذف الجروب");
+      navigate("/chat/groups", { replace: true });
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر حذف الجروب");
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center pt-20">
@@ -207,6 +257,7 @@ export default function GroupChat() {
   }
 
   const activeMembers = members.filter((m) => m.status === "active");
+  const bannedMembers = members.filter((m) => m.status === "banned");
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]" dir="rtl">
@@ -224,6 +275,15 @@ export default function GroupChat() {
             </div>
           </div>
         </button>
+        {isOwner && (
+          <button
+            onClick={() => setDeleteOpen(true)}
+            className="p-1 text-destructive"
+            title="حذف الجروب"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="p-1 text-muted-foreground">
@@ -265,6 +325,18 @@ export default function GroupChat() {
         )}
         {messages.map((m) => {
           const sender = profiles.get(m.sender_id);
+
+          if (m.system_event) {
+            const label = SYSTEM_EVENT_LABEL[m.system_event]?.(sender?.username ?? "عضو") ?? "";
+            return (
+              <div key={m.id} className="flex justify-center py-1">
+                <span className="text-[11px] text-muted-foreground bg-muted/50 rounded-full px-3 py-1 font-typewriter">
+                  {label}
+                </span>
+              </div>
+            );
+          }
+
           const mine = m.sender_id === user!.id;
           return (
             <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} gap-2`}>
@@ -326,58 +398,178 @@ export default function GroupChat() {
         )}
       </div>
 
-      <Dialog open={membersOpen} onOpenChange={setMembersOpen}>
+      <Dialog
+        open={membersOpen}
+        onOpenChange={(o) => {
+          setMembersOpen(o);
+          if (!o) setMembersTab("active");
+        }}
+      >
         <DialogContent dir="rtl">
           <DialogHeader>
-            <DialogTitle>أعضاء الجروب ({activeMembers.length})</DialogTitle>
+            <DialogTitle>أعضاء الجروب</DialogTitle>
           </DialogHeader>
-          <div className="max-h-96 overflow-y-auto space-y-2">
-            {activeMembers.map((m) => {
-              const p = profiles.get(m.user_id);
-              const isSelf = m.user_id === user!.id;
-              return (
-                <div key={m.user_id} className="flex items-center gap-2 p-2 rounded-lg border border-border">
-                  <UserAvatar
-                    url={p?.avatar_url}
-                    username={p?.username}
-                    adFree={isAdFreeActive((p as any)?.ad_free_until)}
-                    size="sm"
+
+          {isStaff ? (
+            <Tabs value={membersTab} onValueChange={(v) => setMembersTab(v as "active" | "banned")}>
+              <TabsList className="w-full">
+                <TabsTrigger value="active" className="flex-1">
+                  الأعضاء ({activeMembers.length})
+                </TabsTrigger>
+                <TabsTrigger value="banned" className="flex-1">
+                  المحظورون ({bannedMembers.length})
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="active" className="max-h-96 overflow-y-auto space-y-2 mt-2">
+                {activeMembers.map((m) => (
+                  <ActiveMemberRow
+                    key={m.user_id}
+                    member={m}
+                    profile={profiles.get(m.user_id)}
+                    isSelf={m.user_id === user!.id}
+                    isStaff={isStaff}
+                    isOwner={isOwner}
+                    onPromote={handlePromote}
+                    onRemove={handleRemove}
+                    onBan={handleBan}
                   />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-typewriter truncate">{p?.username ?? "..."}</div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {m.role === "owner" ? "مالك الجروب" : m.role === "admin" ? "مشرف" : "عضو"}
-                    </div>
-                  </div>
-                  {isStaff && !isSelf && m.role !== "owner" && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="p-1 text-muted-foreground">
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        {isOwner && (
-                          <DropdownMenuItem onClick={() => handlePromote(m.user_id, m.role !== "admin")}>
-                            <ShieldCheck className="w-4 h-4 ml-2" />
-                            {m.role === "admin" ? "إلغاء الإشراف" : "ترقية لمشرف"}
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onClick={() => handleRemove(m.user_id)}>
-                          <UserMinus className="w-4 h-4 ml-2" /> إزالة من الجروب
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleBan(m.user_id)} className="text-destructive">
-                          <Ban className="w-4 h-4 ml-2" /> حظر
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                ))}
+              </TabsContent>
+
+              <TabsContent value="banned" className="max-h-96 overflow-y-auto space-y-2 mt-2">
+                {bannedMembers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground font-typewriter text-center py-6">
+                    لا يوجد محظورون في هذا الجروب
+                  </p>
+                ) : (
+                  bannedMembers.map((m) => {
+                    const p = profiles.get(m.user_id);
+                    return (
+                      <div key={m.user_id} className="flex items-center gap-2 p-2 rounded-lg border border-border">
+                        <UserAvatar url={p?.avatar_url} username={p?.username} size="sm" />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-typewriter truncate">{p?.username ?? "..."}</div>
+                          <div className="text-[10px] text-destructive">محظور من الجروب</div>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => handleUnban(m.user_id)}>
+                          <UserPlus className="w-4 h-4 ml-1" /> فك الحظر
+                        </Button>
+                      </div>
+                    );
+                  })
+                )}
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="max-h-96 overflow-y-auto space-y-2">
+              {activeMembers.map((m) => (
+                <ActiveMemberRow
+                  key={m.user_id}
+                  member={m}
+                  profile={profiles.get(m.user_id)}
+                  isSelf={m.user_id === user!.id}
+                  isStaff={isStaff}
+                  isOwner={isOwner}
+                  onPromote={handlePromote}
+                  onRemove={handleRemove}
+                  onBan={handleBan}
+                />
+              ))}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف الجروب</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل انت متأكد من حذف جروب "{group.name}"؟ هذا الإجراء نهائي ولا يمكن التراجع عنه، وهيتم حذف كل الرسائل والأعضاء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-start gap-2">
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteGroup();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : null}
+              نعم، احذف الجروب
+            </AlertDialogAction>
+            <AlertDialogCancel className="bg-green-600 text-white hover:bg-green-700 border-green-600">
+              لا
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
-  }
+}
+
+// صف عضو نشط واحد جوه ديالوج الأعضاء — بتترسم مرتين (تاب الأعضاء
+// للمشرفين، وقائمة الأعضاء العادية للباقي) فمن الأحسن نستخرجها هنا
+function ActiveMemberRow({
+  member,
+  profile,
+  isSelf,
+  isStaff,
+  isOwner,
+  onPromote,
+  onRemove,
+  onBan,
+}: {
+  member: { user_id: string; role: string };
+  profile?: PublicProfile;
+  isSelf: boolean;
+  isStaff: boolean;
+  isOwner: boolean;
+  onPromote: (targetUser: string, makeAdmin: boolean) => void;
+  onRemove: (targetUser: string) => void;
+  onBan: (targetUser: string) => void;
+}) {
+  const p = profile;
+  return (
+    <div className="flex items-center gap-2 p-2 rounded-lg border border-border">
+      <UserAvatar
+        url={p?.avatar_url}
+        username={p?.username}
+        adFree={isAdFreeActive((p as any)?.ad_free_until)}
+        size="sm"
+      />
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-typewriter truncate">{p?.username ?? "..."}</div>
+        <div className="text-[10px] text-muted-foreground">
+          {member.role === "owner" ? "مالك الجروب" : member.role === "admin" ? "مشرف" : "عضو"}
+        </div>
+      </div>
+      {isStaff && !isSelf && member.role !== "owner" && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="p-1 text-muted-foreground">
+              <MoreVertical className="w-4 h-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {isOwner && (
+              <DropdownMenuItem onClick={() => onPromote(member.user_id, member.role !== "admin")}>
+                <ShieldCheck className="w-4 h-4 ml-2" />
+                {member.role === "admin" ? "إلغاء الإشراف" : "ترقية لمشرف"}
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => onRemove(member.user_id)}>
+              <UserMinus className="w-4 h-4 ml-2" /> إزالة من الجروب
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onBan(member.user_id)} className="text-destructive">
+              <Ban className="w-4 h-4 ml-2" /> حظر
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
+  );
+                    }
