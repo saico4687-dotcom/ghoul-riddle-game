@@ -1,7 +1,11 @@
 // Lightweight client-side profanity filter + rate limiter for chat messages.
 // Server-side moderation triggers (auto_moderate_on_report, is_active_user, RLS) remain source of truth.
 
-const AR_BAD = ["كسم", "شرموط", "خول", "زانية", "منيوك", "قحبة", "طيز"];
+const AR_BAD = [
+  "كسم", "شرموط", "شرموطة", "خول", "زانية", "منيوك", "منيوكة", "قحبة", "طيز",
+  "عرص", "متناك", "متناكة", "ابن كلب", "يا كلب", "كس أمك", "كس امك", "يلعن",
+  "زبي", "نيك", "ينيك", "متناكه", "عاهرة",
+];
 const EN_BAD = ["fuck", "shit", "bitch", "asshole", "cunt", "dick", "pussy", "faggot", "nigger"];
 
 const ALL_BAD = [...AR_BAD, ...EN_BAD];
@@ -49,4 +53,4 @@ export function checkSingleLine(input: string): { ok: boolean; reason?: string }
     };
   }
   return { ok: true };
-}
+  }
