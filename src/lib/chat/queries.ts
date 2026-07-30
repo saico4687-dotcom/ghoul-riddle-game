@@ -23,6 +23,9 @@ export type Message = {
   read_at: string | null;
   delivered_at: string | null;
   deleted_at: string | null;
+  // معرّف الرسالة اللي حصل عليها "رد" — بيتحط لما اليوزر يسحب/يشد
+  // رسالة في الشات ويكتب تحتها زي واتساب. null لو الرسالة مش رد.
+  reply_to_id: string | null;
 };
 
 export type Conversation = {
@@ -241,7 +244,7 @@ export async function fetchMessagesBefore(conversationId: string, beforeIso: str
   return ((data ?? []) as Message[]).slice().reverse();
 }
 
-export async function sendMessage(conversationId: string, senderId: string, body: string) {
+export async function sendMessage(conversationId: string, senderId: string, body: string, replyToId?: string | null) {
   const { filterMessage, checkRateLimit } = await import("./contentFilter");
   const rl = checkRateLimit(conversationId);
   if (!rl.ok) {
@@ -251,7 +254,13 @@ export async function sendMessage(conversationId: string, senderId: string, body
   if (!cleaned) throw new Error("رسالة فارغة");
   const { data, error } = await supabase
     .from("messages")
-    .insert({ conversation_id: conversationId, sender_id: senderId, body: cleaned, delivered_at: new Date().toISOString() })
+    .insert({
+      conversation_id: conversationId,
+      sender_id: senderId,
+      body: cleaned,
+      delivered_at: new Date().toISOString(),
+      reply_to_id: replyToId ?? null,
+    })
     .select()
     .single();
   if (error) throw error;
@@ -390,4 +399,4 @@ export async function avatarSignedUrl(path: string | null | undefined): Promise<
 export function invalidateAvatarCache(path?: string | null) {
   if (path) _avatarSignedCache.delete(path);
   else _avatarSignedCache.clear();
-      }
+}
