@@ -15,6 +15,9 @@ export type Group = {
   invite_enabled: boolean;
   created_at: string;
   updated_at: string;
+  // بتتحدث تلقائيًا من trigger on_group_message_inserted لما تتبعت رسالة جديدة
+  last_message_at?: string | null;
+  last_message_preview?: string | null;
 };
 
 export type GroupMember = {
@@ -85,6 +88,26 @@ export async function updateGroup(groupId: string, patch: Partial<Pick<Group, "n
 export async function deleteGroup(groupId: string) {
   const { error } = await supabase.from("groups").delete().eq("id", groupId);
   if (error) throw new Error(error.message || "تعذر حذف الجروب");
+}
+
+// عدد الرسايل الغير مقروءة لكل جروب على حدة — بيستخدم الـ RPC الجاهزة
+// على الداتابيز (get_my_group_unread_counts) اللي بتحسب من عمود
+// group_messages.read_at، مش من جدول notifications
+export async function fetchUnreadCountsByGroup() {
+  const { data, error } = await supabase.rpc("get_my_group_unread_counts");
+  if (error) throw error;
+  const counts = new Map<string, number>();
+  for (const row of (data ?? []) as { group_id: string; unread_count: number }[]) {
+    counts.set(row.group_id, Number(row.unread_count));
+  }
+  return counts;
+}
+
+// بتتنادى لما المستخدم يفتح شات جروب، عشان تصفّر شارة الجروب ده بس
+// (بتنادي RPC الجاهزة mark_group_read)
+export async function markGroupRead(groupId: string) {
+  const { error } = await supabase.rpc("mark_group_read", { _group_id: groupId });
+  if (error) console.error("[markGroupRead]", error);
 }
 
 // ---------- Members ----------
@@ -195,4 +218,4 @@ export async function reportGroupContent(input: {
     reason: input.reason.trim(),
   });
   if (error) throw new Error(error.message || "تعذر إرسال البلاغ");
-  }
+}
