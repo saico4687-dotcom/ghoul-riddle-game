@@ -7,6 +7,7 @@ import {
   listIncomingRequests,
   fetchPublicProfilesByIds,
   fetchPresenceForUsers,
+  fetchUnreadCountsByConversation,
   isOnline,
   type PublicProfile,
   type Conversation,
@@ -21,15 +22,17 @@ export default function ChatHome() {
   const [convos, setConvos] = useState<Conversation[]>([]);
   const [profiles, setProfiles] = useState<Map<string, PublicProfile>>(new Map());
   const [presence, setPresence] = useState<Map<string, any>>(new Map());
+  const [unreadCounts, setUnreadCounts] = useState<Map<string, number>>(new Map());
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!user) return;
-    const [fr, cs, inc] = await Promise.all([
+    const [fr, cs, inc, unread] = await Promise.all([
       listFriends(user.id),
       listMyConversations(user.id),
       listIncomingRequests(user.id),
+      fetchUnreadCountsByConversation(),
     ]);
     const friendIds = fr.map((f: any) => f.friend_id);
     const otherIds = cs.map((c) => (c.user_a === user.id ? c.user_b : c.user_a));
@@ -44,6 +47,7 @@ export default function ChatHome() {
     setPresence(presMap);
     setFriends(friendIds.map((id: string) => pm.get(id)).filter(Boolean) as PublicProfile[]);
     setConvos(cs);
+    setUnreadCounts(unread);
     setPendingCount(inc.length);
     setLoading(false);
   }, [user]);
@@ -57,10 +61,10 @@ export default function ChatHome() {
       .on("postgres_changes", { event: "*", schema: "public", table: "user_presence" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "friend_requests", filter: `to_user=eq.${user.id}` }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "friends", filter: `user_id=eq.${user.id}` }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [user, load]);
-
 
   if (loading) return <div className="flex justify-center pt-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
@@ -144,20 +148,30 @@ export default function ChatHome() {
               const otherId = c.user_a === user!.id ? c.user_b : c.user_a;
               const p = profiles.get(otherId);
               const online = isOnline(presence.get(otherId));
+              const unread = unreadCounts.get(c.id) ?? 0;
               return (
                 <li key={c.id}>
                   <Link to={`/chat/c/${c.id}`} className="flex items-center gap-3 card-horror p-3 hover:border-primary/60 transition-colors">
                     <UserAvatar url={p?.avatar_url} username={p?.username} online={online} />
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-baseline">
-                        <span className="font-horror text-primary truncate">{p?.username ?? "..."}</span>
+                        <span className={`font-horror truncate ${unread > 0 ? "text-primary" : "text-primary/90"}`}>{p?.username ?? "..."}</span>
                         {c.last_message_at && (
-                          <span className="text-[10px] text-muted-foreground shrink-0 mr-2">
+                          <span className={`text-[10px] shrink-0 mr-2 ${unread > 0 ? "text-primary" : "text-muted-foreground"}`}>
                             {new Date(c.last_message_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-foreground/70 truncate font-typewriter">{c.last_message_preview ?? "ابدأ المحادثة..."}</p>
+                      <div className="flex justify-between items-center gap-2">
+                        <p className={`text-xs truncate font-typewriter ${unread > 0 ? "text-foreground font-bold" : "text-foreground/70"}`}>
+                          {c.last_message_preview ?? "ابدأ المحادثة..."}
+                        </p>
+                        {unread > 0 && (
+                          <span className="bg-destructive text-destructive-foreground text-[10px] rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shrink-0">
+                            {unread > 9 ? "9+" : unread}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </Link>
                 </li>
@@ -168,4 +182,4 @@ export default function ChatHome() {
       </section>
     </div>
   );
-}
+        }
