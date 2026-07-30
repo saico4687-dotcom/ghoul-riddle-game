@@ -15,22 +15,44 @@ import { supabase } from "@/integrations/supabase/client";
  *
  * Call this right before any such write. If it returns false, stop and tell
  * the user their session expired instead of letting the request go through.
+ *
+ * ملاحظة: أول ما التطبيق يرجع من الخلفية بعد فترة، أول نداء لـ
+ * getSession()/refreshSession() ممكن يفشل بسبب لحظة اتصال الشبكة (مش لأن
+ * الجلسة فعلاً انتهت)، فده كان بيسبب رسالة "انتهت الجلسة" غلط حتى لو
+ * اليوزر لسه مسجل دخول فعلاً. عشان كده بنعمل محاولة واحدة إضافية (retry)
+ * قبل ما نرجع false نهائياً.
  */
 export async function ensureFreshSession(): Promise<boolean> {
   try {
     const { data, error } = await supabase.auth.getSession();
-    if (error || !data.session) return false;
+
+    // مفيش session خالص في الذاكرة/التخزين المحلي — ده مختلف عن "قربت
+    // تنتهي"، بس برضه ممكن يكون مؤقت (مشكلة قراءة من التخزين لحظة إفاقة
+    // التطبيق) فبنجرب refreshSession() قبل ما نستسلم، لأنه بيقرا الـ
+    // refresh token من التخزين مباشرة وممكن ينجح حتى لو getSession() فشل.
+    if (error || !data.session) {
+      const first = await supabase.auth.refreshSession();
+      if (!first.error && first.data.session) return true;
+
+      await new Promise((r) => setTimeout(r, 700));
+      const second = await supabase.auth.refreshSession();
+      return !second.error && !!second.data.session;
+    }
 
     const session = data.session;
     const expiresAtMs = session.expires_at ? session.expires_at * 1000 : 0;
     const isExpiringSoon = !expiresAtMs || expiresAtMs - Date.now() < 60_000;
 
-    if (isExpiringSoon) {
-      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-      if (refreshError || !refreshed.session) return false;
-    }
+    if (!isExpiringSoon) return true;
 
-    return true;
+    const refreshed = await supabase.auth.refreshSession();
+    if (!refreshed.error && refreshed.data.session) return true;
+
+    // ريتراي مرة واحدة بس — أحياناً أول محاولة refresh بتفشل بسبب مشكلة
+    // شبكة لحظية جداً، مش لأن الـ refresh token فعلاً باظ.
+    await new Promise((r) => setTimeout(r, 700));
+    const retry = await supabase.auth.refreshSession();
+    return !retry.error && !!retry.data.session;
   } catch {
     return false;
   }
