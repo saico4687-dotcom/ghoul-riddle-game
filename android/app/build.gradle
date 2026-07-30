@@ -63,6 +63,11 @@ dependencies {
     // Unity LevelPlay (ironSource) mediation SDK
     implementation "com.unity3d.ads-mediation:mediation-sdk:$levelPlayMediationSdkVersion"
 
+    // InMobi adapter — لازم عشان الشبكة اللي فعّلتها في لوحة LevelPlay
+    // (InMobi) تقدر فعليًا تعرض إعلانات؛ التفعيل من الداشبورد لوحده مش كفاية
+    implementation "com.unity3d.ads-mediation:inmobi-adapter:5.4.0"
+    implementation "com.inmobi.monetization:inmobi-ads-kotlin:11.1.1"
+
     // Kotlin stdlib - required by LevelPlay SDK 7.0.4+
     implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.24"
 
