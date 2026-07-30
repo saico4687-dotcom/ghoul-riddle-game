@@ -162,9 +162,11 @@ export async function fetchGroupMessages(groupId: string, limit = 50) {
 }
 
 export async function sendGroupMessage(groupId: string, senderId: string, body?: string | null, imageUrl?: string | null) {
+  const { filterMessage } = await import("./contentFilter");
+  const cleanBody = body?.trim() ? filterMessage(body.trim()) : null;
   const { data, error } = await supabase
     .from("group_messages")
-    .insert({ group_id: groupId, sender_id: senderId, body: body?.trim() || null, image_url: imageUrl ?? null })
+    .insert({ group_id: groupId, sender_id: senderId, body: cleanBody, image_url: imageUrl ?? null })
     .select()
     .single();
   if (error) throw new Error(error.message || "تعذر إرسال الرسالة");
@@ -193,4 +195,4 @@ export async function reportGroupContent(input: {
     reason: input.reason.trim(),
   });
   if (error) throw new Error(error.message || "تعذر إرسال البلاغ");
-    }
+  }
