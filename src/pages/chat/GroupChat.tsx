@@ -14,7 +14,7 @@ import {
   updateGroup,
 } from "@/lib/chat/groupQueries";
 import { fetchPublicProfilesByIds, type PublicProfile } from "@/lib/chat/queries";
-import { checkSingleLine, MAX_LINE_CHARS } from "@/lib/chat/contentFilter";
+import { checkSingleLine, filterMessage, MAX_LINE_CHARS } from "@/lib/chat/contentFilter";
 import { noteChatMessageSent, showInterstitial } from "@/lib/adsMediation";
 import { APP_WEB_ORIGIN } from "@/lib/appOrigin";
 import UserAvatar from "@/components/chat/UserAvatar";
@@ -82,7 +82,7 @@ export default function GroupChat() {
 
     setSending(true);
     try {
-      const m = await sendGroupMessage(groupId, user.id, text.trim());
+      const m = await sendGroupMessage(groupId, user.id, filterMessage(text.trim()));
       setMessages((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, m]));
       setText("");
 
@@ -378,4 +378,4 @@ export default function GroupChat() {
       </Dialog>
     </div>
   );
-      }
+  }
