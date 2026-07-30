@@ -28,6 +28,8 @@ export type GroupMember = {
   joined_at: string;
 };
 
+export type GroupSystemEvent = "joined" | "left" | "banned" | "removed";
+
 export type GroupMessage = {
   id: string;
   group_id: string;
@@ -36,6 +38,10 @@ export type GroupMessage = {
   image_url: string | null;
   created_at: string;
   deleted_at: string | null;
+  // بتتحدد تلقائياً من الداتابيز (join_group_by_invite / leave_group /
+  // ban_group_member / remove_group_member) — لو موجودة يبقى الرسالة دي
+  // رسالة نظام (انضم/غادر/حُظر/اتشال) مش رسالة عادية من اليوزر
+  system_event?: GroupSystemEvent | null;
 };
 
 // ---------- Groups ----------
@@ -218,4 +224,4 @@ export async function reportGroupContent(input: {
     reason: input.reason.trim(),
   });
   if (error) throw new Error(error.message || "تعذر إرسال البلاغ");
-}
+                                                              }
