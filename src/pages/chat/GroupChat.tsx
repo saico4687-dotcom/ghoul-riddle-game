@@ -21,6 +21,9 @@ import { checkSingleLine, filterMessage, MAX_LINE_CHARS } from "@/lib/chat/conte
 import { noteChatMessageSent, showInterstitial } from "@/lib/adsMediation";
 import { APP_WEB_ORIGIN } from "@/lib/appOrigin";
 import UserAvatar from "@/components/chat/UserAvatar";
+import MediaComposerButtons from "@/components/chat/MediaComposerButtons";
+import MediaMessageBubble from "@/components/chat/MediaMessageBubble";
+import { sendGroupMediaMessage } from "@/lib/chat/mediaUpload";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -124,6 +127,29 @@ export default function GroupChat() {
       toast.error(e?.message ?? "تعذر إرسال الرسالة");
     } finally {
       setSending(false);
+    }
+  };
+
+  const handlePickFile = async (file: File) => {
+    if (!user || !groupId) return;
+    try {
+      const m = await sendGroupMediaMessage(groupId, user.id, file, file.type);
+      setMessages((cur) => (cur.some((x) => x.id === (m as any).id) ? cur : [...cur, m as any]));
+      if (noteChatMessageSent() && !isAdFree) {
+        void showInterstitial("chat");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر إرسال الملف");
+    }
+  };
+
+  const handleRecordedAudio = async (blob: Blob, mime: string, durationSeconds: number) => {
+    if (!user || !groupId) return;
+    try {
+      const m = await sendGroupMediaMessage(groupId, user.id, blob, mime, { durationSeconds });
+      setMessages((cur) => (cur.some((x) => x.id === (m as any).id) ? cur : [...cur, m as any]));
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر إرسال الرسالة الصوتية");
     }
   };
 
@@ -354,7 +380,22 @@ export default function GroupChat() {
                 }`}
               >
                 {!mine && <div className="text-[10px] text-primary font-horror mb-0.5">{sender?.username ?? "..."}</div>}
-                {m.body && <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>}
+                {m.media_type ? (
+                  <MediaMessageBubble
+                    messageId={m.id}
+                    kind="group"
+                    mediaType={m.media_type}
+                    mediaPath={m.media_path}
+                    mediaMime={m.media_mime}
+                    mediaIv={m.media_iv}
+                    mediaKey={m.media_key}
+                    mediaDeletedAt={m.media_deleted_at}
+                    durationSeconds={m.media_duration_seconds}
+                    mine={mine}
+                  />
+                ) : (
+                  m.body && <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
+                )}
                 <div className="text-[9px] opacity-70 mt-1 text-left">
                   {new Date(m.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}
                 </div>
@@ -369,6 +410,11 @@ export default function GroupChat() {
         {canPost ? (
           <>
             <div className="flex gap-2 items-end">
+              <MediaComposerButtons
+                disabled={sending}
+                onPickFile={handlePickFile}
+                onRecordedAudio={handleRecordedAudio}
+              />
               <Textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
