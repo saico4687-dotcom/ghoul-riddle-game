@@ -45,6 +45,19 @@ export type GroupMessage = {
   // معرّف رسالة الجروب اللي حصل عليها "رد" — بيتحط لما اليوزر يسحب/يشد
   // رسالة في شات الجروب ويكتب تحتها زي واتساب. null لو مش رد.
   reply_to_id: string | null;
+  // وسائط مؤقتة مشفّرة (صورة/فيديو/صوت) — نفس آلية الرسائل الفردية.
+  // المفتاح والـ IV بيتمسحوا من الصف نفسه أول ما الملف يتمسح من الـ
+  // storage (استلام أو انتهاء 72 ساعة)، فـ media_deleted_at != null
+  // معناها الوسائط خلصت ومفيش داعي نحاول نفك تشفيرها.
+  media_path: string | null;
+  media_type: "image" | "audio" | "video" | null;
+  media_mime: string | null;
+  media_size_bytes: number | null;
+  media_duration_seconds: number | null;
+  media_iv: string | null;
+  media_key: string | null;
+  media_expires_at: string | null;
+  media_deleted_at: string | null;
 };
 
 // ---------- Groups ----------
