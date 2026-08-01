@@ -6,6 +6,8 @@ import { isAdFreeActive } from "@/lib/chat/adFree";
 import { useGroupChat } from "@/hooks/useGroupChat";
 import {
   sendGroupMessage,
+  editGroupMessage,
+  deleteGroupMessageForMe,
   leaveGroup,
   setGroupAdmin,
   banGroupMember,
@@ -22,11 +24,13 @@ import {
   createGroupPoll,
   fetchGroupPolls,
   voteOnPoll,
+  softDeleteGroupMessage,
   type GroupPoll,
   type GroupPollOption,
   type GroupPollVote,
 } from "@/lib/chat/groupQueries";
-import { fetchPublicProfilesByIds, type PublicProfile } from "@/lib/chat/queries";
+import { fetchPublicProfilesByIds, canEditMessage, canDeleteForEveryone, type PublicProfile } from "@/lib/chat/queries";
+import { renderMessageBody } from "@/lib/chat/formatting";
 import { checkSingleLine, filterMessage, MAX_LINE_CHARS } from "@/lib/chat/contentFilter";
 import { noteChatMessageSent, showInterstitial } from "@/lib/adsMediation";
 import { APP_WEB_ORIGIN } from "@/lib/appOrigin";
@@ -81,24 +85,13 @@ import {
   UserPlus,
   Timer,
   BarChart3,
+  Pencil,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 // نصوص رسائل النظام (انضم/غادر/حُظر/اتشال) اللي بتتحط جوه الشات
 // نفسها زي واتساب، بدل ما تكون فقاعة رسالة عادية
-// بيلوّن أي @username جوه نص الرسالة عشان يبان كمنشن (زي واتساب)
-function renderWithMentions(body: string) {
-  const parts = body.split(/(@[A-Za-z0-9_\u0600-\u06FF]+)/g);
-  return parts.map((p, i) =>
-    p.startsWith("@") ? (
-      <span key={i} className="font-bold underline decoration-dotted">
-        {p}
-      </span>
-    ) : (
-      <span key={i}>{p}</span>
-    )
-  );
-}
 
 const SYSTEM_EVENT_LABEL: Record<string, (name: string) => string> = {
   joined: (name) => `${name} انضم إلى الجروب`,
@@ -116,6 +109,7 @@ export default function GroupChat() {
     useGroupChat(groupId);
 
   const [text, setText] = useState("");
+  const [editingMessage, setEditingMessage] = useState<{ id: string; body: string } | null>(null);
   const [sending, setSending] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [membersTab, setMembersTab] = useState<"active" | "banned">("active");
@@ -191,6 +185,17 @@ export default function GroupChat() {
 
     setSending(true);
     try {
+      if (editingMessage) {
+        const newBody = filterMessage(text.trim());
+        await editGroupMessage(editingMessage.id, newBody);
+        setMessages((cur) =>
+          cur.map((x) => (x.id === editingMessage.id ? { ...x, body: newBody, edited_at: new Date().toISOString() } : x))
+        );
+        setEditingMessage(null);
+        setText("");
+        return;
+      }
+
       const cleanBody = filterMessage(text.trim());
       const m = await sendGroupMessage(groupId, user.id, cleanBody);
       setMessages((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, m]));
@@ -212,6 +217,38 @@ export default function GroupChat() {
       toast.error(e?.message ?? "تعذر إرسال الرسالة");
     } finally {
       setSending(false);
+    }
+  };
+
+  const startEdit = (m: { id: string; body: string | null }) => {
+    if (!m.body) return;
+    setEditingMessage({ id: m.id, body: m.body });
+    setText(m.body);
+  };
+
+  const cancelEdit = () => {
+    setEditingMessage(null);
+    setText("");
+  };
+
+  const handleDeleteForMe = async (messageId: string) => {
+    if (!user) return;
+    try {
+      await deleteGroupMessageForMe(messageId, user.id);
+      setMessages((cur) =>
+        cur.map((x) => (x.id === messageId ? { ...x, deleted_for: [...(x.deleted_for ?? []), user.id] } : x))
+      );
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر حذف الرسالة");
+    }
+  };
+
+  const handleDeleteForEveryone = async (messageId: string) => {
+    try {
+      await softDeleteGroupMessage(messageId);
+      setMessages((cur) => (cur.map((x) => (x.id === messageId ? { ...x, deleted_at: new Date().toISOString() } : x))));
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر حذف الرسالة");
     }
   };
 
@@ -493,7 +530,9 @@ export default function GroupChat() {
             لا توجد رسائل بعد — ابدأ المحادثة!
           </p>
         )}
-        {dropExpired(messages).map((m) => {
+        {dropExpired(messages)
+          .filter((m) => !m.deleted_for?.includes(user!.id))
+          .map((m) => {
           const sender = profiles.get(m.sender_id);
 
           if (m.system_event) {
@@ -509,8 +548,9 @@ export default function GroupChat() {
 
           const mine = m.sender_id === user!.id;
           const poll = polls.get(m.id);
+          const isTextMessage = !poll && !m.media_type;
           return (
-            <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} gap-2`}>
+            <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} gap-2 group`}>
               {!mine && (
                 <UserAvatar
                   url={sender?.avatar_url}
@@ -520,7 +560,7 @@ export default function GroupChat() {
                 />
               )}
               <div
-                className={`max-w-[75%] rounded-lg px-3 py-2 ${
+                className={`max-w-[75%] relative rounded-lg px-3 py-2 ${
                   mine ? "bg-primary text-primary-foreground" : "bg-card border border-border"
                 }`}
               >
@@ -547,12 +587,46 @@ export default function GroupChat() {
                     durationSeconds={m.media_duration_seconds}
                     mine={mine}
                   />
+                ) : m.deleted_at ? (
+                  <p className="text-sm italic opacity-70">تم حذف هذه الرسالة</p>
                 ) : (
-                  m.body && <p className="text-sm whitespace-pre-wrap break-words">{renderWithMentions(m.body)}</p>
+                  m.body && <p className="text-sm whitespace-pre-wrap break-words">{renderMessageBody(m.body)}</p>
                 )}
                 {!poll && (
-                  <div className="text-[9px] opacity-70 mt-1 text-left">
-                    {new Date(m.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}
+                  <div className="text-[9px] opacity-70 mt-1 flex items-center gap-1 justify-end">
+                    {m.edited_at && !m.deleted_at && <span>معدَّلة</span>}
+                    <span>{new Date(m.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                )}
+                {isTextMessage && !m.deleted_at && (
+                  <div
+                    className={`absolute top-1 opacity-0 group-hover:opacity-100 transition-opacity ${mine ? "left-1" : "right-1"}`}
+                  >
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="p-0.5 rounded-full bg-black/10 hover:bg-black/20">
+                          <MoreVertical className="w-3 h-3" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        {mine && m.body && canEditMessage(m) && (
+                          <DropdownMenuItem onClick={() => startEdit({ id: m.id, body: m.body })}>
+                            <Pencil className="w-3 h-3 ml-2" />
+                            تعديل
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => handleDeleteForMe(m.id)}>
+                          <Trash2 className="w-3 h-3 ml-2" />
+                          حذف من عندي
+                        </DropdownMenuItem>
+                        {mine && canDeleteForEveryone(m) && (
+                          <DropdownMenuItem onClick={() => handleDeleteForEveryone(m.id)} className="text-destructive">
+                            <Trash2 className="w-3 h-3 ml-2" />
+                            حذف لدى الجميع
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 )}
               </div>
@@ -563,6 +637,17 @@ export default function GroupChat() {
       </div>
 
       <div className="border-t border-border p-2 bg-card">
+        {editingMessage && (
+          <div className="flex items-center gap-2 bg-muted/60 border-r-2 border-primary rounded-md px-3 py-1.5 mb-2">
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-bold text-primary">تعديل الرسالة</div>
+              <div className="text-xs text-muted-foreground truncate">{editingMessage.body}</div>
+            </div>
+            <button onClick={cancelEdit} className="p-1 text-muted-foreground hover:text-foreground shrink-0" aria-label="إلغاء التعديل">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         {canPost ? (
           <>
             {mentionQuery !== null && (
@@ -599,7 +684,7 @@ export default function GroupChat() {
                     send();
                   }
                 }}
-                placeholder="اكتب رسالة (سطر واحد)..."
+                placeholder={editingMessage ? "عدّل الرسالة..." : "اكتب رسالة (سطر واحد)..."}
                 rows={1}
                 className="resize-none min-h-[40px] max-h-32"
                 maxLength={MAX_LINE_CHARS}
