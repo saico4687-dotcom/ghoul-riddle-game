@@ -14,6 +14,9 @@ import {
   fetchPublicProfile,
   fetchPresenceForUsers,
   isOnline,
+  DISAPPEARING_OPTIONS,
+  setConversationDisappearing,
+  dropExpiredMessages,
   type Message,
   type Reaction,
   type PublicProfile,
@@ -24,12 +27,17 @@ import MessageBubble from "@/components/chat/MessageBubble";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, ArrowRight, Ban, Flag, MoreVertical, X } from "lucide-react";
+import { Send, ArrowRight, Ban, Flag, MoreVertical, X, Timer } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import ReportDialog from "@/components/chat/ReportDialog";
 import { blockUser } from "@/lib/chat/queries";
@@ -65,6 +73,7 @@ export default function ChatConversation() {
   const lastTypingSentRef = useRef(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [disappearingSeconds, setDisappearingSecondsState] = useState<number | null>(null);
 
   useEffect(() => {
     if (!conversationId || !user) return;
@@ -73,6 +82,7 @@ export default function ChatConversation() {
     const init = async () => {
       const { data: conv } = await supabase.from("conversations").select("*").eq("id", conversationId).maybeSingle();
       if (!conv || !active) return;
+      setDisappearingSecondsState((conv as any).disappearing_seconds ?? null);
       const otherId = conv.user_a === user.id ? conv.user_b : conv.user_a;
       const [p, pres, msgs] = await Promise.all([
         fetchPublicProfile(otherId),
@@ -259,6 +269,33 @@ export default function ChatConversation() {
             <button className="p-1 text-muted-foreground"><MoreVertical className="w-5 h-5" /></button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Timer className="w-4 h-4 ml-2" /> الرسائل المؤقتة
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup
+                  value={disappearingSeconds === null ? "off" : String(disappearingSeconds)}
+                  onValueChange={async (v) => {
+                    if (!conversationId) return;
+                    const seconds = v === "off" ? null : Number(v);
+                    try {
+                      await setConversationDisappearing(conversationId, seconds);
+                      setDisappearingSecondsState(seconds);
+                      toast.success("تم تحديث إعداد الرسائل المؤقتة");
+                    } catch (e: any) {
+                      toast.error(e?.message ?? "تعذر تحديث الإعداد");
+                    }
+                  }}
+                >
+                  {DISAPPEARING_OPTIONS.map((opt) => (
+                    <DropdownMenuRadioItem key={opt.label} value={opt.seconds === null ? "off" : String(opt.seconds)}>
+                      {opt.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
             <DropdownMenuItem onClick={() => { setReportMsgId(undefined); setReportOpen(true); }}>
               <Flag className="w-4 h-4 ml-2" />الإبلاغ عن المستخدم
             </DropdownMenuItem>
@@ -276,7 +313,7 @@ export default function ChatConversation() {
         {!hasMore && messages.length > 0 && (
           <div className="text-center text-[10px] text-muted-foreground/70 py-1">بداية المحادثة</div>
         )}
-        {messages.map((m) => {
+        {dropExpiredMessages(messages).map((m) => {
           const replied = getReplied(m.reply_to_id);
           return (
             <MessageBubble
