@@ -34,7 +34,8 @@ import {
   type GroupPollVote,
 } from "@/lib/chat/groupQueries";
 import { fetchPublicProfilesByIds, canEditMessage, canDeleteForEveryone, type PublicProfile } from "@/lib/chat/queries";
-import { renderMessageBody } from "@/lib/chat/formatting";
+import { renderMessageBody, isLocationBody, parseLocationBody, makeLocationBody } from "@/lib/chat/formatting";
+import LocationMessage from "@/components/chat/LocationMessage";
 import { checkSingleLine, filterMessage, MAX_LINE_CHARS } from "@/lib/chat/contentFilter";
 import { noteChatMessageSent, showInterstitial } from "@/lib/adsMediation";
 import { APP_WEB_ORIGIN } from "@/lib/appOrigin";
@@ -343,6 +344,20 @@ export default function GroupChat() {
     }
   };
 
+  const handleShareLocation = async () => {
+    if (!user || !groupId) return;
+    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
+    }).catch(() => null);
+    if (!position) {
+      toast.error("تعذر الوصول للموقع — تأكد من إذن الموقع");
+      return;
+    }
+    const body = makeLocationBody(position.coords.latitude, position.coords.longitude);
+    const m = await sendGroupMessage(groupId, user.id, body);
+    setMessages((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, m]));
+  };
+
   const copyInvite = async () => {
     if (!group) return;
     const link = `${APP_WEB_ORIGIN}/chat/groups/join/${group.invite_code}`;
@@ -566,7 +581,7 @@ export default function GroupChat() {
           <div className="flex-1 min-w-0">
             <div className="text-[10px] text-primary font-bold">رسالة مثبتة</div>
             <div className="text-xs text-muted-foreground truncate">
-              {pinnedMessage.body ? renderMessageBody(pinnedMessage.body) : "📎 وسائط"}
+              {pinnedMessage.body ? (isLocationBody(pinnedMessage.body) ? "📍 موقع مُشارك" : renderMessageBody(pinnedMessage.body)) : "📎 وسائط"}
             </div>
           </div>
           {isStaff && (
@@ -650,7 +665,16 @@ export default function GroupChat() {
                 ) : m.deleted_at ? (
                   <p className="text-sm italic opacity-70">تم حذف هذه الرسالة</p>
                 ) : (
-                  m.body && <p className="text-sm whitespace-pre-wrap break-words">{renderMessageBody(m.body)}</p>
+                  m.body && (
+                    isLocationBody(m.body) ? (
+                      (() => {
+                        const loc = parseLocationBody(m.body);
+                        return loc ? <LocationMessage lat={loc.lat} lng={loc.lng} /> : null;
+                      })()
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap break-words">{renderMessageBody(m.body)}</p>
+                    )
+                  )
                 )}
                 {!poll && (
                   <div className="text-[9px] opacity-70 mt-1 flex items-center gap-1 justify-end">
@@ -740,6 +764,7 @@ export default function GroupChat() {
                 disabled={sending}
                 onPickFile={handlePickFile}
                 onRecordedAudio={handleRecordedAudio}
+                onShareLocation={handleShareLocation}
               />
               <button
                 type="button"
