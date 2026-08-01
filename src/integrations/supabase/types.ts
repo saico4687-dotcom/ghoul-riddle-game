@@ -417,6 +417,7 @@ export type Database = {
           last_message_at: string | null
           last_message_preview: string | null
           lock_chat: boolean
+          max_members: number
           muted_by: string[]
           name: string
           owner_id: string
@@ -437,6 +438,7 @@ export type Database = {
           last_message_at?: string | null
           last_message_preview?: string | null
           lock_chat?: boolean
+          max_members?: number
           muted_by?: string[]
           name: string
           owner_id: string
@@ -457,6 +459,7 @@ export type Database = {
           last_message_at?: string | null
           last_message_preview?: string | null
           lock_chat?: boolean
+          max_members?: number
           muted_by?: string[]
           name?: string
           owner_id?: string
@@ -1392,6 +1395,8 @@ export type Database = {
         Args: { _conversation_id: string }
         Returns: undefined
       }
+      mark_group_message_view_once: { Args: { _message_id: string }; Returns: boolean }
+      mark_message_view_once: { Args: { _message_id: string }; Returns: boolean }
       pin_group_message: {
         Args: { _duration_hours: number | null; _group_id: string; _message_id: string }
         Returns: undefined
