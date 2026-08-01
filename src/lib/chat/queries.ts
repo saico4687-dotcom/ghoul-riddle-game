@@ -23,6 +23,10 @@ export type Message = {
   read_at: string | null;
   delivered_at: string | null;
   deleted_at: string | null;
+  // وقت آخر تعديل لنص الرسالة (خلال 15 دقيقة من الإرسال فقط، ينفَّذ التريجر ده في الداتابيز)
+  edited_at: string | null;
+  // قائمة الـ user_id اللي عملوا "حذف من عندي" للرسالة دي (الرسالة تفضل موجودة للطرف التاني)
+  deleted_for: string[];
   // معرّف الرسالة اللي حصل عليها "رد" — بيتحط لما اليوزر يسحب/يشد
   // رسالة في الشات ويكتب تحتها زي واتساب. null لو الرسالة مش رد.
   reply_to_id: string | null;
@@ -30,6 +34,17 @@ export type Message = {
   // وقت الإدراج حسب إعداد conversations.disappearing_seconds.
   expires_at?: string | null;
 };
+
+export const EDIT_WINDOW_MS = 15 * 60 * 1000;
+export const DELETE_FOR_EVERYONE_WINDOW_MS = 60 * 60 * 60 * 1000;
+
+export function canEditMessage(m: Pick<Message, "created_at" | "deleted_at">) {
+  return !m.deleted_at && Date.now() - new Date(m.created_at).getTime() <= EDIT_WINDOW_MS;
+}
+
+export function canDeleteForEveryone(m: Pick<Message, "created_at" | "deleted_at">) {
+  return !m.deleted_at && Date.now() - new Date(m.created_at).getTime() <= DELETE_FOR_EVERYONE_WINDOW_MS;
+}
 
 export type Conversation = {
   id: string;
@@ -270,6 +285,31 @@ export async function sendMessage(conversationId: string, senderId: string, body
     .single();
   if (error) throw error;
   return data as Message;
+}
+
+/** تعديل نص رسالة فردية — مسموح للمرسل بس، وخلال 15 دقيقة من الإرسال (بينفَّذ التريجر ده في الداتابيز) */
+export async function editMessage(messageId: string, newBody: string) {
+  const { error } = await supabase.from("messages").update({ body: newBody }).eq("id", messageId);
+  if (error) throw error;
+}
+
+/** حذف من عندي فقط — الرسالة تفضل ظاهرة للطرف التاني */
+export async function deleteMessageForMe(messageId: string, myId: string) {
+  const { data: current, error: fetchErr } = await supabase
+    .from("messages")
+    .select("deleted_for")
+    .eq("id", messageId)
+    .single();
+  if (fetchErr) throw fetchErr;
+  const next = Array.from(new Set([...(current?.deleted_for ?? []), myId]));
+  const { error } = await supabase.from("messages").update({ deleted_for: next }).eq("id", messageId);
+  if (error) throw error;
+}
+
+/** حذف للجميع — مسموح للمرسل بس، وخلال 60 ساعة من الإرسال */
+export async function deleteMessageForEveryone(messageId: string) {
+  const { error } = await supabase.from("messages").update({ deleted_at: new Date().toISOString() }).eq("id", messageId);
+  if (error) throw error;
 }
 
 export async function markConversationRead(conversationId: string, _myId: string) {
