@@ -121,7 +121,7 @@ export default function MessageBubble({
       >
         <div
           className={cn(
-            "rounded-2xl px-4 py-2 shadow-md break-words whitespace-pre-wrap font-typewriter text-sm",
+            "rounded-2xl px-4 py-2 shadow-md break-words whitespace-pre-wrap font-typewriter text-base",
             mine
               ? "bg-primary text-primary-foreground rounded-bl-sm"
               : "bg-card border border-primary/20 text-foreground rounded-br-sm"
