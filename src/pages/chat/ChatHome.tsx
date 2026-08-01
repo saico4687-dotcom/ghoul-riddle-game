@@ -13,6 +13,7 @@ import {
   type Conversation,
 } from "@/lib/chat/queries";
 import UserAvatar from "@/components/chat/UserAvatar";
+import StoriesBar from "@/components/chat/StoriesBar";
 import { Loader2, MessageCircle, Search, Users, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -72,6 +73,8 @@ export default function ChatHome() {
 
   return (
     <div className="p-4 space-y-6">
+      <StoriesBar friends={friends} />
+
       {pendingCount > 0 && (
         <Link
           to="/chat/friends"
