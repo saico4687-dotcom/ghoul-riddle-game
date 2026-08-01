@@ -25,6 +25,10 @@ import {
   fetchGroupPolls,
   voteOnPoll,
   softDeleteGroupMessage,
+  pinGroupMessage,
+  unpinGroupMessage,
+  isPinActive,
+  PIN_DURATION_OPTIONS,
   type GroupPoll,
   type GroupPollOption,
   type GroupPollVote,
@@ -87,6 +91,8 @@ import {
   BarChart3,
   Pencil,
   X,
+  Pin,
+  PinOff,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -107,6 +113,36 @@ export default function GroupChat() {
   const navigate = useNavigate();
   const { group, members, messages, loading, isMember, isBanned, isStaff, isOwner, canPost, setMessages } =
     useGroupChat(groupId);
+
+  const [pinBusy, setPinBusy] = useState(false);
+  const pinnedMessage =
+    group && isPinActive(group) ? messages.find((m) => m.id === group.pinned_message_id) ?? null : null;
+
+  const handlePin = async (messageId: string, hours: number | null) => {
+    if (!groupId || pinBusy) return;
+    setPinBusy(true);
+    try {
+      await pinGroupMessage(groupId, messageId, hours);
+      toast.success("تم تثبيت الرسالة");
+    } catch (e: any) {
+      toast.error(e.message ?? "تعذر تثبيت الرسالة");
+    } finally {
+      setPinBusy(false);
+    }
+  };
+
+  const handleUnpin = async () => {
+    if (!groupId || pinBusy) return;
+    setPinBusy(true);
+    try {
+      await unpinGroupMessage(groupId);
+      toast.success("تم إلغاء التثبيت");
+    } catch (e: any) {
+      toast.error(e.message ?? "تعذر إلغاء التثبيت");
+    } finally {
+      setPinBusy(false);
+    }
+  };
 
   const [text, setText] = useState("");
   const [editingMessage, setEditingMessage] = useState<{ id: string; body: string } | null>(null);
@@ -524,6 +560,28 @@ export default function GroupChat() {
         </DropdownMenu>
       </div>
 
+      {pinnedMessage && (
+        <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-3 py-2">
+          <Pin className="w-4 h-4 text-primary shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] text-primary font-bold">رسالة مثبتة</div>
+            <div className="text-xs text-muted-foreground truncate">
+              {pinnedMessage.body ? renderMessageBody(pinnedMessage.body) : "📎 وسائط"}
+            </div>
+          </div>
+          {isStaff && (
+            <button
+              onClick={handleUnpin}
+              disabled={pinBusy}
+              className="p-1 text-muted-foreground hover:text-destructive shrink-0"
+              aria-label="إلغاء التثبيت"
+            >
+              <PinOff className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {messages.length === 0 && (
           <p className="text-center text-sm text-muted-foreground font-typewriter py-10">
@@ -624,6 +682,21 @@ export default function GroupChat() {
                             <Trash2 className="w-3 h-3 ml-2" />
                             حذف لدى الجميع
                           </DropdownMenuItem>
+                        )}
+                        {isStaff && (
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              <Pin className="w-3 h-3 ml-2" />
+                              تثبيت الرسالة
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
+                              {PIN_DURATION_OPTIONS.map((opt) => (
+                                <DropdownMenuItem key={opt.label} onClick={() => handlePin(m.id, opt.hours)}>
+                                  {opt.label}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
