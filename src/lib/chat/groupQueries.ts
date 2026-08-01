@@ -40,6 +40,10 @@ export type GroupMessage = {
   image_url: string | null;
   created_at: string;
   deleted_at: string | null;
+  // وقت آخر تعديل لنص رسالة الجروب (خلال 15 دقيقة من الإرسال، ينفَّذ التريجر في الداتابيز)
+  edited_at: string | null;
+  // قائمة الـ user_id اللي عملوا "حذف من عندي" لرسالة الجروب دي
+  deleted_for: string[];
   // وقت الاختفاء التلقائي للرسالة (بيتحسب في الداتابيز وقت الإدراج حسب
   // إعداد groups.disappearing_seconds). null يعني الرسالة مش هتختفي.
   expires_at?: string | null;
@@ -220,7 +224,6 @@ export async function fetchGroupMessages(groupId: string, limit = 50) {
     .from("group_messages")
     .select("*")
     .eq("group_id", groupId)
-    .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
@@ -249,6 +252,25 @@ export async function sendGroupMessage(
     .single();
   if (error) throw new Error(error.message || "تعذر إرسال الرسالة");
   return data as GroupMessage;
+}
+
+/** تعديل نص رسالة جروب — مسموح للمرسل بس، وخلال 15 دقيقة من الإرسال */
+export async function editGroupMessage(messageId: string, newBody: string) {
+  const { error } = await supabase.from("group_messages").update({ body: newBody }).eq("id", messageId);
+  if (error) throw new Error(error.message || "تعذر تعديل الرسالة");
+}
+
+/** حذف من عندي فقط في شات الجروب — الرسالة تفضل ظاهرة للباقين */
+export async function deleteGroupMessageForMe(messageId: string, myId: string) {
+  const { data: current, error: fetchErr } = await supabase
+    .from("group_messages")
+    .select("deleted_for")
+    .eq("id", messageId)
+    .single();
+  if (fetchErr) throw new Error(fetchErr.message || "تعذر حذف الرسالة");
+  const next = Array.from(new Set([...(current?.deleted_for ?? []), myId]));
+  const { error } = await supabase.from("group_messages").update({ deleted_for: next }).eq("id", messageId);
+  if (error) throw new Error(error.message || "تعذر حذف الرسالة");
 }
 
 export async function softDeleteGroupMessage(messageId: string) {
