@@ -1,18 +1,20 @@
 import { useRef, useState } from "react";
-import { Paperclip, Mic, Square, Loader2, Eye, EyeOff } from "lucide-react";
+import { Paperclip, Mic, Square, Loader2, Eye, EyeOff, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
   disabled?: boolean;
   onPickFile: (file: File, viewOnce: boolean) => Promise<void> | void;
   onRecordedAudio: (blob: Blob, mime: string, durationSeconds: number) => Promise<void> | void;
+  onShareLocation?: () => Promise<void> | void;
 }
 
 const MAX_RECORD_MS = 2 * 60 * 1000; // دقيقتين كحد أقصى
 
-export default function MediaComposerButtons({ disabled, onPickFile, onRecordedAudio }: Props) {
+export default function MediaComposerButtons({ disabled, onPickFile, onRecordedAudio, onShareLocation }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [sharingLocation, setSharingLocation] = useState(false);
   const [viewOnceArmed, setViewOnceArmed] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordMs, setRecordMs] = useState(0);
@@ -35,6 +37,22 @@ export default function MediaComposerButtons({ disabled, onPickFile, onRecordedA
       toast.error(err?.message ?? "تعذر إرسال الملف");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleShareLocation = async () => {
+    if (!onShareLocation || sharingLocation) return;
+    if (!navigator.geolocation) {
+      toast.error("المتصفح لا يدعم مشاركة الموقع");
+      return;
+    }
+    setSharingLocation(true);
+    try {
+      await onShareLocation();
+    } catch (err: any) {
+      toast.error(err?.message ?? "تعذر مشاركة الموقع");
+    } finally {
+      setSharingLocation(false);
     }
   };
 
@@ -137,6 +155,18 @@ export default function MediaComposerButtons({ disabled, onPickFile, onRecordedA
       >
         <Mic className="w-5 h-5" />
       </button>
+      {onShareLocation && (
+        <button
+          type="button"
+          disabled={disabled || sharingLocation}
+          onClick={handleShareLocation}
+          className="p-2 text-white/70 hover:text-white disabled:opacity-50"
+          aria-label="مشاركة الموقع"
+          title="مشاركة الموقع"
+        >
+          {sharingLocation ? <Loader2 className="w-5 h-5 animate-spin" /> : <MapPin className="w-5 h-5" />}
+        </button>
+      )}
     </div>
   );
 }
