@@ -53,6 +53,9 @@ Deno.serve(async (req) => {
     const title: string = body?.title ?? "رسالة جديدة";
     const message: string = body?.body ?? "";
     const url: string = body?.url ?? "/chat";
+    // "call" لمكالمة واردة (يُعرض بشكل مُلح في الـ Service Worker) —
+    // أي قيمة تانية أو مفيش قيمة أصلاً تتعامل كإشعار عادي (رسالة/منشن/إلخ)
+    const type: string | undefined = body?.type;
 
     // منقدرش نبعت لنفس الشخص اللي بعت — مفيش داعي يوصله إشعار برسالته هو
     const targets = recipientUserIds.filter((id) => id !== authUser.user.id);
@@ -72,7 +75,8 @@ Deno.serve(async (req) => {
         const subscription = JSON.parse(row.token);
         await webpush.sendNotification(
           subscription,
-          JSON.stringify({ title, body: message, url })
+          JSON.stringify({ title, body: message, url, type }),
+          type === "call" ? { TTL: 45, urgency: "high" } : undefined
         );
         sent++;
       } catch (err: any) {
