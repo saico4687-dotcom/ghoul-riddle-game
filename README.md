@@ -44,6 +44,7 @@ Service Worker المدمجين.
 | `VITE_SUPABASE_URL` | ✅ | رابط مشروع Supabase (Project Settings → API) |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | ✅ | مفتاح anon/publishable العام (نفس الصفحة) |
 | `VITE_SUPABASE_PROJECT_ID` | ✅ | معرّف المشروع |
+| `VITE_APP_WEB_ORIGIN` | ✅ للإنتاج | دومين النشر الحقيقي لنسخة الويب (مثل `https://chat.example.com`)، يُستخدم لبناء روابط دعوة الجروبات القابلة للمشاركة. بدونها يُستخدم `window.location.origin` تلقائيًا (كافٍ للتطوير المحلي فقط — غير كافٍ داخل تطبيق Capacitor) |
 | `VITE_TURN_URL` | اختياري | رابط سيرفر TURN، مثل `turn:your-turn-host:3478` |
 | `VITE_TURN_USERNAME` | اختياري | اسم مستخدم TURN |
 | `VITE_TURN_CREDENTIAL` | اختياري | كلمة مرور/بيانات اعتماد TURN |
