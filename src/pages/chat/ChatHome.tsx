@@ -18,6 +18,18 @@ import UserAvatar from "@/components/chat/UserAvatar";
 import StoriesBar from "@/components/chat/StoriesBar";
 import { Loader2, MessageCircle, Search, Users, UserPlus, Pin, Archive, ArchiveRestore } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { isLocationBody } from "@/lib/chat/formatting";
+import { isEncryptedBody } from "@/lib/chat/e2e";
+
+// معاينة آخر رسالة في القائمة: لو الرسالة متشفّرة (E2E) أو مشاركة موقع،
+// السيرفر نفسه مايعرفش محتواها الحقيقي (أو مش نص حر أصلًا) فبنعرض وصف
+// عام بدل النص الخام (base64 مشفّر أو إحداثيات).
+function previewFor(preview: string | null | undefined): string {
+  if (!preview) return "ابدأ المحادثة...";
+  if (isEncryptedBody(preview)) return "🔒 رسالة مشفّرة";
+  if (isLocationBody(preview)) return "📍 موقع مُشارك";
+  return preview;
+}
 
 export default function ChatHome() {
   const { user } = useAuth();
@@ -218,7 +230,7 @@ export default function ChatHome() {
                       </div>
                       <div className="flex justify-between items-center gap-2">
                         <p className={`text-xs truncate font-typewriter ${unread > 0 ? "text-foreground font-bold" : "text-foreground/70"}`}>
-                          {c.last_message_preview ?? "ابدأ المحادثة..."}
+                          {previewFor(c.last_message_preview)}
                         </p>
                         {unread > 0 && (
                           <span className="bg-destructive text-destructive-foreground text-[10px] rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shrink-0">
