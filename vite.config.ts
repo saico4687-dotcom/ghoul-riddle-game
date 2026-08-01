@@ -19,6 +19,9 @@ export default defineConfig(({ mode }) => ({
       devOptions: { enabled: false },
       manifest: false,
       workbox: {
+        // بيحمّل كود استقبال الـ Push الحقيقي (public/push-sw.js) جوه
+        // الـ Service Worker المولَّد تلقائيًا
+        importScripts: ["/push-sw.js"],
         globPatterns: ["**/*.{js,css,html,png,svg,ico,webp,woff2}"],
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/~oauth/, /^\/api/, /^\/auth/],
