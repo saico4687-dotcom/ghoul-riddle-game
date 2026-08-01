@@ -55,6 +55,10 @@ export type Conversation = {
   created_at: string;
   // مدة اختفاء الرسائل تلقائياً بالثواني — null يعني متوقفة
   disappearing_seconds?: number | null;
+  // قوائم الـ user_id اللي عمل أرشفة/تثبيت للمحادثة دي — كل مستخدم له حالته
+  // الخاصة (زي واتساب: أرشفة/تثبيت محادثة عندي من غير ما تأثر على الطرف التاني)
+  archived_by?: string[];
+  pinned_by?: string[];
 };
 
 export type Reaction = {
@@ -129,6 +133,27 @@ export async function listMyConversations(myId: string) {
     .order("last_message_at", { ascending: false, nullsFirst: false })
     .limit(50);
   return (data ?? []) as Conversation[];
+}
+
+// أرشفة/إلغاء أرشفة محادثة فردية بالنسبة لي أنا بس (زي واتساب: تأثير محلي على
+// المستخدم اللي عمل الأرشفة فقط، الطرف التاني شايف المحادثة عادي).
+export async function toggleConversationArchived(conversation: Pick<Conversation, "id" | "archived_by">, myId: string) {
+  const current = conversation.archived_by ?? [];
+  const archived = current.includes(myId);
+  const next = archived ? current.filter((id) => id !== myId) : [...current, myId];
+  const { error } = await supabase.from("conversations").update({ archived_by: next } as any).eq("id", conversation.id);
+  if (error) throw error;
+  return next;
+}
+
+// تثبيت/إلغاء تثبيت محادثة فردية في أعلى القائمة بالنسبة لي أنا بس.
+export async function toggleConversationPinned(conversation: Pick<Conversation, "id" | "pinned_by">, myId: string) {
+  const current = conversation.pinned_by ?? [];
+  const pinned = current.includes(myId);
+  const next = pinned ? current.filter((id) => id !== myId) : [...current, myId];
+  const { error } = await supabase.from("conversations").update({ pinned_by: next } as any).eq("id", conversation.id);
+  if (error) throw error;
+  return next;
 }
 
 export async function listFriends(myId: string) {
