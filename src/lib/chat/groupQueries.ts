@@ -20,6 +20,12 @@ export type Group = {
   // بتتحدث تلقائيًا من trigger on_group_message_inserted لما تتبعت رسالة جديدة
   last_message_at?: string | null;
   last_message_preview?: string | null;
+  // الرسالة المثبتة حاليًا في الجروب (Pin Message) — null يعني مفيش رسالة مثبتة
+  pinned_message_id?: string | null;
+  pinned_by?: string | null;
+  pinned_at?: string | null;
+  // مهلة انتهاء التثبيت (24 ساعة / 7 أيام / 30 يوم من وقت التثبيت). null يعني بلا مهلة
+  pinned_until?: string | null;
 };
 
 export type GroupMember = {
@@ -184,6 +190,35 @@ export async function joinGroupByInvite(inviteCode: string) {
   const { data, error } = await supabase.rpc("join_group_by_invite", { _invite_code: inviteCode.trim() });
   if (error) throw new Error(error.message || "رابط الدعوة غير صالح");
   return data as string; // group_id
+}
+
+// خيارات مدة التثبيت المسموحة (بالساعات) — 24 ساعة / 7 أيام / 30 يوم، أو بلا مهلة
+export const PIN_DURATION_OPTIONS: { label: string; hours: number | null }[] = [
+  { label: "24 ساعة", hours: 24 },
+  { label: "7 أيام", hours: 24 * 7 },
+  { label: "30 يوم", hours: 24 * 30 },
+  { label: "بدون مهلة", hours: null },
+];
+
+export async function pinGroupMessage(groupId: string, messageId: string, durationHours: number | null) {
+  const { error } = await supabase.rpc("pin_group_message", {
+    _group_id: groupId,
+    _message_id: messageId,
+    _duration_hours: durationHours,
+  });
+  if (error) throw new Error(error.message || "تعذر تثبيت الرسالة");
+}
+
+export async function unpinGroupMessage(groupId: string) {
+  const { error } = await supabase.rpc("unpin_group_message", { _group_id: groupId });
+  if (error) throw new Error(error.message || "تعذر إلغاء التثبيت");
+}
+
+// بيرجع true لو فيه رسالة مثبتة ولسه سارية (ما تجاوزتش pin_expires_at)
+export function isPinActive(group: Pick<Group, "pinned_message_id" | "pinned_until">): boolean {
+  if (!group.pinned_message_id) return false;
+  if (!group.pinned_until) return true;
+  return new Date(group.pinned_until).getTime() > Date.now();
 }
 
 export async function regenerateGroupInvite(groupId: string) {
