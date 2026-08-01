@@ -284,7 +284,24 @@ export async function sendMessage(conversationId: string, senderId: string, body
     .select()
     .single();
   if (error) throw error;
+
+  // Push حقيقي للطرف التاني في المحادثة — بنجيب هويته من صف
+  // المحادثة نفسه، وبنستخدم اسم مستخدم المرسل كعنوان للإشعار.
+  notifyDmRecipient(conversationId, senderId, cleaned).catch(() => {});
+
   return data as Message;
+}
+
+async function notifyDmRecipient(conversationId: string, senderId: string, body: string) {
+  const [{ data: conv }, { sendMessagePush }, { data: sender }] = await Promise.all([
+    supabase.from("conversations").select("user_a, user_b").eq("id", conversationId).maybeSingle(),
+    import("./push"),
+    supabase.from("profiles").select("username").eq("user_id", senderId).maybeSingle(),
+  ]);
+  if (!conv) return;
+  const recipientId = conv.user_a === senderId ? conv.user_b : conv.user_a;
+  if (!recipientId) return;
+  await sendMessagePush([recipientId], sender?.username ?? "رسالة جديدة", body, "/chat");
 }
 
 /** تعديل نص رسالة فردية — مسموح للمرسل بس، وخلال 15 دقيقة من الإرسال (بينفَّذ التريجر ده في الداتابيز) */
