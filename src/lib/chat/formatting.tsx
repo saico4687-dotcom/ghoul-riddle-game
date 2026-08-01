@@ -1,5 +1,35 @@
 import type { ReactNode } from "react";
 
+// صيغة رسالة "مشاركة الموقع": body بيكون بالظبط "geo:LAT,LNG" (نص عادي —
+// إحداثيات فقط، فمفيش حرج في تخزينها دائم زي ما هو متفق عليه، من غير
+// أي وسائط أو تخزين مؤقت).
+const GEO_PREFIX = "geo:";
+
+export function isLocationBody(body: string | null | undefined): boolean {
+  if (!body) return false;
+  return /^geo:-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(body.trim());
+}
+
+export function parseLocationBody(body: string): { lat: number; lng: number } | null {
+  if (!isLocationBody(body)) return null;
+  const [lat, lng] = body.trim().slice(GEO_PREFIX.length).split(",").map(Number);
+  return { lat, lng };
+}
+
+export function makeLocationBody(lat: number, lng: number): string {
+  return `${GEO_PREFIX}${lat},${lng}`;
+}
+
+// معاينة آمنة لاستخدامها في قائمة "المحادثات الأخيرة": last_message_preview
+// جاي من الداتابيز كنص خام (أول 120 حرف من body) — لو الرسالة متشفّرة
+// E2E أو رسالة موقع، بنعرض تسمية واضحة بدل النص المشفّر/الإحداثيات الخام.
+export function previewLabel(raw: string | null | undefined): string {
+  if (!raw) return "ابدأ المحادثة...";
+  if (raw.startsWith("e2e1:")) return "🔒 رسالة مشفّرة";
+  if (raw.startsWith("geo:")) return "📍 موقع مُشارك";
+  return raw;
+}
+
 // يفكّك نص الرسالة لأجزاء منسّقة زي واتساب بالظبط:
 //   *bold*      -> غامق
 //   _italic_    -> مائل
