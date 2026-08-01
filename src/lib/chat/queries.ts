@@ -26,6 +26,9 @@ export type Message = {
   // معرّف الرسالة اللي حصل عليها "رد" — بيتحط لما اليوزر يسحب/يشد
   // رسالة في الشات ويكتب تحتها زي واتساب. null لو الرسالة مش رد.
   reply_to_id: string | null;
+  // وقت الاختفاء التلقائي (Disappearing Messages) — بيتحسب في الداتابيز
+  // وقت الإدراج حسب إعداد conversations.disappearing_seconds.
+  expires_at?: string | null;
 };
 
 export type Conversation = {
@@ -35,6 +38,8 @@ export type Conversation = {
   last_message_at: string | null;
   last_message_preview: string | null;
   created_at: string;
+  // مدة اختفاء الرسائل تلقائياً بالثواني — null يعني متوقفة
+  disappearing_seconds?: number | null;
 };
 
 export type Reaction = {
@@ -269,6 +274,27 @@ export async function sendMessage(conversationId: string, senderId: string, body
 
 export async function markConversationRead(conversationId: string, _myId: string) {
   await supabase.rpc("mark_conversation_read", { _conversation_id: conversationId });
+}
+
+// خيارات الرسائل المؤقتة الشائعة (زي واتساب): إيقاف / 24 ساعة / 7 أيام / 90 يوم
+export const DISAPPEARING_OPTIONS: { label: string; seconds: number | null }[] = [
+  { label: "إيقاف", seconds: null },
+  { label: "24 ساعة", seconds: 24 * 60 * 60 },
+  { label: "7 أيام", seconds: 7 * 24 * 60 * 60 },
+  { label: "90 يوم", seconds: 90 * 24 * 60 * 60 },
+];
+
+export async function setConversationDisappearing(conversationId: string, seconds: number | null) {
+  const { error } = await supabase.from("conversations").update({ disappearing_seconds: seconds }).eq("id", conversationId);
+  if (error) throw new Error(error.message || "تعذر تحديث إعداد الرسائل المؤقتة");
+}
+
+// بتشيل من قائمة رسائل محمّلة أي رسالة اتخطى معاد انتهائها — الحذف الفعلي
+// من الداتابيز محتاج Cron/Edge Function منفصلة (لسه مش منفذة)، لكن ده كافي
+// عشان المستخدم ميشوفهاش في الواجهة أول ما تنتهي مدتها.
+export function dropExpiredMessages<T extends { expires_at?: string | null }>(list: T[]): T[] {
+  const now = Date.now();
+  return list.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > now);
 }
 
 export async function setUsernameRpc(newUsername: string) {
