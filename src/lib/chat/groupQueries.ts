@@ -292,7 +292,24 @@ export async function sendGroupMessage(
     .select()
     .single();
   if (error) throw new Error(error.message || "تعذر إرسال الرسالة");
+
+  // Push حقيقي لباقي أعضاء الجروب (عدا المرسل نفسه)
+  notifyGroupMembers(groupId, senderId, cleanBody ?? "📷 وسائط").catch(() => {});
+
   return data as GroupMessage;
+}
+
+async function notifyGroupMembers(groupId: string, senderId: string, body: string) {
+  const [{ data: members }, { sendMessagePush }, { data: group }, { data: sender }] = await Promise.all([
+    supabase.from("group_members").select("user_id").eq("group_id", groupId),
+    import("./push"),
+    supabase.from("groups").select("name").eq("id", groupId).maybeSingle(),
+    supabase.from("profiles").select("username").eq("user_id", senderId).maybeSingle(),
+  ]);
+  const recipientIds = (members ?? []).map((m: any) => m.user_id).filter((id: string) => id !== senderId);
+  if (recipientIds.length === 0) return;
+  const title = group?.name ? `${group.name} · ${sender?.username ?? ""}` : sender?.username ?? "رسالة جروب";
+  await sendMessagePush(recipientIds, title, body, `/chat/g/${groupId}`);
 }
 
 /** تعديل نص رسالة جروب — مسموح للمرسل بس، وخلال 15 دقيقة من الإرسال */
