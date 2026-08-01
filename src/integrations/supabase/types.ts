@@ -106,30 +106,42 @@ export type Database = {
         Row: {
           archived_by: string[]
           created_at: string
+          disappearing_seconds: number | null
           id: string
           last_message_at: string | null
           last_message_preview: string | null
+          muted_by: string[]
           pinned_by: string[]
+          pinned_message_id: string | null
+          pinned_until: string | null
           user_a: string
           user_b: string
         }
         Insert: {
           archived_by?: string[]
           created_at?: string
+          disappearing_seconds?: number | null
           id?: string
           last_message_at?: string | null
           last_message_preview?: string | null
+          muted_by?: string[]
           pinned_by?: string[]
+          pinned_message_id?: string | null
+          pinned_until?: string | null
           user_a: string
           user_b: string
         }
         Update: {
           archived_by?: string[]
           created_at?: string
+          disappearing_seconds?: number | null
           id?: string
           last_message_at?: string | null
           last_message_preview?: string | null
+          muted_by?: string[]
           pinned_by?: string[]
+          pinned_message_id?: string | null
+          pinned_until?: string | null
           user_a?: string
           user_b?: string
         }
@@ -252,28 +264,88 @@ export type Database = {
           body: string | null
           created_at: string
           deleted_at: string | null
+          edited_at: string | null
+          expires_at: string | null
           group_id: string
           id: string
           image_url: string | null
+          live_location_until: string | null
+          location_lat: number | null
+          location_lng: number | null
+          location_label: string | null
+          media_deleted_at: string | null
+          media_duration_seconds: number | null
+          media_expires_at: string | null
+          media_iv: string | null
+          media_key: string | null
+          media_mime: string | null
+          media_path: string | null
+          media_size_bytes: number | null
+          media_type: string | null
+          read_at: string | null
+          reply_to_id: string | null
           sender_id: string
+          system_event: string | null
+          view_once: boolean
+          viewed_at: string | null
         }
         Insert: {
           body?: string | null
           created_at?: string
           deleted_at?: string | null
+          edited_at?: string | null
+          expires_at?: string | null
           group_id: string
           id?: string
           image_url?: string | null
+          live_location_until?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_label?: string | null
+          media_deleted_at?: string | null
+          media_duration_seconds?: number | null
+          media_expires_at?: string | null
+          media_iv?: string | null
+          media_key?: string | null
+          media_mime?: string | null
+          media_path?: string | null
+          media_size_bytes?: number | null
+          media_type?: string | null
+          read_at?: string | null
+          reply_to_id?: string | null
           sender_id: string
+          system_event?: string | null
+          view_once?: boolean
+          viewed_at?: string | null
         }
         Update: {
           body?: string | null
           created_at?: string
           deleted_at?: string | null
+          edited_at?: string | null
+          expires_at?: string | null
           group_id?: string
           id?: string
           image_url?: string | null
+          live_location_until?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_label?: string | null
+          media_deleted_at?: string | null
+          media_duration_seconds?: number | null
+          media_expires_at?: string | null
+          media_iv?: string | null
+          media_key?: string | null
+          media_mime?: string | null
+          media_path?: string | null
+          media_size_bytes?: number | null
+          media_type?: string | null
+          read_at?: string | null
+          reply_to_id?: string | null
           sender_id?: string
+          system_event?: string | null
+          view_once?: boolean
+          viewed_at?: string | null
         }
         Relationships: [
           {
@@ -338,36 +410,54 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           description: string | null
+          disappearing_seconds: number | null
           id: string
           invite_code: string
           invite_enabled: boolean
+          last_message_at: string | null
+          last_message_preview: string | null
           lock_chat: boolean
+          muted_by: string[]
           name: string
           owner_id: string
+          pinned_message_id: string | null
+          pinned_until: string | null
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           description?: string | null
+          disappearing_seconds?: number | null
           id?: string
           invite_code?: string
           invite_enabled?: boolean
+          last_message_at?: string | null
+          last_message_preview?: string | null
           lock_chat?: boolean
+          muted_by?: string[]
           name: string
           owner_id: string
+          pinned_message_id?: string | null
+          pinned_until?: string | null
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           description?: string | null
+          disappearing_seconds?: number | null
           id?: string
           invite_code?: string
           invite_enabled?: boolean
+          last_message_at?: string | null
+          last_message_preview?: string | null
           lock_chat?: boolean
+          muted_by?: string[]
           name?: string
           owner_id?: string
+          pinned_message_id?: string | null
+          pinned_until?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -411,9 +501,29 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           delivered_at: string | null
+          edited_at: string | null
+          expires_at: string | null
+          hidden_for: string[]
           id: string
+          is_deleted_for_everyone: boolean
+          live_location_until: string | null
+          location_lat: number | null
+          location_lng: number | null
+          location_label: string | null
+          media_deleted_at: string | null
+          media_duration_seconds: number | null
+          media_expires_at: string | null
+          media_iv: string | null
+          media_key: string | null
+          media_mime: string | null
+          media_path: string | null
+          media_size_bytes: number | null
+          media_type: string | null
           read_at: string | null
+          reply_to_id: string | null
           sender_id: string
+          view_once: boolean
+          viewed_at: string | null
         }
         Insert: {
           body: string
@@ -421,9 +531,29 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           delivered_at?: string | null
+          edited_at?: string | null
+          expires_at?: string | null
+          hidden_for?: string[]
           id?: string
+          is_deleted_for_everyone?: boolean
+          live_location_until?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_label?: string | null
+          media_deleted_at?: string | null
+          media_duration_seconds?: number | null
+          media_expires_at?: string | null
+          media_iv?: string | null
+          media_key?: string | null
+          media_mime?: string | null
+          media_path?: string | null
+          media_size_bytes?: number | null
+          media_type?: string | null
           read_at?: string | null
+          reply_to_id?: string | null
           sender_id: string
+          view_once?: boolean
+          viewed_at?: string | null
         }
         Update: {
           body?: string
@@ -431,9 +561,29 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           delivered_at?: string | null
+          edited_at?: string | null
+          expires_at?: string | null
+          hidden_for?: string[]
           id?: string
+          is_deleted_for_everyone?: boolean
+          live_location_until?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_label?: string | null
+          media_deleted_at?: string | null
+          media_duration_seconds?: number | null
+          media_expires_at?: string | null
+          media_iv?: string | null
+          media_key?: string | null
+          media_mime?: string | null
+          media_path?: string | null
+          media_size_bytes?: number | null
+          media_type?: string | null
           read_at?: string | null
+          reply_to_id?: string | null
           sender_id?: string
+          view_once?: boolean
+          viewed_at?: string | null
         }
         Relationships: [
           {
@@ -444,6 +594,376 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      group_message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "group_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_message_reads: {
+        Row: {
+          message_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          message_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          message_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_message_reads_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "group_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_mentions: {
+        Row: {
+          created_at: string
+          group_message_id: string | null
+          id: string
+          mentioned_user_id: string
+          message_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          group_message_id?: string | null
+          id?: string
+          mentioned_user_id: string
+          message_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          group_message_id?: string | null
+          id?: string
+          mentioned_user_id?: string
+          message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_mentions_group_message_id_fkey"
+            columns: ["group_message_id"]
+            isOneToOne: false
+            referencedRelation: "group_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_mentions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_polls: {
+        Row: {
+          allow_multiple: boolean
+          closed_at: string | null
+          created_at: string
+          creator_id: string
+          group_id: string
+          id: string
+          message_id: string | null
+          question: string
+        }
+        Insert: {
+          allow_multiple?: boolean
+          closed_at?: string | null
+          created_at?: string
+          creator_id: string
+          group_id: string
+          id?: string
+          message_id?: string | null
+          question: string
+        }
+        Update: {
+          allow_multiple?: boolean
+          closed_at?: string | null
+          created_at?: string
+          creator_id?: string
+          group_id?: string
+          id?: string
+          message_id?: string | null
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_polls_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_polls_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "group_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_poll_options: {
+        Row: {
+          id: string
+          option_text: string
+          poll_id: string
+          position: number
+        }
+        Insert: {
+          id?: string
+          option_text: string
+          poll_id: string
+          position?: number
+        }
+        Update: {
+          id?: string
+          option_text?: string
+          poll_id?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_poll_options_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "group_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_poll_votes: {
+        Row: {
+          created_at: string
+          option_id: string
+          poll_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          option_id: string
+          poll_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          option_id?: string
+          poll_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_poll_votes_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "group_poll_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "group_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stories: {
+        Row: {
+          background_color: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          kind: string
+          media_iv: string | null
+          media_key: string | null
+          media_mime: string | null
+          media_path: string | null
+          text_content: string | null
+          user_id: string
+        }
+        Insert: {
+          background_color?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          kind: string
+          media_iv?: string | null
+          media_key?: string | null
+          media_mime?: string | null
+          media_path?: string | null
+          text_content?: string | null
+          user_id: string
+        }
+        Update: {
+          background_color?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          kind?: string
+          media_iv?: string | null
+          media_key?: string | null
+          media_mime?: string | null
+          media_path?: string | null
+          text_content?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      story_views: {
+        Row: {
+          story_id: string
+          viewed_at: string
+          viewer_id: string
+        }
+        Insert: {
+          story_id: string
+          viewed_at?: string
+          viewer_id: string
+        }
+        Update: {
+          story_id?: string
+          viewed_at?: string
+          viewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_views_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calls: {
+        Row: {
+          callee_id: string
+          caller_id: string
+          created_at: string
+          ended_at: string | null
+          id: string
+          kind: string
+          status: string
+        }
+        Insert: {
+          callee_id: string
+          caller_id: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          kind: string
+          status?: string
+        }
+        Update: {
+          callee_id?: string
+          caller_id?: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          kind?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      call_signals: {
+        Row: {
+          call_id: string
+          created_at: string
+          id: number
+          payload: Json
+          sender_id: string
+          signal_type: string
+        }
+        Insert: {
+          call_id: string
+          created_at?: string
+          id?: number
+          payload: Json
+          sender_id: string
+          signal_type: string
+        }
+        Update: {
+          call_id?: string
+          created_at?: string
+          id?: number
+          payload?: Json
+          sender_id?: string
+          signal_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_signals_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          platform: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       moderation_actions: {
         Row: {
@@ -504,12 +1024,16 @@ export type Database = {
       }
       profiles: {
         Row: {
+          ad_free_until: string | null
           address: string | null
+          app_lock_enabled: boolean
+          app_lock_hash: string | null
           avatar_url: string | null
           bio: string | null
           completed: boolean
           completed_at: string | null
           created_at: string
+          e2e_public_key: string | null
           email: string | null
           full_name: string | null
           id: string
@@ -534,12 +1058,16 @@ export type Database = {
           username_changed_at: string | null
         }
         Insert: {
+          ad_free_until?: string | null
           address?: string | null
+          app_lock_enabled?: boolean
+          app_lock_hash?: string | null
           avatar_url?: string | null
           bio?: string | null
           completed?: boolean
           completed_at?: string | null
           created_at?: string
+          e2e_public_key?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
@@ -564,12 +1092,16 @@ export type Database = {
           username_changed_at?: string | null
         }
         Update: {
+          ad_free_until?: string | null
           address?: string | null
+          app_lock_enabled?: boolean
+          app_lock_hash?: string | null
           avatar_url?: string | null
           bio?: string | null
           completed?: boolean
           completed_at?: string | null
           created_at?: string
+          e2e_public_key?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
