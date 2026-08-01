@@ -83,3 +83,28 @@ export async function sendMessagePush(
     // فشل إرسال الـ Push مش المفروض يوقف إرسال الرسالة نفسها — نتجاهله بصمت
   }
 }
+
+/**
+ * Push مخصص لمكالمة واردة — بيوصل حتى لو التطبيق مقفول تمامًا (نفس
+ * مسار send-push العادي)، لكن بعلامة type:"call" عشان الـ Service Worker
+ * (public/push-sw.js) يعرضه كإشعار "مُلح" (requireInteraction + اهتزاز
+ * أقوى) بدل إشعار رسالة عادي، ويفتح شاشة الدردشة اللي هتعرض الرنين
+ * تلقائيًا فور فتح التطبيق (راجع useCall.ts — فحص المكالمات الجارية
+ * عند بدء التشغيل).
+ */
+export async function sendCallPush(calleeId: string, callerName: string, kind: "audio" | "video") {
+  try {
+    await supabase.functions.invoke("send-push", {
+      body: {
+        recipientUserIds: [calleeId],
+        title: kind === "video" ? "مكالمة فيديو واردة" : "مكالمة صوتية واردة",
+        body: `${callerName} بيتصل بيك الآن`,
+        url: "/chat",
+        type: "call",
+      },
+    });
+  } catch {
+    // فشل الـ Push (مثلاً محدش سجّل جهازه بعد) مش المفروض يمنع رنين
+    // المكالمة نفسها عبر Realtime طول ما التطبيق مفتوح عند المستقبِل
+  }
+}
