@@ -9,6 +9,9 @@ import {
   fetchMessages,
   fetchMessagesBefore,
   sendMessage,
+  editMessage,
+  deleteMessageForMe,
+  deleteMessageForEveryone,
   fetchReactions,
   markConversationRead,
   fetchPublicProfile,
@@ -61,6 +64,7 @@ export default function ChatConversation() {
   // الرسالة اللي المستخدم بيرد عليها دلوقتي (بعد ما سحبها/شدها زي واتساب
   // أو ضغط على زرار "رد") — لو null يبقى مفيش رد جاري.
   const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   // كاش محلي للرسائل المقتبَسة اللي مش موجودة في نافذة الرسائل المحمّلة
   // حالياً (مثلاً لو المستخدم رد على رسالة قديمة قبل ما يعمل scroll لفوق)
   // عشان نقدر نعرض معاينة الاقتباس برضه.
@@ -222,6 +226,17 @@ export default function ChatConversation() {
 
     setSending(true);
     try {
+      if (editingMessage) {
+        const newBody = text.trim();
+        await editMessage(editingMessage.id, newBody);
+        setMessages((cur) =>
+          cur.map((x) => (x.id === editingMessage.id ? { ...x, body: newBody, edited_at: new Date().toISOString() } : x))
+        );
+        setEditingMessage(null);
+        setText("");
+        return;
+      }
+
       const m = await sendMessage(conversationId, user.id, text.trim(), replyTo?.id ?? null);
       setMessages((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, m]));
       setText("");
@@ -234,6 +249,40 @@ export default function ChatConversation() {
       toast.error(e?.message ?? "تعذر إرسال الرسالة");
     } finally {
       setSending(false);
+    }
+  };
+
+  const startEdit = (m: Message) => {
+    setReplyTo(null);
+    setEditingMessage(m);
+    setText(m.body);
+  };
+
+  const cancelEdit = () => {
+    setEditingMessage(null);
+    setText("");
+  };
+
+  const handleDeleteForMe = async (m: Message) => {
+    if (!user) return;
+    try {
+      await deleteMessageForMe(m.id, user.id);
+      setMessages((cur) =>
+        cur.map((x) => (x.id === m.id ? { ...x, deleted_for: [...(x.deleted_for ?? []), user.id] } : x))
+      );
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر حذف الرسالة");
+    }
+  };
+
+  const handleDeleteForEveryone = async (m: Message) => {
+    try {
+      await deleteMessageForEveryone(m.id);
+      setMessages((cur) =>
+        cur.map((x) => (x.id === m.id ? { ...x, deleted_at: new Date().toISOString(), body: "تم حذف هذه الرسالة" } : x))
+      );
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر حذف الرسالة");
     }
   };
 
@@ -313,22 +362,27 @@ export default function ChatConversation() {
         {!hasMore && messages.length > 0 && (
           <div className="text-center text-[10px] text-muted-foreground/70 py-1">بداية المحادثة</div>
         )}
-        {dropExpiredMessages(messages).map((m) => {
-          const replied = getReplied(m.reply_to_id);
-          return (
-            <MessageBubble
-              key={m.id}
-              message={m}
-              mine={m.sender_id === user!.id}
-              reactions={reactions.filter((r) => r.message_id === m.id)}
-              myUserId={user!.id}
-              onReport={(msg) => { setReportMsgId(msg.id); setReportOpen(true); }}
-              onReply={setReplyTo}
-              repliedMessage={replied}
-              repliedSenderLabel={replied ? senderLabel(replied) : undefined}
-            />
-          );
-        })}
+        {dropExpiredMessages(messages)
+          .filter((m) => !m.deleted_for?.includes(user!.id))
+          .map((m) => {
+            const replied = getReplied(m.reply_to_id);
+            return (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                mine={m.sender_id === user!.id}
+                reactions={reactions.filter((r) => r.message_id === m.id)}
+                myUserId={user!.id}
+                onReport={(msg) => { setReportMsgId(msg.id); setReportOpen(true); }}
+                onReply={(msg) => { setEditingMessage(null); setReplyTo(msg); }}
+                repliedMessage={replied}
+                repliedSenderLabel={replied ? senderLabel(replied) : undefined}
+                onEdit={startEdit}
+                onDeleteForMe={handleDeleteForMe}
+                onDeleteForEveryone={handleDeleteForEveryone}
+              />
+            );
+          })}
         {otherTyping && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground font-typewriter animate-pulse">
             <span>{other?.username ?? "المستخدم"} يكتب</span>
@@ -343,6 +397,21 @@ export default function ChatConversation() {
       </div>
 
       <div className="border-t border-border p-2 bg-card">
+        {editingMessage && (
+          <div className="flex items-center gap-2 bg-muted/60 border-r-2 border-primary rounded-md px-3 py-1.5 mb-2">
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-bold text-primary">تعديل الرسالة</div>
+              <div className="text-xs text-muted-foreground truncate">{editingMessage.body}</div>
+            </div>
+            <button
+              onClick={cancelEdit}
+              className="p-1 text-muted-foreground hover:text-foreground shrink-0"
+              aria-label="إلغاء التعديل"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         {replyTo && (
           <div className="flex items-center gap-2 bg-muted/60 border-r-2 border-primary rounded-md px-3 py-1.5 mb-2">
             <div className="flex-1 min-w-0">
@@ -365,7 +434,7 @@ export default function ChatConversation() {
             value={text}
             onChange={(e) => onTypingChange(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder="اكتب رسالة (سطر واحد)..."
+            placeholder={editingMessage ? "عدّل الرسالة..." : "اكتب رسالة (سطر واحد)..."}
             rows={1}
             className="resize-none min-h-[40px] max-h-32"
             maxLength={MAX_LINE_CHARS}
