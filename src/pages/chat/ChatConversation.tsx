@@ -546,7 +546,7 @@ export default function ChatConversation() {
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
             placeholder={editingMessage ? "عدّل الرسالة..." : "اكتب رسالة (سطر واحد)..."}
             rows={1}
-            className="resize-none min-h-[40px] max-h-32"
+            className="resize-none min-h-[40px] max-h-32 text-base"
             maxLength={MAX_LINE_CHARS}
           />
           <Button onClick={send} disabled={!text.trim() || sending} size="icon"><Send className="w-4 h-4" /></Button>
