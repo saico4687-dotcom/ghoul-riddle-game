@@ -15,6 +15,8 @@ export type Group = {
   invite_enabled: boolean;
   created_at: string;
   updated_at: string;
+  // مدة اختفاء الرسائل تلقائياً بالثواني (24 ساعة/7 أيام/90 يوم) — null يعني متوقفة
+  disappearing_seconds?: number | null;
   // بتتحدث تلقائيًا من trigger on_group_message_inserted لما تتبعت رسالة جديدة
   last_message_at?: string | null;
   last_message_preview?: string | null;
@@ -38,6 +40,9 @@ export type GroupMessage = {
   image_url: string | null;
   created_at: string;
   deleted_at: string | null;
+  // وقت الاختفاء التلقائي للرسالة (بيتحسب في الداتابيز وقت الإدراج حسب
+  // إعداد groups.disappearing_seconds). null يعني الرسالة مش هتختفي.
+  expires_at?: string | null;
   // بتتحدد تلقائياً من الداتابيز (join_group_by_invite / leave_group /
   // ban_group_member / remove_group_member) — لو موجودة يبقى الرسالة دي
   // رسالة نظام (انضم/غادر/حُظر/اتشال) مش رسالة عادية من اليوزر
@@ -102,9 +107,25 @@ export async function fetchGroup(groupId: string) {
   return data as Group | null;
 }
 
-export async function updateGroup(groupId: string, patch: Partial<Pick<Group, "name" | "description" | "avatar_url" | "lock_chat" | "invite_enabled">>) {
+export async function updateGroup(groupId: string, patch: Partial<Pick<Group, "name" | "description" | "avatar_url" | "lock_chat" | "invite_enabled" | "disappearing_seconds">>) {
   const { error } = await supabase.from("groups").update(patch).eq("id", groupId);
   if (error) throw new Error(error.message || "تعذر تحديث الجروب");
+}
+
+// خيارات الرسائل المؤقتة الشائعة (زي واتساب): إيقاف / 24 ساعة / 7 أيام / 90 يوم
+export const DISAPPEARING_OPTIONS: { label: string; seconds: number | null }[] = [
+  { label: "إيقاف", seconds: null },
+  { label: "24 ساعة", seconds: 24 * 60 * 60 },
+  { label: "7 أيام", seconds: 7 * 24 * 60 * 60 },
+  { label: "90 يوم", seconds: 90 * 24 * 60 * 60 },
+];
+
+// بتشيل من قائمة رسائل محمّلة أي رسالة اتخطى معاد انتهائها (Disappearing) —
+// الحذف الفعلي من الداتابيز محتاج Cron/Edge Function منفصلة، لكن ده كافي
+// عشان المستخدم ميشوفهاش في الواجهة أول ما تنتهي مدتها.
+export function dropExpired<T extends { expires_at?: string | null }>(list: T[]): T[] {
+  const now = Date.now();
+  return list.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > now);
 }
 
 export async function deleteGroup(groupId: string) {
@@ -233,6 +254,152 @@ export async function sendGroupMessage(
 export async function softDeleteGroupMessage(messageId: string) {
   const { error } = await supabase.from("group_messages").update({ deleted_at: new Date().toISOString() }).eq("id", messageId);
   if (error) throw new Error(error.message || "تعذر حذف الرسالة");
+}
+
+// ---------- Mentions (@username) ----------
+
+// بيدور في نص الرسالة على @username ويرجّع الـ user_id بتوعهم، بمقارنة
+// كل منشن بقائمة أعضاء الجروب النشطين اللي عندنا في الواجهة أصلاً — بدون
+// أي نداء إضافي للسيرفر.
+export function extractMentionedUserIds(
+  body: string,
+  members: { user_id: string; username: string | null }[]
+): string[] {
+  const matches = Array.from(body.matchAll(/@([A-Za-z0-9_\u0600-\u06FF]+)/g)).map((m) => m[1].toLowerCase());
+  if (matches.length === 0) return [];
+  const found = new Set<string>();
+  for (const mem of members) {
+    if (mem.username && matches.includes(mem.username.toLowerCase())) found.add(mem.user_id);
+  }
+  return Array.from(found);
+}
+
+export async function insertGroupMessageMentions(groupMessageId: string, mentionedUserIds: string[]) {
+  if (mentionedUserIds.length === 0) return;
+  const rows = mentionedUserIds.map((uid) => ({ group_message_id: groupMessageId, mentioned_user_id: uid }));
+  const { error } = await supabase.from("message_mentions").insert(rows);
+  if (error) console.error("[insertGroupMessageMentions]", error);
+}
+
+// ---------- Polls ----------
+
+export type GroupPoll = {
+  id: string;
+  group_id: string;
+  message_id: string | null;
+  creator_id: string;
+  question: string;
+  allow_multiple: boolean;
+  closed_at: string | null;
+  created_at: string;
+};
+
+export type GroupPollOption = {
+  id: string;
+  poll_id: string;
+  option_text: string;
+  position: number;
+};
+
+export type GroupPollVote = {
+  poll_id: string;
+  option_id: string;
+  user_id: string;
+  created_at: string;
+};
+
+// بيعمل رسالة (marker) في شات الجروب الأول عشان تاخد ترتيبها الزمني
+// الطبيعي جوه الرسائل، بعدين يربط الاستطلاع بيها عن طريق message_id —
+// نفس فكرة إن الاستطلاع "رسالة" زي أي رسالة تانية.
+export async function createGroupPoll(
+  groupId: string,
+  creatorId: string,
+  question: string,
+  options: string[],
+  allowMultiple: boolean
+) {
+  const cleanOptions = options.map((o) => o.trim()).filter(Boolean);
+  if (question.trim().length < 2) throw new Error("اكتب سؤال الاستطلاع");
+  if (cleanOptions.length < 2) throw new Error("لازم خيارين على الأقل");
+
+  const message = await sendGroupMessage(groupId, creatorId, "📊 استطلاع رأي: " + question.trim());
+
+  const { data: poll, error: pollErr } = await supabase
+    .from("group_polls")
+    .insert({
+      group_id: groupId,
+      message_id: message.id,
+      creator_id: creatorId,
+      question: question.trim(),
+      allow_multiple: allowMultiple,
+    })
+    .select()
+    .single();
+  if (pollErr) throw new Error(pollErr.message || "تعذر إنشاء الاستطلاع");
+
+  const { data: opts, error: optErr } = await supabase
+    .from("group_poll_options")
+    .insert(cleanOptions.map((text, i) => ({ poll_id: (poll as any).id, option_text: text, position: i })))
+    .select();
+  if (optErr) throw new Error(optErr.message || "تعذر إضافة خيارات الاستطلاع");
+
+  return { message, poll: poll as GroupPoll, options: (opts ?? []) as GroupPollOption[] };
+}
+
+// بيجيب كل الاستطلاعات + خياراتها + أصواتها الخاصة بجروب معيّن، مجمّعين
+// حسب message_id عشان نقدر نعرضهم مكان الرسالة بتاعتهم في قائمة الشات.
+export async function fetchGroupPolls(groupId: string) {
+  const { data: polls, error } = await supabase.from("group_polls").select("*").eq("group_id", groupId);
+  if (error) throw error;
+  const pollList = (polls ?? []) as GroupPoll[];
+  if (pollList.length === 0) return { polls: [], options: [], votes: [] };
+
+  const pollIds = pollList.map((p) => p.id);
+  const [{ data: options }, { data: votes }] = await Promise.all([
+    supabase.from("group_poll_options").select("*").in("poll_id", pollIds),
+    supabase.from("group_poll_votes").select("*").in("poll_id", pollIds),
+  ]);
+
+  return {
+    polls: pollList,
+    options: (options ?? []) as GroupPollOption[],
+    votes: (votes ?? []) as GroupPollVote[],
+  };
+}
+
+export async function fetchPollVotes(pollId: string) {
+  const { data, error } = await supabase.from("group_poll_votes").select("*").eq("poll_id", pollId);
+  if (error) throw error;
+  return (data ?? []) as GroupPollVote[];
+}
+
+// تصويت/سحب تصويت — لو الاستطلاع "اختيار واحد" (allow_multiple = false)
+// بنمسح أي صوت سابق لنفس اليوزر جوه نفس الاستطلاع الأول.
+export async function voteOnPoll(pollId: string, optionId: string, userId: string, allowMultiple: boolean) {
+  const { data: existing } = await supabase
+    .from("group_poll_votes")
+    .select("option_id")
+    .eq("poll_id", pollId)
+    .eq("user_id", userId)
+    .eq("option_id", optionId)
+    .maybeSingle();
+
+  if (existing) {
+    const { error } = await supabase
+      .from("group_poll_votes")
+      .delete()
+      .eq("poll_id", pollId)
+      .eq("user_id", userId)
+      .eq("option_id", optionId);
+    if (error) throw error;
+    return;
+  }
+
+  if (!allowMultiple) {
+    await supabase.from("group_poll_votes").delete().eq("poll_id", pollId).eq("user_id", userId);
+  }
+  const { error } = await supabase.from("group_poll_votes").insert({ poll_id: pollId, option_id: optionId, user_id: userId });
+  if (error) throw new Error(error.message || "تعذر التصويت");
 }
 
 // ---------- Reports ----------
