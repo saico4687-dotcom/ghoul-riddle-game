@@ -359,6 +359,7 @@ export type Database = {
       }
       group_reports: {
         Row: {
+          category: string
           created_at: string
           group_id: string
           id: string
@@ -369,6 +370,7 @@ export type Database = {
           target_user_id: string | null
         }
         Insert: {
+          category?: string
           created_at?: string
           group_id: string
           id?: string
@@ -379,6 +381,7 @@ export type Database = {
           target_user_id?: string | null
         }
         Update: {
+          category?: string
           created_at?: string
           group_id?: string
           id?: string
@@ -1165,6 +1168,7 @@ export type Database = {
       }
       reports: {
         Row: {
+          category: string
           created_at: string
           id: string
           reason: string
@@ -1174,6 +1178,7 @@ export type Database = {
           target_user_id: string
         }
         Insert: {
+          category?: string
           created_at?: string
           id?: string
           reason: string
@@ -1183,6 +1188,7 @@ export type Database = {
           target_user_id: string
         }
         Update: {
+          category?: string
           created_at?: string
           id?: string
           reason?: string
