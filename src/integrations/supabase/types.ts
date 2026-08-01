@@ -420,6 +420,8 @@ export type Database = {
           muted_by: string[]
           name: string
           owner_id: string
+          pinned_at: string | null
+          pinned_by: string | null
           pinned_message_id: string | null
           pinned_until: string | null
           updated_at: string
@@ -438,6 +440,8 @@ export type Database = {
           muted_by?: string[]
           name: string
           owner_id: string
+          pinned_at?: string | null
+          pinned_by?: string | null
           pinned_message_id?: string | null
           pinned_until?: string | null
           updated_at?: string
@@ -456,6 +460,8 @@ export type Database = {
           muted_by?: string[]
           name?: string
           owner_id?: string
+          pinned_at?: string | null
+          pinned_by?: string | null
           pinned_message_id?: string | null
           pinned_until?: string | null
           updated_at?: string
@@ -1386,6 +1392,10 @@ export type Database = {
         Args: { _conversation_id: string }
         Returns: undefined
       }
+      pin_group_message: {
+        Args: { _duration_hours: number | null; _group_id: string; _message_id: string }
+        Returns: undefined
+      }
       presence_heartbeat: { Args: never; Returns: undefined }
       regenerate_group_invite: { Args: { _group_id: string }; Returns: string }
       remove_group_member: {
@@ -1411,6 +1421,7 @@ export type Database = {
         Args: { _group_id: string; _target_user: string }
         Returns: undefined
       }
+      unpin_group_message: { Args: { _group_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"
