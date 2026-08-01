@@ -1,17 +1,24 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, Shield, Ban, VolumeX, Check } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Shield, Ban, VolumeX, Check, Users } from "lucide-react";
 import { toast } from "sonner";
 import { fetchPublicProfilesByIds, type PublicProfile } from "@/lib/chat/queries";
 import UserAvatar from "@/components/chat/UserAvatar";
+import { reportCategoryLabel } from "@/lib/chat/reportCategories";
 
+// نوع موحّد للبلاغ سواء كان فرديًا (reports) أو داخل جروب (group_reports) —
+// عمود source بيحدد مصدره وgroup_id بيبقى null لو فردي.
 type Report = {
   id: string;
+  source: "direct" | "group";
+  group_id: string | null;
   reporter_id: string;
-  target_user_id: string;
+  target_user_id: string | null;
   target_message_id: string | null;
   reason: string;
+  category: string;
   status: string;
   created_at: string;
 };
@@ -30,43 +37,76 @@ export default function AdminModeration({ adminId }: { adminId: string }) {
   const [reports, setReports] = useState<Report[]>([]);
   const [history, setHistory] = useState<ModAction[]>([]);
   const [profiles, setProfiles] = useState<Map<string, PublicProfile>>(new Map());
+  const [groupNames, setGroupNames] = useState<Map<string, string>>(new Map());
   const [suspended, setSuspended] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     setLoading(true);
-    const [{ data: rep }, { data: hist }, { data: susp }] = await Promise.all([
+    const [{ data: rep }, { data: grep }, { data: hist }, { data: susp }] = await Promise.all([
       supabase.from("reports").select("*").eq("status", "open").order("created_at", { ascending: false }).limit(100),
+      supabase.from("group_reports").select("*").eq("status", "open").order("created_at", { ascending: false }).limit(100),
       supabase.from("moderation_actions").select("*").order("created_at", { ascending: false }).limit(50),
       supabase.from("profiles").select("user_id, username, is_muted_until, is_suspended_until").or("is_muted_until.gt.now,is_suspended_until.gt.now").limit(50),
     ]);
-    const r = (rep ?? []) as Report[];
+
+    const direct: Report[] = (rep ?? []).map((r: any) => ({ ...r, source: "direct", group_id: null }));
+    const grouped: Report[] = (grep ?? []).map((r: any) => ({ ...r, source: "group" }));
+    // البلاغات الأحدث أولًا بغضّ النظر عن مصدرها
+    const r = [...direct, ...grouped].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
     const h = (hist ?? []) as ModAction[];
     setReports(r);
     setHistory(h);
     setSuspended(susp ?? []);
-    const ids = Array.from(new Set([...r.map((x) => x.target_user_id), ...r.map((x) => x.reporter_id), ...h.map((x) => x.target_user_id)]));
+
+    const ids = Array.from(
+      new Set([
+        ...r.filter((x) => x.target_user_id).map((x) => x.target_user_id as string),
+        ...r.map((x) => x.reporter_id),
+        ...h.map((x) => x.target_user_id),
+      ])
+    );
     const profs = await fetchPublicProfilesByIds(ids);
     setProfiles(new Map(profs.map((p) => [p.user_id, p])));
+
+    const groupIds = Array.from(new Set(grouped.map((x) => x.group_id).filter(Boolean))) as string[];
+    if (groupIds.length > 0) {
+      const { data: groups } = await supabase.from("groups").select("id, name").in("id", groupIds);
+      setGroupNames(new Map((groups ?? []).map((g: any) => [g.id, g.name])));
+    } else {
+      setGroupNames(new Map());
+    }
+
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
 
+  const reportsTable = (r: Report) => (r.source === "group" ? "group_reports" : "reports");
+
   const act = async (report: Report, action: "dismiss" | "mute" | "suspend") => {
+    if (!report.target_user_id) {
+      // بلاغ عن رسالة بدون مستخدم مستهدَف واضح (نادر) — نكتفي برفضه
+      await supabase.from(reportsTable(report)).update({ status: "dismissed" }).eq("id", report.id);
+      toast.success("تم");
+      load();
+      return;
+    }
     if (action === "dismiss") {
-      await supabase.from("reports").update({ status: "dismissed" }).eq("id", report.id);
-      await supabase.from("moderation_actions").insert({ admin_id: adminId, target_user_id: report.target_user_id, action: "dismiss", notes: `report ${report.id}` });
+      await supabase.from(reportsTable(report)).update({ status: "dismissed" }).eq("id", report.id);
+      await supabase.from("moderation_actions").insert({ admin_id: adminId, target_user_id: report.target_user_id, action: "dismiss", notes: `${report.source} report ${report.id} · ${report.category}` });
     } else if (action === "mute") {
       const until = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       await supabase.from("profiles").update({ is_muted_until: until }).eq("user_id", report.target_user_id);
-      await supabase.from("moderation_actions").insert({ admin_id: adminId, target_user_id: report.target_user_id, action: "mute", until, notes: `report ${report.id}` });
-      await supabase.from("reports").update({ status: "actioned" }).eq("id", report.id);
+      await supabase.from("moderation_actions").insert({ admin_id: adminId, target_user_id: report.target_user_id, action: "mute", until, notes: `${report.source} report ${report.id} · ${report.category}` });
+      await supabase.from(reportsTable(report)).update({ status: "actioned" }).eq("id", report.id);
     } else if (action === "suspend") {
       const until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
       await supabase.from("profiles").update({ is_suspended_until: until }).eq("user_id", report.target_user_id);
-      await supabase.from("moderation_actions").insert({ admin_id: adminId, target_user_id: report.target_user_id, action: "suspend", until, notes: `report ${report.id}` });
-      await supabase.from("reports").update({ status: "actioned" }).eq("id", report.id);
+      await supabase.from("moderation_actions").insert({ admin_id: adminId, target_user_id: report.target_user_id, action: "suspend", until, notes: `${report.source} report ${report.id} · ${report.category}` });
+      await supabase.from(reportsTable(report)).update({ status: "actioned" }).eq("id", report.id);
     }
     toast.success("تم");
     load();
@@ -92,23 +132,36 @@ export default function AdminModeration({ adminId }: { adminId: string }) {
           : (
             <ul className="space-y-3">
               {reports.map((r) => {
-                const tgt = profiles.get(r.target_user_id);
+                const tgt = r.target_user_id ? profiles.get(r.target_user_id) : undefined;
                 const rep = profiles.get(r.reporter_id);
+                const groupName = r.group_id ? groupNames.get(r.group_id) : null;
                 return (
-                  <li key={r.id} className="bg-background/40 rounded-lg p-3 text-sm font-typewriter">
+                  <li key={`${r.source}-${r.id}`} className="bg-background/40 rounded-lg p-3 text-sm font-typewriter">
                     <div className="flex items-start gap-3 mb-2">
                       <UserAvatar url={tgt?.avatar_url} username={tgt?.username} size="sm" />
                       <div className="flex-1">
-                        <div className="font-horror text-foreground">{tgt?.username ?? r.target_user_id.slice(0, 8)}</div>
-                        <div className="text-xs text-muted-foreground">بُلِّغ بواسطة: {rep?.username ?? "?"} — {new Date(r.created_at).toLocaleString("ar-EG")}</div>
+                        <div className="font-horror text-foreground">
+                          {tgt?.username ?? (r.target_user_id ? r.target_user_id.slice(0, 8) : "بدون مستخدم محدد")}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          بُلِّغ بواسطة: {rep?.username ?? "?"} — {new Date(r.created_at).toLocaleString("ar-EG")}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge variant="destructive" className="text-[10px]">{reportCategoryLabel(r.category)}</Badge>
+                        {r.source === "group" && (
+                          <Badge variant="outline" className="text-[10px] flex items-center gap-1">
+                            <Users className="w-3 h-3" /> {groupName ?? "جروب"}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     <p className="text-foreground/90 bg-card p-2 rounded mb-2">{r.reason}</p>
                     {r.target_message_id && <p className="text-xs text-muted-foreground mb-2">معرّف الرسالة: {r.target_message_id}</p>}
                     <div className="flex gap-2 flex-wrap">
                       <Button size="sm" variant="ghost" onClick={() => act(r, "dismiss")}><Check className="w-3 h-3 ml-1" />رفض البلاغ</Button>
-                      <Button size="sm" variant="outline" onClick={() => act(r, "mute")}><VolumeX className="w-3 h-3 ml-1" />كتم 24س</Button>
-                      <Button size="sm" variant="destructive" onClick={() => act(r, "suspend")}><Ban className="w-3 h-3 ml-1" />إيقاف 7 أيام</Button>
+                      <Button size="sm" variant="outline" onClick={() => act(r, "mute")} disabled={!r.target_user_id}><VolumeX className="w-3 h-3 ml-1" />كتم 24س</Button>
+                      <Button size="sm" variant="destructive" onClick={() => act(r, "suspend")} disabled={!r.target_user_id}><Ban className="w-3 h-3 ml-1" />إيقاف 7 أيام</Button>
                     </div>
                   </li>
                 );
