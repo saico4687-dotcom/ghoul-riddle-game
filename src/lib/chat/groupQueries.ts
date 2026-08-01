@@ -108,13 +108,35 @@ export async function createGroup(input: { name: string; description?: string | 
 export async function fetchMyGroups(myId: string) {
   const { data, error } = await supabase
     .from("group_members")
-    .select("group_id, role, status, groups(*)")
+    .select("group_id, role, status, archived, pinned, groups(*)")
     .eq("user_id", myId)
     .eq("status", "active");
   if (error) throw error;
   return (data ?? [])
-    .map((row: any) => ({ ...(row.groups as Group), myRole: row.role as GroupRole }))
+    .map((row: any) => ({ ...(row.groups as Group), myRole: row.role as GroupRole, archived: !!row.archived, pinned: !!row.pinned }))
     .filter((g: any) => !!g.id);
+}
+
+// أرشفة/إلغاء أرشفة جروب بالنسبة لي أنا بس (باقي الأعضاء مش متأثرين).
+export async function toggleGroupArchived(groupId: string, myId: string, currentlyArchived: boolean) {
+  const { error } = await supabase
+    .from("group_members")
+    .update({ archived: !currentlyArchived })
+    .eq("group_id", groupId)
+    .eq("user_id", myId);
+  if (error) throw error;
+  return !currentlyArchived;
+}
+
+// تثبيت/إلغاء تثبيت جروب في أعلى قائمتي أنا بس.
+export async function toggleGroupPinned(groupId: string, myId: string, currentlyPinned: boolean) {
+  const { error } = await supabase
+    .from("group_members")
+    .update({ pinned: !currentlyPinned })
+    .eq("group_id", groupId)
+    .eq("user_id", myId);
+  if (error) throw error;
+  return !currentlyPinned;
 }
 
 export async function fetchGroup(groupId: string) {
@@ -279,7 +301,8 @@ export async function sendGroupMessage(
   replyToId?: string | null
 ) {
   const { filterMessage } = await import("./contentFilter");
-  const cleanBody = body?.trim() ? filterMessage(body.trim()) : null;
+  const isLocation = !!body?.trim() && /^geo:-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(body.trim());
+  const cleanBody = body?.trim() ? (isLocation ? body.trim() : filterMessage(body.trim())) : null;
   const { data, error } = await supabase
     .from("group_messages")
     .insert({
