@@ -2,23 +2,43 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { Home, Users, MessageSquare, Bell, Settings as SettingsIcon, ArrowRight } from "lucide-react";
 import { usePresence } from "@/hooks/usePresence";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
+import { useAppLock } from "@/hooks/useAppLock";
 import { cn } from "@/lib/utils";
 import AdFreeTimer from "@/components/chat/AdFreeTimer";
 import ChatBannerSlot, { BOTTOM_NAV_HEIGHT, BANNER_SLOT_HEIGHT } from "@/components/chat/ChatBannerSlot";
+import WaterWavesBackground from "@/components/chat/WaterWavesBackground";
+import AppLockScreen from "@/components/chat/AppLockScreen";
 
 export default function ChatLayout() {
   usePresence();
   const unread = useUnreadCount();
   const navigate = useNavigate();
+  const { enabled: lockEnabled, loading: lockLoading, unlocked, verify, unlock } = useAppLock();
+
+  // القفل مفعّل ولسه مقفول: نعرض شاشة القفل بس (وراها الأمواج برضه
+  // عشان الهوية البصرية متتكسرش حتى قبل الدخول للمحتوى).
+  if (!lockLoading && lockEnabled && !unlocked) {
+    return (
+      <div className="min-h-screen relative" dir="rtl">
+        <WaterWavesBackground />
+        <AppLockScreen onVerify={verify} onUnlocked={unlock} />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col" dir="rtl">
-      <header className="sticky top-0 z-40 bg-card/95 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between">
-        <button onClick={() => navigate("/")} className="flex items-center gap-2 text-primary">
+    <div className="min-h-screen flex flex-col relative text-white" dir="rtl">
+      {/* خلفية الأمواج المتحركة — ثابتة خلف كل شاشات الدردشة (المحادثات،
+          الشات، الجروبات، الإعدادات، البحث...) من لحظة الدخول للدردشة
+          وحتى الخروج منها */}
+      <WaterWavesBackground />
+
+      <header className="sticky top-0 z-40 bg-white/10 backdrop-blur-md border-b border-white/15 px-4 py-3 flex items-center justify-between">
+        <button onClick={() => navigate("/")} className="flex items-center gap-2 text-white">
           <ArrowRight className="w-5 h-5" />
           <span className="font-horror text-sm">الرئيسية</span>
         </button>
-        <h1 className="font-horror text-lg text-primary">الدردشة</h1>
+        <h1 className="font-horror text-lg text-white">الدردشة</h1>
         <div className="w-16" />
       </header>
 
@@ -38,7 +58,7 @@ export default function ChatLayout() {
       </div>
 
       <nav
-        className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border z-40"
+        className="fixed bottom-0 left-0 right-0 bg-white/10 backdrop-blur-md border-t border-white/15 z-40"
         style={{ height: BOTTOM_NAV_HEIGHT }}
       >
         <div className="grid grid-cols-5 h-full">
@@ -61,7 +81,7 @@ function TabLink({ to, icon, label, badge, end }: { to: string; icon: React.Reac
       className={({ isActive }) =>
         cn(
           "flex flex-col items-center justify-center gap-1 h-full text-[11px] font-typewriter",
-          isActive ? "text-primary" : "text-muted-foreground"
+          isActive ? "text-white" : "text-white/70"
         )
       }
     >
