@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Smile, MoreVertical, Flag, Reply } from "lucide-react";
+import { Smile, MoreVertical, Flag, Reply, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -8,7 +8,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Message, Reaction } from "@/lib/chat/queries";
-import { toggleReaction } from "@/lib/chat/queries";
+import { toggleReaction, canEditMessage, canDeleteForEveryone } from "@/lib/chat/queries";
+import { renderMessageBody } from "@/lib/chat/formatting";
 
 const EMOJIS = ["👍", "❤️", "😂", "😮"];
 
@@ -30,6 +31,12 @@ interface Props {
   repliedMessage?: Message | null;
   // اسم صاحب الرسالة المقتبَسة يتعرض فوق الاقتباس ("أنت" أو اسم المستخدم)
   repliedSenderLabel?: string;
+  // بينادَى لما اليوزر يختار "تعديل" — الأب هو اللي بيحط الرسالة في وضع التعديل بالـ composer
+  onEdit?: (m: Message) => void;
+  // حذف من عندي فقط (الرسالة تفضل ظاهرة للطرف التاني)
+  onDeleteForMe?: (m: Message) => void;
+  // حذف للجميع — بيظهر بس لو أنا صاحب الرسالة وخلال 60 ساعة من الإرسال
+  onDeleteForEveryone?: (m: Message) => void;
 }
 
 export default function MessageBubble({
@@ -41,6 +48,9 @@ export default function MessageBubble({
   onReply,
   repliedMessage,
   repliedSenderLabel,
+  onEdit,
+  onDeleteForMe,
+  onDeleteForEveryone,
 }: Props) {
   const [picker, setPicker] = useState(false);
   const [dragX, setDragX] = useState(0);
@@ -130,8 +140,13 @@ export default function MessageBubble({
               </div>
             </div>
           )}
-          {renderWithMentions(message.body)}
+          {message.deleted_at ? (
+            <span className="italic opacity-70">تم حذف هذه الرسالة</span>
+          ) : (
+            renderMessageBody(message.body)
+          )}
           <div className={cn("text-[10px] mt-1 opacity-70 flex items-center gap-1 justify-end", mine ? "text-primary-foreground" : "text-muted-foreground")}>
+            {message.edited_at && !message.deleted_at && <span>معدَّلة</span>}
             <span>{new Date(message.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}</span>
             {mine && (
               <span aria-label={message.read_at ? "قُرئت" : message.delivered_at ? "تم التسليم" : "أُرسلت"}>
@@ -190,10 +205,30 @@ export default function MessageBubble({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuItem onClick={() => onReport(message)}>
-                <Flag className="w-3 h-3 ml-2" />
-                الإبلاغ عن الرسالة
-              </DropdownMenuItem>
+              {mine && !message.deleted_at && onEdit && canEditMessage(message) && (
+                <DropdownMenuItem onClick={() => onEdit(message)}>
+                  <Pencil className="w-3 h-3 ml-2" />
+                  تعديل
+                </DropdownMenuItem>
+              )}
+              {onDeleteForMe && !message.deleted_for?.includes(myUserId) && (
+                <DropdownMenuItem onClick={() => onDeleteForMe(message)}>
+                  <Trash2 className="w-3 h-3 ml-2" />
+                  حذف من عندي
+                </DropdownMenuItem>
+              )}
+              {mine && !message.deleted_at && onDeleteForEveryone && canDeleteForEveryone(message) && (
+                <DropdownMenuItem onClick={() => onDeleteForEveryone(message)} className="text-destructive">
+                  <Trash2 className="w-3 h-3 ml-2" />
+                  حذف لدى الجميع
+                </DropdownMenuItem>
+              )}
+              {!mine && (
+                <DropdownMenuItem onClick={() => onReport(message)}>
+                  <Flag className="w-3 h-3 ml-2" />
+                  الإبلاغ عن الرسالة
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -219,15 +254,3 @@ export default function MessageBubble({
   );
 }
 
-function renderWithMentions(body: string) {
-  const parts = body.split(/(@[A-Za-z0-9_]+)/g);
-  return parts.map((p, i) =>
-    p.startsWith("@") ? (
-      <span key={i} className="text-primary font-bold">
-        {p}
-      </span>
-    ) : (
-      <span key={i}>{p}</span>
-    )
-  );
-}
