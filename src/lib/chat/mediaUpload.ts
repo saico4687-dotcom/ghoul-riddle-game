@@ -35,7 +35,7 @@ export async function sendDmMediaMessage(
   senderId: string,
   file: File | Blob,
   mime: string,
-  opts?: { durationSeconds?: number; replyToId?: string | null }
+  opts?: { durationSeconds?: number; replyToId?: string | null; viewOnce?: boolean }
 ) {
   const rl = checkRateLimit(conversationId);
   if (!rl.ok) throw new Error(`تجاوزت الحد المسموح. حاول بعد ${Math.ceil(rl.retryInMs / 1000)} ثانية`);
@@ -63,6 +63,7 @@ export async function sendDmMediaMessage(
       media_iv: ivBase64,
       media_key: keyBase64,
       media_expires_at: expiresAt,
+      view_once: opts?.viewOnce ?? false,
     } as any)
     .select()
     .single();
@@ -75,7 +76,7 @@ export async function sendGroupMediaMessage(
   senderId: string,
   file: File | Blob,
   mime: string,
-  opts?: { durationSeconds?: number; replyToId?: string | null }
+  opts?: { durationSeconds?: number; replyToId?: string | null; viewOnce?: boolean }
 ) {
   const kind = detectMediaKind(mime);
   if (!kind) throw new Error("نوع ملف غير مدعوم");
@@ -99,6 +100,7 @@ export async function sendGroupMediaMessage(
       media_iv: ivBase64,
       media_key: keyBase64,
       media_expires_at: expiresAt,
+      view_once: opts?.viewOnce ?? false,
     } as any)
     .select()
     .single();
@@ -115,6 +117,15 @@ export async function downloadAndDecrypt(mediaPath: string, ivBase64: string, ke
 }
 
 // ---------- تأكيد الاستلام (يمسح الملف فورًا من الـ bucket) ----------
+
+// "شاهدها مرة واحدة" (View Once) — بيرجع true لو مسموح نعرض المحتوى
+// (أول فتح، أو المرسل نفسه)، و false لو كانت اتفتحت قبل كده من حد تاني.
+export async function markViewOnceOpened(messageId: string, kind: "dm" | "group"): Promise<boolean> {
+  const rpcName = kind === "dm" ? "mark_message_view_once" : "mark_group_message_view_once";
+  const { data, error } = await supabase.rpc(rpcName, { _message_id: messageId });
+  if (error) throw new Error(error.message || "تعذر فتح الرسالة");
+  return data === true;
+}
 
 export async function ackMediaViewed(messageId: string, kind: "dm" | "group") {
   const { data: session } = await supabase.auth.getSession();
