@@ -94,8 +94,10 @@ import {
   X,
   Pin,
   PinOff,
+  Flag,
 } from "lucide-react";
 import { toast } from "sonner";
+import ReportDialog from "@/components/chat/ReportDialog";
 
 // نصوص رسائل النظام (انضم/غادر/حُظر/اتشال) اللي بتتحط جوه الشات
 // نفسها زي واتساب، بدل ما تكون فقاعة رسالة عادية
@@ -157,6 +159,7 @@ export default function GroupChat() {
 
   // ----- استطلاعات الرأي (Polls) -----
   const [pollOpen, setPollOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{ userId: string; messageId: string } | null>(null);
   const [polls, setPolls] = useState<Map<string, GroupPoll>>(new Map()); // key = message_id
   const [pollOptions, setPollOptions] = useState<Map<string, GroupPollOption[]>>(new Map()); // key = poll_id
   const [pollVotes, setPollVotes] = useState<Map<string, GroupPollVote[]>>(new Map()); // key = poll_id
@@ -709,6 +712,15 @@ export default function GroupChat() {
                             حذف لدى الجميع
                           </DropdownMenuItem>
                         )}
+                        {!mine && (
+                          <DropdownMenuItem
+                            onClick={() => setReportTarget({ userId: m.sender_id, messageId: m.id })}
+                            className="text-destructive"
+                          >
+                            <Flag className="w-3 h-3 ml-2" />
+                            الإبلاغ عن الرسالة
+                          </DropdownMenuItem>
+                        )}
                         {isStaff && (
                           <DropdownMenuSub>
                             <DropdownMenuSubTrigger>
@@ -888,6 +900,18 @@ export default function GroupChat() {
       </Dialog>
 
       <PollComposerDialog open={pollOpen} onOpenChange={setPollOpen} onCreate={handleCreatePoll} />
+
+      {reportTarget && (
+        <ReportDialog
+          open={!!reportTarget}
+          onOpenChange={(v) => !v && setReportTarget(null)}
+          reporterId={user!.id}
+          targetUserId={reportTarget.userId}
+          targetMessageId={reportTarget.messageId}
+          context="message"
+          groupId={groupId}
+        />
+      )}
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent dir="rtl">
