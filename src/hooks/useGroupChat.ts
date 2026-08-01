@@ -56,7 +56,7 @@ export function useGroupChat(groupId: string | undefined) {
         { event: "UPDATE", schema: "public", table: "group_messages", filter: `group_id=eq.${groupId}` },
         (payload) => {
           const msg = payload.new as GroupMessage;
-          setMessages((m) => (msg.deleted_at ? m.filter((x) => x.id !== msg.id) : m.map((x) => (x.id === msg.id ? msg : x))));
+          setMessages((m) => (m.some((x) => x.id === msg.id) ? m.map((x) => (x.id === msg.id ? msg : x)) : [...m, msg]));
         }
       )
       .on(
