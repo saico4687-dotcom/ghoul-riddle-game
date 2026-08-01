@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 // ⚠️ استبدلها بمفتاحك العام الحقيقي بعد ما تحط المفتاح الخاص في
 // Supabase → Edge Functions → Secrets (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY)
 const VAPID_PUBLIC_KEY =
-  "BCdeKE0Oqy0OYhhPYC3gee2--6hYL9mj3B0o_a4meekHtJtwx_N6BDKbRL67lqX11xFX_GgbNA21BhG4Mu9utXs";
+  "BIQ4RKY1Sog94x4_Cmj45V1CIVWccb4G0D6WlPwpBHOt9kY_EcTxRcW5Ln2l5LiXOcgZVv_VPCD1o9wzKOGkwvM";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
