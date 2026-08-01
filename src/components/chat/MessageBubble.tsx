@@ -149,9 +149,11 @@ export default function MessageBubble({
             {message.edited_at && !message.deleted_at && <span>معدَّلة</span>}
             <span>{new Date(message.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}</span>
             {mine && (
-              <span aria-label={message.read_at ? "قُرئت" : message.delivered_at ? "تم التسليم" : "أُرسلت"}>
+              <span
+                aria-label={message.read_at ? "قُرئت" : message.delivered_at ? "تم التسليم" : "أُرسلت"}
+                className={message.read_at ? "text-sky-400" : "opacity-90"}
+              >
                 {message.read_at ? "✓✓" : message.delivered_at ? "✓✓" : "✓"}
-                {message.read_at && <span className="text-cyan-300 mr-[-6px]"></span>}
               </span>
             )}
           </div>
