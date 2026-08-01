@@ -30,7 +30,8 @@ export default function JoinGroup() {
     } catch (e: any) {
       const msg = String(e?.message ?? "");
       if (msg.includes("banned")) toast.error("أنت محظور من هذا الجروب");
-      else if (msg.includes("invalid invite code")) toast.error("رابط الدعوة غير صالح أو تم إلغاؤه");
+      else if (msg.includes("invalid invite code") || msg.includes("invalid_invite_code")) toast.error("رابط الدعوة غير صالح أو تم إلغاؤه");
+      else if (msg.includes("group_full")) toast.error("الجروب وصل للحد الأقصى للأعضاء (1024 عضو)");
       else toast.error(msg || "تعذر الانضمام");
     } finally {
       setJoining(false);
