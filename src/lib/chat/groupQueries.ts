@@ -1,525 +1,1007 @@
+import { useEffect, useRef, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useAdFree } from "@/hooks/useAdFree";
+import { isAdFreeActive } from "@/lib/chat/adFree";
+import { useGroupChat } from "@/hooks/useGroupChat";
+import {
+  sendGroupMessage,
+  editGroupMessage,
+  deleteGroupMessageForMe,
+  leaveGroup,
+  setGroupAdmin,
+  banGroupMember,
+  unbanGroupMember,
+  removeGroupMember,
+  regenerateGroupInvite,
+  updateGroup,
+  markGroupRead,
+  deleteGroup,
+  DISAPPEARING_OPTIONS,
+  dropExpired,
+  extractMentionedUserIds,
+  insertGroupMessageMentions,
+  createGroupPoll,
+  fetchGroupPolls,
+  voteOnPoll,
+  softDeleteGroupMessage,
+  pinGroupMessage,
+  unpinGroupMessage,
+  isPinActive,
+  PIN_DURATION_OPTIONS,
+  type GroupPoll,
+  type GroupPollOption,
+  type GroupPollVote,
+} from "@/lib/chat/groupQueries";
+import { fetchPublicProfilesByIds, canEditMessage, canDeleteForEveryone, type PublicProfile } from "@/lib/chat/queries";
+import { renderMessageBody, isLocationBody, parseLocationBody, makeLocationBody } from "@/lib/chat/formatting";
+import LocationMessage from "@/components/chat/LocationMessage";
+import { checkSingleLine, filterMessage, MAX_LINE_CHARS } from "@/lib/chat/contentFilter";
+import { noteChatMessageSent, showInterstitial } from "@/lib/adsMediation";
+import { APP_WEB_ORIGIN } from "@/lib/appOrigin";
 import { supabase } from "@/integrations/supabase/client";
-import { ensureFreshSession, SESSION_EXPIRED_MESSAGE } from "@/lib/ensureSession";
+import UserAvatar from "@/components/chat/UserAvatar";
+import MediaComposerButtons from "@/components/chat/MediaComposerButtons";
+import MediaMessageBubble from "@/components/chat/MediaMessageBubble";
+import PollComposerDialog from "@/components/chat/PollComposerDialog";
+import PollMessageBubble from "@/components/chat/PollMessageBubble";
+import MentionAutocomplete from "@/components/chat/MentionAutocomplete";
+import { sendGroupMediaMessage } from "@/lib/chat/mediaUpload";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from "@/components/ui/dropdown-menu";
+import {
+  Send,
+  ArrowRight,
+  Users,
+  MoreVertical,
+  Link2,
+  Lock,
+  LockOpen,
+  LogOut,
+  ShieldCheck,
+  Ban,
+  UserMinus,
+  Loader2,
+  RefreshCw,
+  Trash2,
+  UserPlus,
+  Timer,
+  BarChart3,
+  Pencil,
+  X,
+  Pin,
+  PinOff,
+  Flag,
+} from "lucide-react";
+import { toast } from "sonner";
+import ReportDialog from "@/components/chat/ReportDialog";
 
-export type GroupRole = "owner" | "admin" | "member";
-export type GroupMemberStatus = "active" | "banned" | "left";
+// نصوص رسائل النظام (انضم/غادر/حُظر/اتشال) اللي بتتحط جوه الشات
+// نفسها زي واتساب، بدل ما تكون فقاعة رسالة عادية
 
-export type Group = {
-  id: string;
-  name: string;
-  description: string | null;
-  avatar_url: string | null;
-  owner_id: string;
-  lock_chat: boolean;
-  invite_code: string;
-  invite_enabled: boolean;
-  created_at: string;
-  updated_at: string;
-  // الحد الأقصى لعدد أعضاء الجروب (زي واتساب: 1024 كحد أقصى)
-  max_members?: number;
-  // مدة اختفاء الرسائل تلقائياً بالثواني (24 ساعة/7 أيام/90 يوم) — null يعني متوقفة
-  disappearing_seconds?: number | null;
-  // بتتحدث تلقائيًا من trigger on_group_message_inserted لما تتبعت رسالة جديدة
-  last_message_at?: string | null;
-  last_message_preview?: string | null;
-  // الرسالة المثبتة حاليًا في الجروب (Pin Message) — null يعني مفيش رسالة مثبتة
-  pinned_message_id?: string | null;
-  pinned_by?: string | null;
-  pinned_at?: string | null;
-  // مهلة انتهاء التثبيت (24 ساعة / 7 أيام / 30 يوم من وقت التثبيت). null يعني بلا مهلة
-  pinned_until?: string | null;
+const SYSTEM_EVENT_LABEL: Record<string, (name: string) => string> = {
+  joined: (name) => `${name} انضم إلى الجروب`,
+  left: (name) => `${name} غادر الجروب`,
+  banned: (name) => `${name} تم حظره من الجروب`,
+  removed: (name) => `${name} تمت إزالته من الجروب`,
 };
 
-export type GroupMember = {
-  group_id: string;
-  user_id: string;
-  role: GroupRole;
-  status: GroupMemberStatus;
-  joined_at: string;
-};
+export default function GroupChat() {
+  const { id: groupId } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const { isAdFree } = useAdFree();
+  const navigate = useNavigate();
+  const { group, members, messages, loading, isMember, isBanned, isStaff, isOwner, canPost, setMessages } =
+    useGroupChat(groupId);
 
-export type GroupSystemEvent = "joined" | "left" | "banned" | "removed";
+  const [pinBusy, setPinBusy] = useState(false);
+  const pinnedMessage =
+    group && isPinActive(group) ? messages.find((m) => m.id === group.pinned_message_id) ?? null : null;
 
-export type GroupMessage = {
-  id: string;
-  group_id: string;
-  sender_id: string;
-  body: string | null;
-  image_url: string | null;
-  created_at: string;
-  deleted_at: string | null;
-  // وقت آخر تعديل لنص رسالة الجروب (خلال 15 دقيقة من الإرسال، ينفَّذ التريجر في الداتابيز)
-  edited_at: string | null;
-  // قائمة الـ user_id اللي عملوا "حذف من عندي" لرسالة الجروب دي
-  deleted_for: string[];
-  // وقت الاختفاء التلقائي للرسالة (بيتحسب في الداتابيز وقت الإدراج حسب
-  // إعداد groups.disappearing_seconds). null يعني الرسالة مش هتختفي.
-  expires_at?: string | null;
-  // بتتحدد تلقائياً من الداتابيز (join_group_by_invite / leave_group /
-  // ban_group_member / remove_group_member) — لو موجودة يبقى الرسالة دي
-  // رسالة نظام (انضم/غادر/حُظر/اتشال) مش رسالة عادية من اليوزر
-  system_event?: GroupSystemEvent | null;
-  // معرّف رسالة الجروب اللي حصل عليها "رد" — بيتحط لما اليوزر يسحب/يشد
-  // رسالة في شات الجروب ويكتب تحتها زي واتساب. null لو مش رد.
-  reply_to_id: string | null;
-  // وسائط مؤقتة مشفّرة (صورة/فيديو/صوت) — نفس آلية الرسائل الفردية.
-  // المفتاح والـ IV بيتمسحوا من الصف نفسه أول ما الملف يتمسح من الـ
-  // storage (استلام أو انتهاء 72 ساعة)، فـ media_deleted_at != null
-  // معناها الوسائط خلصت ومفيش داعي نحاول نفك تشفيرها.
-  media_path: string | null;
-  media_type: "image" | "audio" | "video" | null;
-  media_mime: string | null;
-  media_size_bytes: number | null;
-  media_duration_seconds: number | null;
-  media_iv: string | null;
-  media_key: string | null;
-  media_expires_at: string | null;
-  media_deleted_at: string | null;
-  // "شاهدها مرة واحدة" — لو true، الرسالة بتتخفي بعد أول فتح من مستقبل
-  // غير المرسل. viewed_at بيتسجّل وقت أول فتح (بيتحدد مرة واحدة بس).
-  view_once?: boolean;
-  viewed_at?: string | null;
-};
-
-// ---------- Groups ----------
-
-export async function createGroup(input: { name: string; description?: string | null; avatarUrl?: string | null }) {
-  const sessionOk = await ensureFreshSession();
-  if (!sessionOk) throw new Error(SESSION_EXPIRED_MESSAGE);
-
-  const { data: u } = await supabase.auth.getUser();
-  if (!u.user) throw new Error("يجب تسجيل الدخول");
-
-  const { data, error } = await supabase
-    .from("groups")
-    .insert({
-      name: input.name.trim(),
-      description: input.description?.trim() || null,
-      avatar_url: input.avatarUrl ?? null,
-      owner_id: u.user.id,
-    })
-    .select()
-    .single();
-
-  if (error) throw new Error(error.message || "تعذر إنشاء الجروب");
-  return data as Group;
-}
-
-export async function fetchMyGroups(myId: string) {
-  const { data, error } = await supabase
-    .from("group_members")
-    .select("group_id, role, status, archived, pinned, groups(*)")
-    .eq("user_id", myId)
-    .eq("status", "active");
-  if (error) throw error;
-  return (data ?? [])
-    .map((row: any) => ({ ...(row.groups as Group), myRole: row.role as GroupRole, archived: !!row.archived, pinned: !!row.pinned }))
-    .filter((g: any) => !!g.id);
-}
-
-// أرشفة/إلغاء أرشفة جروب بالنسبة لي أنا بس (باقي الأعضاء مش متأثرين).
-export async function toggleGroupArchived(groupId: string, myId: string, currentlyArchived: boolean) {
-  const { error } = await supabase
-    .from("group_members")
-    .update({ archived: !currentlyArchived })
-    .eq("group_id", groupId)
-    .eq("user_id", myId);
-  if (error) throw error;
-  return !currentlyArchived;
-}
-
-// تثبيت/إلغاء تثبيت جروب في أعلى قائمتي أنا بس.
-export async function toggleGroupPinned(groupId: string, myId: string, currentlyPinned: boolean) {
-  const { error } = await supabase
-    .from("group_members")
-    .update({ pinned: !currentlyPinned })
-    .eq("group_id", groupId)
-    .eq("user_id", myId);
-  if (error) throw error;
-  return !currentlyPinned;
-}
-
-export async function fetchGroup(groupId: string) {
-  const { data, error } = await supabase.from("groups").select("*").eq("id", groupId).maybeSingle();
-  if (error) throw error;
-  return data as Group | null;
-}
-
-export async function updateGroup(groupId: string, patch: Partial<Pick<Group, "name" | "description" | "avatar_url" | "lock_chat" | "invite_enabled" | "disappearing_seconds">>) {
-  const { error } = await supabase.from("groups").update(patch).eq("id", groupId);
-  if (error) throw new Error(error.message || "تعذر تحديث الجروب");
-}
-
-// خيارات الرسائل المؤقتة الشائعة (زي واتساب): إيقاف / 24 ساعة / 7 أيام / 90 يوم
-export const DISAPPEARING_OPTIONS: { label: string; seconds: number | null }[] = [
-  { label: "إيقاف", seconds: null },
-  { label: "24 ساعة", seconds: 24 * 60 * 60 },
-  { label: "7 أيام", seconds: 7 * 24 * 60 * 60 },
-  { label: "90 يوم", seconds: 90 * 24 * 60 * 60 },
-];
-
-// بتشيل من قائمة رسائل محمّلة أي رسالة اتخطى معاد انتهائها (Disappearing) —
-// الحذف الفعلي من الداتابيز محتاج Cron/Edge Function منفصلة، لكن ده كافي
-// عشان المستخدم ميشوفهاش في الواجهة أول ما تنتهي مدتها.
-export function dropExpired<T extends { expires_at?: string | null }>(list: T[]): T[] {
-  const now = Date.now();
-  return list.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > now);
-}
-
-export async function deleteGroup(groupId: string) {
-  const { error } = await supabase.from("groups").delete().eq("id", groupId);
-  if (error) throw new Error(error.message || "تعذر حذف الجروب");
-}
-
-// عدد الرسايل الغير مقروءة لكل جروب على حدة — بيستخدم الـ RPC الجاهزة
-// على الداتابيز (get_my_group_unread_counts) اللي بتحسب من عمود
-// group_messages.read_at، مش من جدول notifications
-export async function fetchUnreadCountsByGroup() {
-  const { data, error } = await supabase.rpc("get_my_group_unread_counts");
-  if (error) throw error;
-  const counts = new Map<string, number>();
-  for (const row of (data ?? []) as { group_id: string; unread_count: number }[]) {
-    counts.set(row.group_id, Number(row.unread_count));
-  }
-  return counts;
-}
-
-// بتتنادى لما المستخدم يفتح شات جروب، عشان تصفّر شارة الجروب ده بس
-// (بتنادي RPC الجاهزة mark_group_read)
-export async function markGroupRead(groupId: string) {
-  const { error } = await supabase.rpc("mark_group_read", { _group_id: groupId });
-  if (error) console.error("[markGroupRead]", error);
-}
-
-// ---------- Members ----------
-
-export async function fetchGroupMembers(groupId: string) {
-  const { data, error } = await supabase
-    .from("group_members")
-    .select("*")
-    .eq("group_id", groupId)
-    .order("joined_at", { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as GroupMember[];
-}
-
-export async function fetchMyMembership(groupId: string, myId: string) {
-  const { data, error } = await supabase
-    .from("group_members")
-    .select("*")
-    .eq("group_id", groupId)
-    .eq("user_id", myId)
-    .maybeSingle();
-  if (error) throw error;
-  return data as GroupMember | null;
-}
-
-export async function joinGroupByInvite(inviteCode: string) {
-  const { data, error } = await supabase.rpc("join_group_by_invite", { _invite_code: inviteCode.trim() });
-  if (error) throw new Error(error.message || "رابط الدعوة غير صالح");
-  return data as string; // group_id
-}
-
-// خيارات مدة التثبيت المسموحة (بالساعات) — 24 ساعة / 7 أيام / 30 يوم، أو بلا مهلة
-export const PIN_DURATION_OPTIONS: { label: string; hours: number | null }[] = [
-  { label: "24 ساعة", hours: 24 },
-  { label: "7 أيام", hours: 24 * 7 },
-  { label: "30 يوم", hours: 24 * 30 },
-  { label: "بدون مهلة", hours: null },
-];
-
-export async function pinGroupMessage(groupId: string, messageId: string, durationHours: number | null) {
-  const { error } = await supabase.rpc("pin_group_message", {
-    _group_id: groupId,
-    _message_id: messageId,
-    _duration_hours: durationHours,
-  });
-  if (error) throw new Error(error.message || "تعذر تثبيت الرسالة");
-}
-
-export async function unpinGroupMessage(groupId: string) {
-  const { error } = await supabase.rpc("unpin_group_message", { _group_id: groupId });
-  if (error) throw new Error(error.message || "تعذر إلغاء التثبيت");
-}
-
-// بيرجع true لو فيه رسالة مثبتة ولسه سارية (ما تجاوزتش pin_expires_at)
-export function isPinActive(group: Pick<Group, "pinned_message_id" | "pinned_until">): boolean {
-  if (!group.pinned_message_id) return false;
-  if (!group.pinned_until) return true;
-  return new Date(group.pinned_until).getTime() > Date.now();
-}
-
-export async function regenerateGroupInvite(groupId: string) {
-  const { data, error } = await supabase.rpc("regenerate_group_invite", { _group_id: groupId });
-  if (error) throw new Error(error.message || "تعذر تجديد رابط الدعوة");
-  return data as string; // new invite_code
-}
-
-export async function setGroupAdmin(groupId: string, targetUser: string, makeAdmin: boolean) {
-  const { error } = await supabase.rpc("set_group_admin", { _group_id: groupId, _target_user: targetUser, _make_admin: makeAdmin });
-  if (error) throw new Error(error.message || "تعذر تغيير صلاحية العضو");
-}
-
-export async function banGroupMember(groupId: string, targetUser: string, reason?: string) {
-  const { error } = await supabase.rpc("ban_group_member", { _group_id: groupId, _target_user: targetUser, _reason: reason ?? null });
-  if (error) throw new Error(error.message || "تعذر حظر العضو");
-}
-
-export async function unbanGroupMember(groupId: string, targetUser: string) {
-  const { error } = await supabase.rpc("unban_group_member", { _group_id: groupId, _target_user: targetUser });
-  if (error) throw new Error(error.message || "تعذر فك الحظر");
-}
-
-export async function removeGroupMember(groupId: string, targetUser: string) {
-  const { error } = await supabase.rpc("remove_group_member", { _group_id: groupId, _target_user: targetUser });
-  if (error) throw new Error(error.message || "تعذر إزالة العضو");
-}
-
-export async function leaveGroup(groupId: string) {
-  const { error } = await supabase.rpc("leave_group", { _group_id: groupId });
-  if (error) throw new Error(error.message || "تعذر مغادرة الجروب");
-}
-
-// ---------- Messages ----------
-
-export async function fetchGroupMessages(groupId: string, limit = 50) {
-  const { data, error } = await supabase
-    .from("group_messages")
-    .select("*")
-    .eq("group_id", groupId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return ((data ?? []) as GroupMessage[]).reverse();
-}
-
-export async function sendGroupMessage(
-  groupId: string,
-  senderId: string,
-  body?: string | null,
-  imageUrl?: string | null,
-  replyToId?: string | null
-) {
-  const { filterMessage } = await import("./contentFilter");
-  const isLocation = !!body?.trim() && /^geo:-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(body.trim());
-  const cleanBody = body?.trim() ? (isLocation ? body.trim() : filterMessage(body.trim())) : null;
-  const { data, error } = await supabase
-    .from("group_messages")
-    .insert({
-      group_id: groupId,
-      sender_id: senderId,
-      body: cleanBody,
-      image_url: imageUrl ?? null,
-      reply_to_id: replyToId ?? null,
-    })
-    .select()
-    .single();
-  if (error) throw new Error(error.message || "تعذر إرسال الرسالة");
-
-  // Push حقيقي لباقي أعضاء الجروب (عدا المرسل نفسه)
-  notifyGroupMembers(groupId, senderId, cleanBody ?? "📷 وسائط").catch(() => {});
-
-  return data as GroupMessage;
-}
-
-async function notifyGroupMembers(groupId: string, senderId: string, body: string) {
-  const [{ data: members }, { sendMessagePush }, { data: group }, { data: sender }] = await Promise.all([
-    supabase.from("group_members").select("user_id").eq("group_id", groupId),
-    import("./push"),
-    supabase.from("groups").select("name").eq("id", groupId).maybeSingle(),
-    supabase.from("profiles").select("username").eq("user_id", senderId).maybeSingle(),
-  ]);
-  const recipientIds = (members ?? []).map((m: any) => m.user_id).filter((id: string) => id !== senderId);
-  if (recipientIds.length === 0) return;
-  const title = group?.name ? `${group.name} · ${sender?.username ?? ""}` : sender?.username ?? "رسالة جروب";
-  await sendMessagePush(recipientIds, title, body, `/chat/g/${groupId}`);
-}
-
-/** تعديل نص رسالة جروب — مسموح للمرسل بس، وخلال 15 دقيقة من الإرسال */
-export async function editGroupMessage(messageId: string, newBody: string) {
-  const { error } = await supabase.from("group_messages").update({ body: newBody }).eq("id", messageId);
-  if (error) throw new Error(error.message || "تعذر تعديل الرسالة");
-}
-
-/** حذف من عندي فقط في شات الجروب — الرسالة تفضل ظاهرة للباقين */
-export async function deleteGroupMessageForMe(messageId: string, myId: string) {
-  const { data: current, error: fetchErr } = await supabase
-    .from("group_messages")
-    .select("deleted_for")
-    .eq("id", messageId)
-    .single();
-  if (fetchErr) throw new Error(fetchErr.message || "تعذر حذف الرسالة");
-  const next = Array.from(new Set([...(current?.deleted_for ?? []), myId]));
-  const { error } = await supabase.from("group_messages").update({ deleted_for: next }).eq("id", messageId);
-  if (error) throw new Error(error.message || "تعذر حذف الرسالة");
-}
-
-export async function softDeleteGroupMessage(messageId: string) {
-  const { error } = await supabase.from("group_messages").update({ deleted_at: new Date().toISOString() }).eq("id", messageId);
-  if (error) throw new Error(error.message || "تعذر حذف الرسالة");
-}
-
-// ---------- Mentions (@username) ----------
-
-// بيدور في نص الرسالة على @username ويرجّع الـ user_id بتوعهم، بمقارنة
-// كل منشن بقائمة أعضاء الجروب النشطين اللي عندنا في الواجهة أصلاً — بدون
-// أي نداء إضافي للسيرفر.
-export function extractMentionedUserIds(
-  body: string,
-  members: { user_id: string; username: string | null }[]
-): string[] {
-  const matches = Array.from(body.matchAll(/@([A-Za-z0-9_\u0600-\u06FF]+)/g)).map((m) => m[1].toLowerCase());
-  if (matches.length === 0) return [];
-  const found = new Set<string>();
-  for (const mem of members) {
-    if (mem.username && matches.includes(mem.username.toLowerCase())) found.add(mem.user_id);
-  }
-  return Array.from(found);
-}
-
-export async function insertGroupMessageMentions(groupMessageId: string, mentionedUserIds: string[]) {
-  if (mentionedUserIds.length === 0) return;
-  const rows = mentionedUserIds.map((uid) => ({ group_message_id: groupMessageId, mentioned_user_id: uid }));
-  const { error } = await supabase.from("message_mentions").insert(rows);
-  if (error) console.error("[insertGroupMessageMentions]", error);
-}
-
-// ---------- Polls ----------
-
-export type GroupPoll = {
-  id: string;
-  group_id: string;
-  message_id: string | null;
-  creator_id: string;
-  question: string;
-  allow_multiple: boolean;
-  closed_at: string | null;
-  created_at: string;
-};
-
-export type GroupPollOption = {
-  id: string;
-  poll_id: string;
-  option_text: string;
-  position: number;
-};
-
-export type GroupPollVote = {
-  poll_id: string;
-  option_id: string;
-  user_id: string;
-  created_at: string;
-};
-
-// بيعمل رسالة (marker) في شات الجروب الأول عشان تاخد ترتيبها الزمني
-// الطبيعي جوه الرسائل، بعدين يربط الاستطلاع بيها عن طريق message_id —
-// نفس فكرة إن الاستطلاع "رسالة" زي أي رسالة تانية.
-export async function createGroupPoll(
-  groupId: string,
-  creatorId: string,
-  question: string,
-  options: string[],
-  allowMultiple: boolean
-) {
-  const cleanOptions = options.map((o) => o.trim()).filter(Boolean);
-  if (question.trim().length < 2) throw new Error("اكتب سؤال الاستطلاع");
-  if (cleanOptions.length < 2) throw new Error("لازم خيارين على الأقل");
-
-  const message = await sendGroupMessage(groupId, creatorId, "📊 استطلاع رأي: " + question.trim());
-
-  const { data: poll, error: pollErr } = await supabase
-    .from("group_polls")
-    .insert({
-      group_id: groupId,
-      message_id: message.id,
-      creator_id: creatorId,
-      question: question.trim(),
-      allow_multiple: allowMultiple,
-    })
-    .select()
-    .single();
-  if (pollErr) throw new Error(pollErr.message || "تعذر إنشاء الاستطلاع");
-
-  const { data: opts, error: optErr } = await supabase
-    .from("group_poll_options")
-    .insert(cleanOptions.map((text, i) => ({ poll_id: (poll as any).id, option_text: text, position: i })))
-    .select();
-  if (optErr) throw new Error(optErr.message || "تعذر إضافة خيارات الاستطلاع");
-
-  return { message, poll: poll as GroupPoll, options: (opts ?? []) as GroupPollOption[] };
-}
-
-// بيجيب كل الاستطلاعات + خياراتها + أصواتها الخاصة بجروب معيّن، مجمّعين
-// حسب message_id عشان نقدر نعرضهم مكان الرسالة بتاعتهم في قائمة الشات.
-export async function fetchGroupPolls(groupId: string) {
-  const { data: polls, error } = await supabase.from("group_polls").select("*").eq("group_id", groupId);
-  if (error) throw error;
-  const pollList = (polls ?? []) as GroupPoll[];
-  if (pollList.length === 0) return { polls: [], options: [], votes: [] };
-
-  const pollIds = pollList.map((p) => p.id);
-  const [{ data: options }, { data: votes }] = await Promise.all([
-    supabase.from("group_poll_options").select("*").in("poll_id", pollIds),
-    supabase.from("group_poll_votes").select("*").in("poll_id", pollIds),
-  ]);
-
-  return {
-    polls: pollList,
-    options: (options ?? []) as GroupPollOption[],
-    votes: (votes ?? []) as GroupPollVote[],
+  const handlePin = async (messageId: string, hours: number | null) => {
+    if (!groupId || pinBusy) return;
+    setPinBusy(true);
+    try {
+      await pinGroupMessage(groupId, messageId, hours);
+      toast.success("تم تثبيت الرسالة");
+    } catch (e: any) {
+      toast.error(e.message ?? "تعذر تثبيت الرسالة");
+    } finally {
+      setPinBusy(false);
+    }
   };
-}
 
-export async function fetchPollVotes(pollId: string) {
-  const { data, error } = await supabase.from("group_poll_votes").select("*").eq("poll_id", pollId);
-  if (error) throw error;
-  return (data ?? []) as GroupPollVote[];
-}
+  const handleUnpin = async () => {
+    if (!groupId || pinBusy) return;
+    setPinBusy(true);
+    try {
+      await unpinGroupMessage(groupId);
+      toast.success("تم إلغاء التثبيت");
+    } catch (e: any) {
+      toast.error(e.message ?? "تعذر إلغاء التثبيت");
+    } finally {
+      setPinBusy(false);
+    }
+  };
 
-// تصويت/سحب تصويت — لو الاستطلاع "اختيار واحد" (allow_multiple = false)
-// بنمسح أي صوت سابق لنفس اليوزر جوه نفس الاستطلاع الأول.
-export async function voteOnPoll(pollId: string, optionId: string, userId: string, allowMultiple: boolean) {
-  const { data: existing } = await supabase
-    .from("group_poll_votes")
-    .select("option_id")
-    .eq("poll_id", pollId)
-    .eq("user_id", userId)
-    .eq("option_id", optionId)
-    .maybeSingle();
+  const [text, setText] = useState("");
+  const [editingMessage, setEditingMessage] = useState<{ id: string; body: string } | null>(null);
+  const [sending, setSending] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
+  const [membersTab, setMembersTab] = useState<"active" | "banned">("active");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [profiles, setProfiles] = useState<Map<string, PublicProfile>>(new Map());
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  if (existing) {
-    const { error } = await supabase
-      .from("group_poll_votes")
-      .delete()
-      .eq("poll_id", pollId)
-      .eq("user_id", userId)
-      .eq("option_id", optionId);
-    if (error) throw error;
-    return;
+  // ----- استطلاعات الرأي (Polls) -----
+  const [pollOpen, setPollOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{ userId: string; messageId: string } | null>(null);
+  const [polls, setPolls] = useState<Map<string, GroupPoll>>(new Map()); // key = message_id
+  const [pollOptions, setPollOptions] = useState<Map<string, GroupPollOption[]>>(new Map()); // key = poll_id
+  const [pollVotes, setPollVotes] = useState<Map<string, GroupPollVote[]>>(new Map()); // key = poll_id
+
+  // ----- منشن @username -----
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
+
+  useEffect(() => {
+    if (!user || !groupId) return;
+    markGroupRead(groupId);
+  }, [user, groupId, messages.length]);
+
+  useEffect(() => {
+    if (members.length === 0) return;
+    fetchPublicProfilesByIds(members.map((m) => m.user_id)).then((profs) => {
+      setProfiles(new Map(profs.map((p) => [p.user_id, p])));
+    });
+  }, [members]);
+
+  // تحميل الاستطلاعات الحالية للجروب + متابعتها لحظياً (تصويت جديد/استطلاع جديد)
+  useEffect(() => {
+    if (!groupId) return;
+    let active = true;
+
+    const load = async () => {
+      const { polls: pollList, options, votes } = await fetchGroupPolls(groupId);
+      if (!active) return;
+      setPolls(new Map(pollList.filter((p) => p.message_id).map((p) => [p.message_id as string, p])));
+      const optMap = new Map<string, GroupPollOption[]>();
+      options.forEach((o) => optMap.set(o.poll_id, [...(optMap.get(o.poll_id) ?? []), o]));
+      setPollOptions(optMap);
+      const voteMap = new Map<string, GroupPollVote[]>();
+      votes.forEach((v) => voteMap.set(v.poll_id, [...(voteMap.get(v.poll_id) ?? []), v]));
+      setPollVotes(voteMap);
+    };
+    load();
+
+    const ch = supabase
+      .channel(`group-polls:${groupId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "group_polls", filter: `group_id=eq.${groupId}` }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "group_poll_options" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "group_poll_votes" }, () => load())
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(ch);
+    };
+  }, [groupId]);
+
+  const send = async () => {
+    if (!text.trim() || !user || !groupId || sending) return;
+
+    const lineCheck = checkSingleLine(text.trim());
+    if (!lineCheck.ok) {
+      toast.error(lineCheck.reason!);
+      return;
+    }
+
+    setSending(true);
+    try {
+      if (editingMessage) {
+        const newBody = filterMessage(text.trim());
+        await editGroupMessage(editingMessage.id, newBody);
+        setMessages((cur) =>
+          cur.map((x) => (x.id === editingMessage.id ? { ...x, body: newBody, edited_at: new Date().toISOString() } : x))
+        );
+        setEditingMessage(null);
+        setText("");
+        return;
+      }
+
+      const cleanBody = filterMessage(text.trim());
+      const m = await sendGroupMessage(groupId, user.id, cleanBody);
+      setMessages((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, m]));
+      setText("");
+      setMentionQuery(null);
+
+      const mentioned = extractMentionedUserIds(
+        cleanBody,
+        activeMembers.filter((mem) => mem.user_id !== user.id).map((mem) => ({ user_id: mem.user_id, username: profiles.get(mem.user_id)?.username ?? null }))
+      );
+      if (mentioned.length > 0) {
+        void insertGroupMessageMentions(m.id, mentioned);
+      }
+
+      if (noteChatMessageSent() && !isAdFree) {
+        void showInterstitial("chat");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر إرسال الرسالة");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const startEdit = (m: { id: string; body: string | null }) => {
+    if (!m.body) return;
+    setEditingMessage({ id: m.id, body: m.body });
+    setText(m.body);
+  };
+
+  const cancelEdit = () => {
+    setEditingMessage(null);
+    setText("");
+  };
+
+  const handleDeleteForMe = async (messageId: string) => {
+    if (!user) return;
+    try {
+      await deleteGroupMessageForMe(messageId, user.id);
+      setMessages((cur) =>
+        cur.map((x) => (x.id === messageId ? { ...x, deleted_for: [...(x.deleted_for ?? []), user.id] } : x))
+      );
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر حذف الرسالة");
+    }
+  };
+
+  const handleDeleteForEveryone = async (messageId: string) => {
+    try {
+      await softDeleteGroupMessage(messageId);
+      setMessages((cur) => (cur.map((x) => (x.id === messageId ? { ...x, deleted_at: new Date().toISOString() } : x))));
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر حذف الرسالة");
+    }
+  };
+
+  // كتابة نص جديد جوه الـ Textarea — لو آخر حاجة اليوزر كاتبها هي "@..."
+  // نظهر قائمة الأعضاء المطابقين عشان يختار منهم (Autocomplete)
+  const onTextChange = (v: string) => {
+    setText(v);
+    const match = v.match(/(?:^|\s)@([A-Za-z0-9_\u0600-\u06FF]*)$/);
+    setMentionQuery(match ? match[1] : null);
+  };
+
+  const pickMention = (username: string) => {
+    if (!username) return;
+    setText((cur) => cur.replace(/(?:^|\s)@([A-Za-z0-9_\u0600-\u06FF]*)$/, (full) => {
+      const prefix = full.startsWith(" ") ? " " : "";
+      return `${prefix}@${username} `;
+    }));
+    setMentionQuery(null);
+  };
+
+  const handleCreatePoll = async (question: string, options: string[], allowMultiple: boolean) => {
+    if (!user || !groupId) return;
+    const { message } = await createGroupPoll(groupId, user.id, question, options, allowMultiple);
+    setMessages((cur) => (cur.some((x) => x.id === message.id) ? cur : [...cur, message]));
+  };
+
+  const handleVote = async (pollId: string, optionId: string, allowMultiple: boolean) => {
+    if (!user) return;
+    try {
+      await voteOnPoll(pollId, optionId, user.id, allowMultiple);
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر التصويت");
+    }
+  };
+
+  const handlePickFile = async (file: File, viewOnce: boolean) => {
+    if (!user || !groupId) return;
+    try {
+      const m = await sendGroupMediaMessage(groupId, user.id, file, file.type, { viewOnce });
+      setMessages((cur) => (cur.some((x) => x.id === (m as any).id) ? cur : [...cur, m as any]));
+      if (noteChatMessageSent() && !isAdFree) {
+        void showInterstitial("chat");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر إرسال الملف");
+    }
+  };
+
+  const handleRecordedAudio = async (blob: Blob, mime: string, durationSeconds: number) => {
+    if (!user || !groupId) return;
+    try {
+      const m = await sendGroupMediaMessage(groupId, user.id, blob, mime, { durationSeconds });
+      setMessages((cur) => (cur.some((x) => x.id === (m as any).id) ? cur : [...cur, m as any]));
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر إرسال الرسالة الصوتية");
+    }
+  };
+
+  const handleShareLocation = async () => {
+    if (!user || !groupId) return;
+    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
+    }).catch(() => null);
+    if (!position) {
+      toast.error("تعذر الوصول للموقع — تأكد من إذن الموقع");
+      return;
+    }
+    const body = makeLocationBody(position.coords.latitude, position.coords.longitude);
+    const m = await sendGroupMessage(groupId, user.id, body);
+    setMessages((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, m]));
+  };
+
+  const copyInvite = async () => {
+    if (!group) return;
+    const link = `${APP_WEB_ORIGIN}/chat/groups/join/${group.invite_code}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success("تم نسخ رابط الدعوة");
+    } catch {
+      toast.error("تعذر نسخ الرابط");
+    }
+  };
+
+  const regenerateInvite = async () => {
+    if (!groupId) return;
+    try {
+      await regenerateGroupInvite(groupId);
+      toast.success("تم تجديد رابط الدعوة");
+    } catch (e: any) {
+      toast.error(e?.message ?? "فشل تجديد الرابط");
+    }
+  };
+
+  const toggleLock = async () => {
+    if (!groupId || !group) return;
+    try {
+      await updateGroup(groupId, { lock_chat: !group.lock_chat });
+    } catch (e: any) {
+      toast.error(e?.message ?? "فشل تغيير حالة القفل");
+    }
+  };
+
+  const handleLeave = async () => {
+    if (!groupId) return;
+    try {
+      await leaveGroup(groupId);
+      toast.success("تم مغادرة الجروب");
+      navigate("/chat/groups", { replace: true });
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر مغادرة الجروب");
+    }
+  };
+
+  const handlePromote = async (targetUser: string, makeAdmin: boolean) => {
+    if (!groupId) return;
+    try {
+      await setGroupAdmin(groupId, targetUser, makeAdmin);
+      toast.success(makeAdmin ? "تمت الترقية لمشرف" : "تم إلغاء صلاحية الإشراف");
+    } catch (e: any) {
+      toast.error(e?.message ?? "فشلت العملية");
+    }
+  };
+
+  const handleBan = async (targetUser: string) => {
+    if (!groupId) return;
+    try {
+      await banGroupMember(groupId, targetUser);
+      toast.success("تم حظر العضو");
+    } catch (e: any) {
+      toast.error(e?.message ?? "فشل الحظر");
+    }
+  };
+
+  const handleRemove = async (targetUser: string) => {
+    if (!groupId) return;
+    try {
+      await removeGroupMember(groupId, targetUser);
+      toast.success("تمت إزالة العضو");
+    } catch (e: any) {
+      toast.error(e?.message ?? "فشلت الإزالة");
+    }
+  };
+
+  const handleUnban = async (targetUser: string) => {
+    if (!groupId) return;
+    try {
+      await unbanGroupMember(groupId, targetUser);
+      toast.success("تم فك الحظر");
+    } catch (e: any) {
+      toast.error(e?.message ?? "فشل فك الحظر");
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!groupId || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteGroup(groupId);
+      toast.success("تم حذف الجروب");
+      navigate("/chat/groups", { replace: true });
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر حذف الجروب");
+      setDeleting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center pt-20">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
-  if (!allowMultiple) {
-    await supabase.from("group_poll_votes").delete().eq("poll_id", pollId).eq("user_id", userId);
+  if (!group) {
+    return (
+      <div className="p-6 text-center" dir="rtl">
+        <p className="text-muted-foreground font-typewriter mb-4">الجروب غير موجود</p>
+        <Button onClick={() => navigate("/chat/groups")}>رجوع للجروبات</Button>
+      </div>
+    );
   }
-  const { error } = await supabase.from("group_poll_votes").insert({ poll_id: pollId, option_id: optionId, user_id: userId });
-  if (error) throw new Error(error.message || "تعذر التصويت");
+
+  if (isBanned) {
+    return (
+      <div className="p-6 text-center" dir="rtl">
+        <p className="text-destructive font-horror mb-2">أنت محظور من هذا الجروب</p>
+        <Button onClick={() => navigate("/chat/groups")}>رجوع للجروبات</Button>
+      </div>
+    );
+  }
+
+  if (!isMember) {
+    return (
+      <div className="p-6 text-center space-y-4" dir="rtl">
+        <p className="text-muted-foreground font-typewriter">لست عضواً في هذا الجروب</p>
+        <Button onClick={() => navigate(`/chat/groups/join/${group.invite_code}`)}>الانضمام للجروب</Button>
+      </div>
+    );
+  }
+
+  const activeMembers = members.filter((m) => m.status === "active");
+  const bannedMembers = members.filter((m) => m.status === "banned");
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-64px)]" dir="rtl">
+      <div className="sticky top-0 bg-card/95 backdrop-blur border-b border-border px-3 py-2 flex items-center gap-3 z-10">
+        <button onClick={() => navigate("/chat/groups")} className="text-primary">
+          <ArrowRight className="w-5 h-5" />
+        </button>
+        <button onClick={() => setMembersOpen(true)} className="flex items-center gap-2 flex-1 min-w-0">
+          <UserAvatar url={group.avatar_url} username={group.name} size="sm" />
+          <div className="text-right min-w-0">
+            <div className="font-horror text-primary text-sm truncate">{group.name}</div>
+            <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <Users className="w-3 h-3" /> {activeMembers.length} عضو
+              {group.lock_chat && <Lock className="w-3 h-3 mr-1" />}
+            </div>
+          </div>
+        </button>
+        {isOwner && (
+          <button
+            onClick={() => setDeleteOpen(true)}
+            className="p-1 text-destructive"
+            title="حذف الجروب"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="p-1 text-muted-foreground">
+              <MoreVertical className="w-5 h-5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => setMembersOpen(true)}>
+              <Users className="w-4 h-4 ml-2" /> الأعضاء
+            </DropdownMenuItem>
+            {isStaff && (
+              <DropdownMenuItem onClick={copyInvite}>
+                <Link2 className="w-4 h-4 ml-2" /> نسخ رابط الدعوة
+              </DropdownMenuItem>
+            )}
+            {isOwner && (
+              <DropdownMenuItem onClick={regenerateInvite}>
+                <RefreshCw className="w-4 h-4 ml-2" /> تجديد رابط الدعوة
+              </DropdownMenuItem>
+            )}
+            {isStaff && (
+              <DropdownMenuItem onClick={toggleLock}>
+                {group.lock_chat ? <LockOpen className="w-4 h-4 ml-2" /> : <Lock className="w-4 h-4 ml-2" />}
+                {group.lock_chat ? "فتح الدردشة للجميع" : "قفل الدردشة (مشرفين فقط)"}
+              </DropdownMenuItem>
+            )}
+            {isStaff && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Timer className="w-4 h-4 ml-2" /> الرسائل المؤقتة
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuRadioGroup
+                    value={String(group.disappearing_seconds ?? "off")}
+                    onValueChange={async (v) => {
+                      const seconds = v === "off" ? null : Number(v);
+                      try {
+                        await updateGroup(groupId!, { disappearing_seconds: seconds });
+                        toast.success("تم تحديث إعداد الرسائل المؤقتة");
+                      } catch (e: any) {
+                        toast.error(e?.message ?? "تعذر تحديث الإعداد");
+                      }
+                    }}
+                  >
+                    {DISAPPEARING_OPTIONS.map((opt) => (
+                      <DropdownMenuRadioItem key={opt.label} value={opt.seconds === null ? "off" : String(opt.seconds)}>
+                        {opt.label}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
+            <DropdownMenuItem onClick={handleLeave} className="text-destructive">
+              <LogOut className="w-4 h-4 ml-2" /> مغادرة الجروب
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {pinnedMessage && (
+        <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-3 py-2">
+          <Pin className="w-4 h-4 text-primary shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] text-primary font-bold">رسالة مثبتة</div>
+            <div className="text-xs text-muted-foreground truncate">
+              {pinnedMessage.body ? (isLocationBody(pinnedMessage.body) ? "📍 موقع مُشارك" : renderMessageBody(pinnedMessage.body)) : "📎 وسائط"}
+            </div>
+          </div>
+          {isStaff && (
+            <button
+              onClick={handleUnpin}
+              disabled={pinBusy}
+              className="p-1 text-muted-foreground hover:text-destructive shrink-0"
+              aria-label="إلغاء التثبيت"
+            >
+              <PinOff className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        {messages.length === 0 && (
+          <p className="text-center text-sm text-muted-foreground font-typewriter py-10">
+            لا توجد رسائل بعد — ابدأ المحادثة!
+          </p>
+        )}
+        {dropExpired(messages)
+          .filter((m) => !m.deleted_for?.includes(user!.id))
+          .map((m) => {
+          const sender = profiles.get(m.sender_id);
+
+          if (m.system_event) {
+            const label = SYSTEM_EVENT_LABEL[m.system_event]?.(sender?.username ?? "عضو") ?? "";
+            return (
+              <div key={m.id} className="flex justify-center py-1">
+                <span className="text-[11px] text-muted-foreground bg-muted/50 rounded-full px-3 py-1 font-typewriter">
+                  {label}
+                </span>
+              </div>
+            );
+          }
+
+          const mine = m.sender_id === user!.id;
+          const poll = polls.get(m.id);
+          const isTextMessage = !poll && !m.media_type;
+          return (
+            <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} gap-2 group`}>
+              {!mine && (
+                <UserAvatar
+                  url={sender?.avatar_url}
+                  username={sender?.username}
+                  adFree={isAdFreeActive((sender as any)?.ad_free_until)}
+                  size="sm"
+                />
+              )}
+              <div
+                className={`max-w-[75%] relative rounded-lg px-3 py-2 backdrop-blur-md border text-white ${
+                  mine ? "bg-primary/25 border-primary/40" : "bg-white/10 border-white/20"
+                }`}
+              >
+                {!mine && <div className="text-[10px] text-primary font-horror mb-0.5">{sender?.username ?? "..."}</div>}
+                {poll ? (
+                  <PollMessageBubble
+                    poll={poll}
+                    options={pollOptions.get(poll.id) ?? []}
+                    votes={pollVotes.get(poll.id) ?? []}
+                    myUserId={user!.id}
+                    mine={mine}
+                    onVote={(optionId) => handleVote(poll.id, optionId, poll.allow_multiple)}
+                  />
+                ) : m.media_type ? (
+                  <MediaMessageBubble
+                    messageId={m.id}
+                    kind="group"
+                    mediaType={m.media_type}
+                    mediaPath={m.media_path}
+                    mediaMime={m.media_mime}
+                    mediaIv={m.media_iv}
+                    mediaKey={m.media_key}
+                    mediaDeletedAt={m.media_deleted_at}
+                    durationSeconds={m.media_duration_seconds}
+                    mine={mine}
+                    viewOnce={m.view_once}
+                    viewedAt={m.viewed_at}
+                  />
+                ) : m.deleted_at ? (
+                  <p className="text-sm italic opacity-70">تم حذف هذه الرسالة</p>
+                ) : (
+                  m.body && (
+                    isLocationBody(m.body) ? (
+                      (() => {
+                        const loc = parseLocationBody(m.body);
+                        return loc ? <LocationMessage lat={loc.lat} lng={loc.lng} /> : null;
+                      })()
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap break-words">{renderMessageBody(m.body)}</p>
+                    )
+                  )
+                )}
+                {!poll && (
+                  <div className="text-[9px] opacity-70 mt-1 flex items-center gap-1 justify-end">
+                    {m.edited_at && !m.deleted_at && <span>معدَّلة</span>}
+                    <span>{new Date(m.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                )}
+                {isTextMessage && !m.deleted_at && (
+                  <div
+                    className={`absolute top-1 opacity-0 group-hover:opacity-100 transition-opacity ${mine ? "left-1" : "right-1"}`}
+                  >
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="p-0.5 rounded-full bg-black/10 hover:bg-black/20">
+                          <MoreVertical className="w-3 h-3" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        {mine && m.body && canEditMessage(m) && (
+                          <DropdownMenuItem onClick={() => startEdit({ id: m.id, body: m.body })}>
+                            <Pencil className="w-3 h-3 ml-2" />
+                            تعديل
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => handleDeleteForMe(m.id)}>
+                          <Trash2 className="w-3 h-3 ml-2" />
+                          حذف من عندي
+                        </DropdownMenuItem>
+                        {mine && canDeleteForEveryone(m) && (
+                          <DropdownMenuItem onClick={() => handleDeleteForEveryone(m.id)} className="text-destructive">
+                            <Trash2 className="w-3 h-3 ml-2" />
+                            حذف لدى الجميع
+                          </DropdownMenuItem>
+                        )}
+                        {!mine && (
+                          <DropdownMenuItem
+                            onClick={() => setReportTarget({ userId: m.sender_id, messageId: m.id })}
+                            className="text-destructive"
+                          >
+                            <Flag className="w-3 h-3 ml-2" />
+                            الإبلاغ عن الرسالة
+                          </DropdownMenuItem>
+                        )}
+                        {isStaff && (
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              <Pin className="w-3 h-3 ml-2" />
+                              تثبيت الرسالة
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
+                              {PIN_DURATION_OPTIONS.map((opt) => (
+                                <DropdownMenuItem key={opt.label} onClick={() => handlePin(m.id, opt.hours)}>
+                                  {opt.label}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        <div ref={bottomRef} />
+      </div>
+
+      <div className="border-t border-border p-2 bg-card">
+        {editingMessage && (
+          <div className="flex items-center gap-2 bg-muted/60 border-r-2 border-primary rounded-md px-3 py-1.5 mb-2">
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-bold text-primary">تعديل الرسالة</div>
+              <div className="text-xs text-muted-foreground truncate">{editingMessage.body}</div>
+            </div>
+            <button onClick={cancelEdit} className="p-1 text-muted-foreground hover:text-foreground shrink-0" aria-label="إلغاء التعديل">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+        {canPost ? (
+          <>
+            {mentionQuery !== null && (
+              <MentionAutocomplete
+                candidates={activeMembers
+                  .filter((mem) => mem.user_id !== user!.id)
+                  .map((mem) => profiles.get(mem.user_id))
+                  .filter((p): p is PublicProfile => !!p?.username && p.username.toLowerCase().startsWith(mentionQuery.toLowerCase()))
+                  .slice(0, 6)}
+                onPick={pickMention}
+              />
+            )}
+            <div className="flex gap-2 items-end">
+              <MediaComposerButtons
+                disabled={sending}
+                onPickFile={handlePickFile}
+                onRecordedAudio={handleRecordedAudio}
+                onShareLocation={handleShareLocation}
+              />
+              <button
+                type="button"
+                onClick={() => setPollOpen(true)}
+                disabled={sending}
+                className="p-2 text-muted-foreground hover:text-primary shrink-0"
+                title="إنشاء استطلاع رأي"
+              >
+                <BarChart3 className="w-5 h-5" />
+              </button>
+              <Textarea
+                value={text}
+                onChange={(e) => onTextChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
+                placeholder={editingMessage ? "عدّل الرسالة..." : "اكتب رسالة (سطر واحد)..."}
+                rows={1}
+                className="resize-none min-h-[40px] max-h-32"
+                maxLength={MAX_LINE_CHARS}
+              />
+              <Button onClick={send} disabled={!text.trim() || sending} size="icon">
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+            {text.length > MAX_LINE_CHARS - 20 && (
+              <div className="text-[10px] text-muted-foreground text-left mt-1">{text.length}/{MAX_LINE_CHARS}</div>
+            )}
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground font-typewriter w-full text-center py-2">
+            الدردشة مقفولة حالياً — المشرفون فقط يقدروا يكتبوا
+          </p>
+        )}
+      </div>
+
+      <Dialog
+        open={membersOpen}
+        onOpenChange={(o) => {
+          setMembersOpen(o);
+          if (!o) setMembersTab("active");
+        }}
+      >
+        <DialogContent dir="rtl">
+          <DialogHeader>
+            <DialogTitle>أعضاء الجروب</DialogTitle>
+          </DialogHeader>
+
+          {isStaff ? (
+            <Tabs value={membersTab} onValueChange={(v) => setMembersTab(v as "active" | "banned")}>
+              <TabsList className="w-full">
+                <TabsTrigger value="active" className="flex-1">
+                  الأعضاء ({activeMembers.length}/{group?.max_members ?? 1024})
+                </TabsTrigger>
+                <TabsTrigger value="banned" className="flex-1">
+                  المحظورون ({bannedMembers.length})
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="active" className="max-h-96 overflow-y-auto space-y-2 mt-2">
+                {activeMembers.map((m) => (
+                  <ActiveMemberRow
+                    key={m.user_id}
+                    member={m}
+                    profile={profiles.get(m.user_id)}
+                    isSelf={m.user_id === user!.id}
+                    isStaff={isStaff}
+                    isOwner={isOwner}
+                    onPromote={handlePromote}
+                    onRemove={handleRemove}
+                    onBan={handleBan}
+                  />
+                ))}
+              </TabsContent>
+
+              <TabsContent value="banned" className="max-h-96 overflow-y-auto space-y-2 mt-2">
+                {bannedMembers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground font-typewriter text-center py-6">
+                    لا يوجد محظورون في هذا الجروب
+                  </p>
+                ) : (
+                  bannedMembers.map((m) => {
+                    const p = profiles.get(m.user_id);
+                    return (
+                      <div key={m.user_id} className="flex items-center gap-2 p-2 rounded-lg border border-border">
+                        <UserAvatar url={p?.avatar_url} username={p?.username} size="sm" />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-typewriter truncate">{p?.username ?? "..."}</div>
+                          <div className="text-[10px] text-destructive">محظور من الجروب</div>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => handleUnban(m.user_id)}>
+                          <UserPlus className="w-4 h-4 ml-1" /> فك الحظر
+                        </Button>
+                      </div>
+                    );
+                  })
+                )}
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="max-h-96 overflow-y-auto space-y-2">
+              {activeMembers.map((m) => (
+                <ActiveMemberRow
+                  key={m.user_id}
+                  member={m}
+                  profile={profiles.get(m.user_id)}
+                  isSelf={m.user_id === user!.id}
+                  isStaff={isStaff}
+                  isOwner={isOwner}
+                  onPromote={handlePromote}
+                  onRemove={handleRemove}
+                  onBan={handleBan}
+                />
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <PollComposerDialog open={pollOpen} onOpenChange={setPollOpen} onCreate={handleCreatePoll} />
+
+      {reportTarget && (
+        <ReportDialog
+          open={!!reportTarget}
+          onOpenChange={(v) => !v && setReportTarget(null)}
+          reporterId={user!.id}
+          targetUserId={reportTarget.userId}
+          targetMessageId={reportTarget.messageId}
+          context="message"
+          groupId={groupId}
+        />
+      )}
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف الجروب</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل انت متأكد من حذف جروب "{group.name}"؟ هذا الإجراء نهائي ولا يمكن التراجع عنه، وهيتم حذف كل الرسائل والأعضاء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-start gap-2">
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteGroup();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : null}
+              نعم، احذف الجروب
+            </AlertDialogAction>
+            <AlertDialogCancel className="bg-green-600 text-white hover:bg-green-700 border-green-600">
+              لا
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
 }
 
-// ---------- Reports ----------
-
-export async function reportGroupContent(input: {
-  reporterId: string;
-  groupId: string;
-  targetUserId?: string | null;
-  targetMessageId?: string | null;
-  reason: string;
+// صف عضو نشط واحد جوه ديالوج الأعضاء — بتترسم مرتين (تاب الأعضاء
+// للمشرفين، وقائمة الأعضاء العادية للباقي) فمن الأحسن نستخرجها هنا
+function ActiveMemberRow({
+  member,
+  profile,
+  isSelf,
+  isStaff,
+  isOwner,
+  onPromote,
+  onRemove,
+  onBan,
+}: {
+  member: { user_id: string; role: string };
+  profile?: PublicProfile;
+  isSelf: boolean;
+  isStaff: boolean;
+  isOwner: boolean;
+  onPromote: (targetUser: string, makeAdmin: boolean) => void;
+  onRemove: (targetUser: string) => void;
+  onBan: (targetUser: string) => void;
 }) {
-  const { error } = await supabase.from("group_reports").insert({
-    reporter_id: input.reporterId,
-    group_id: input.groupId,
-    target_user_id: input.targetUserId ?? null,
-    target_message_id: input.targetMessageId ?? null,
-    reason: input.reason.trim(),
-  });
-  if (error) throw new Error(error.message || "تعذر إرسال البلاغ");
-                             }
+  const p = profile;
+  return (
+    <div className="flex items-center gap-2 p-2 rounded-lg border border-border">
+      <UserAvatar
+        url={p?.avatar_url}
+        username={p?.username}
+        adFree={isAdFreeActive((p as any)?.ad_free_until)}
+        size="sm"
+      />
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-typewriter truncate">{p?.username ?? "..."}</div>
+        <div className="text-[10px] text-muted-foreground">
+          {member.role === "owner" ? "مالك الجروب" : member.role === "admin" ? "مشرف" : "عضو"}
+        </div>
+      </div>
+      {isStaff && !isSelf && member.role !== "owner" && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="p-1 text-muted-foreground">
+              <MoreVertical className="w-4 h-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {isOwner && (
+              <DropdownMenuItem onClick={() => onPromote(member.user_id, member.role !== "admin")}>
+                <ShieldCheck className="w-4 h-4 ml-2" />
+                {member.role === "admin" ? "إلغاء الإشراف" : "ترقية لمشرف"}
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => onRemove(member.user_id)}>
+              <UserMinus className="w-4 h-4 ml-2" /> إزالة من الجروب
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onBan(member.user_id)} className="text-destructive">
+              <Ban className="w-4 h-4 ml-2" /> حظر
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
+  );
+                    }
