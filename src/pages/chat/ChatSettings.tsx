@@ -33,6 +33,7 @@ import { toast } from "sonner";
 import { Loader2, Upload, Shield, FileText, BookOpen, Gift, Lock, Fingerprint } from "lucide-react";
 import { useAppLock } from "@/hooks/useAppLock";
 import { registerBiometric, hasBiometricSetup } from "@/components/chat/AppLockScreen";
+import { enableDevicePush, disableDevicePush, isPushSupported } from "@/lib/chat/push";
 
 const USERNAME_RE = /^[\p{L}0-9_]{3,20}$/u;
 
@@ -79,6 +80,42 @@ export default function ChatSettings() {
   useEffect(() => {
     setBiometricOn(hasBiometricSetup());
   }, []);
+
+  const [devicePushOn, setDevicePushOn] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+
+  useEffect(() => {
+    if (!isPushSupported()) return;
+    navigator.serviceWorker.ready
+      .then((r) => r.pushManager.getSubscription())
+      .then((sub) => setDevicePushOn(!!sub))
+      .catch(() => {});
+  }, []);
+
+  const toggleDevicePush = async (v: boolean) => {
+    if (!user) return;
+    if (!isPushSupported()) {
+      toast.error("المتصفح ده مايدعمش إشعارات الجهاز");
+      return;
+    }
+    setPushBusy(true);
+    try {
+      if (v) {
+        const ok = await enableDevicePush(user.id);
+        if (!ok) {
+          toast.error("محتاج تسمح بالإشعارات من إعدادات المتصفح");
+        } else {
+          setDevicePushOn(true);
+          toast.success("تفعّلت إشعارات الجهاز");
+        }
+      } else {
+        await disableDevicePush();
+        setDevicePushOn(false);
+      }
+    } finally {
+      setPushBusy(false);
+    }
+  };
 
   const handleSavePin = async () => {
     if (!/^[0-9]{4,6}$/.test(newPin)) {
@@ -423,11 +460,15 @@ export default function ChatSettings() {
         )}
       </section>
 
-      <section className="card-horror p-4">
+      <section className="card-horror p-4 space-y-3">
         <h2 className="font-horror text-primary mb-3">الإشعارات</h2>
         <div className="flex items-center justify-between">
           <span className="text-sm font-typewriter">إشعارات داخل التطبيق</span>
           <Switch checked={notifEnabled} onCheckedChange={toggleNotifs} />
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-typewriter">إشعارات الجهاز (حتى لو التطبيق مغلق)</span>
+          <Switch checked={devicePushOn} onCheckedChange={toggleDevicePush} disabled={pushBusy} />
         </div>
       </section>
 
