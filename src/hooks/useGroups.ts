@@ -7,7 +7,7 @@ import {
   type Group,
 } from "@/lib/chat/groupQueries";
 
-export type MyGroup = Group & { myRole: "owner" | "admin" | "member" };
+export type MyGroup = Group & { myRole: "owner" | "admin" | "member"; archived: boolean; pinned: boolean };
 
 export function useGroups() {
   const { user } = useAuth();
