@@ -15,6 +15,8 @@ export type Group = {
   invite_enabled: boolean;
   created_at: string;
   updated_at: string;
+  // الحد الأقصى لعدد أعضاء الجروب (زي واتساب: 1024 كحد أقصى)
+  max_members?: number;
   // مدة اختفاء الرسائل تلقائياً بالثواني (24 ساعة/7 أيام/90 يوم) — null يعني متوقفة
   disappearing_seconds?: number | null;
   // بتتحدث تلقائيًا من trigger on_group_message_inserted لما تتبعت رسالة جديدة
@@ -73,6 +75,10 @@ export type GroupMessage = {
   media_key: string | null;
   media_expires_at: string | null;
   media_deleted_at: string | null;
+  // "شاهدها مرة واحدة" — لو true، الرسالة بتتخفي بعد أول فتح من مستقبل
+  // غير المرسل. viewed_at بيتسجّل وقت أول فتح (بيتحدد مرة واحدة بس).
+  view_once?: boolean;
+  viewed_at?: string | null;
 };
 
 // ---------- Groups ----------
