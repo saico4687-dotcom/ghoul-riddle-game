@@ -30,7 +30,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Upload, Shield, FileText, BookOpen, Gift } from "lucide-react";
+import { Loader2, Upload, Shield, FileText, BookOpen, Gift, Lock, Fingerprint } from "lucide-react";
+import { useAppLock } from "@/hooks/useAppLock";
+import { registerBiometric, hasBiometricSetup } from "@/components/chat/AppLockScreen";
 
 const USERNAME_RE = /^[\p{L}0-9_]{3,20}$/u;
 
@@ -68,6 +70,56 @@ function saveRewardProgress(count: number) {
 export default function ChatSettings() {
   const { user } = useAuth();
   const { isAdFree, adFreeUntil, refresh: refreshAdFree } = useAdFree();
+  const { enabled: lockEnabled, setPin: saveLockPin, disable: disableLock } = useAppLock();
+  const [showPinSetup, setShowPinSetup] = useState(false);
+  const [newPin, setNewPin] = useState("");
+  const [savingPin, setSavingPin] = useState(false);
+  const [biometricOn, setBiometricOn] = useState(false);
+
+  useEffect(() => {
+    setBiometricOn(hasBiometricSetup());
+  }, []);
+
+  const handleSavePin = async () => {
+    if (!/^[0-9]{4,6}$/.test(newPin)) {
+      toast.error("الرمز لازم يكون من 4 إلى 6 أرقام");
+      return;
+    }
+    setSavingPin(true);
+    try {
+      await saveLockPin(newPin);
+      toast.success("تم تفعيل قفل الدردشة");
+      setShowPinSetup(false);
+      setNewPin("");
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر حفظ الرمز");
+    } finally {
+      setSavingPin(false);
+    }
+  };
+
+  const handleDisableLock = async () => {
+    try {
+      await disableLock();
+      toast.success("تم إلغاء قفل الدردشة");
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر إلغاء القفل");
+    }
+  };
+
+  const handleEnableBiometric = async () => {
+    try {
+      const ok = await registerBiometric();
+      if (ok) {
+        setBiometricOn(true);
+        toast.success("تم تفعيل الفتح بالبصمة");
+      } else {
+        toast.error("تعذر تسجيل البصمة على هذا الجهاز");
+      }
+    } catch {
+      toast.error("الجهاز لا يدعم فتح البصمة");
+    }
+  };
   const [username, setUsername] = useState("");
   const [originalUsername, setOriginalUsername] = useState("");
   const [bio, setBio] = useState("");
@@ -329,6 +381,46 @@ export default function ChatSettings() {
         <PrivacyRow label="من يرى آخر ظهور" value={privLastSeen} onChange={setPrivLastSeen} />
         <PrivacyRow label="من يرسل طلبات صداقة" value={privRequests} onChange={setPrivRequests} />
         <PrivacyRow label="من يرسل الرسائل" value={privMessages} onChange={setPrivMessages} />
+      </section>
+
+      <section className="card-horror p-4 space-y-3">
+        <h2 className="font-horror text-primary mb-2 flex items-center gap-2">
+          <Lock className="w-4 h-4" /> قفل الدردشة
+        </h2>
+
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-typewriter">طلب رمز عند فتح الدردشة</span>
+          <Switch
+            checked={lockEnabled}
+            onCheckedChange={(v) => (v ? setShowPinSetup(true) : handleDisableLock())}
+          />
+        </div>
+
+        {showPinSetup && (
+          <div className="flex items-center gap-2">
+            <Input
+              type="password"
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="رمز من 4 إلى 6 أرقام"
+              value={newPin}
+              onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
+              className="flex-1"
+            />
+            <Button size="sm" onClick={handleSavePin} disabled={savingPin}>
+              {savingPin ? <Loader2 className="w-4 h-4 animate-spin" /> : "حفظ"}
+            </Button>
+          </div>
+        )}
+
+        {lockEnabled && (
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-typewriter flex items-center gap-2">
+              <Fingerprint className="w-4 h-4" /> الفتح بالبصمة/الوجه
+            </span>
+            <Switch checked={biometricOn} onCheckedChange={(v) => v && handleEnableBiometric()} />
+          </div>
+        )}
       </section>
 
       <section className="card-horror p-4">
