@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { Message, Reaction } from "@/lib/chat/queries";
 import { toggleReaction, canEditMessage, canDeleteForEveryone } from "@/lib/chat/queries";
-import { renderMessageBody } from "@/lib/chat/formatting";
+import { renderMessageBody, isLocationBody, parseLocationBody } from "@/lib/chat/formatting";
+import LocationMessage from "@/components/chat/LocationMessage";
 
 const EMOJIS = ["👍", "❤️", "😂", "😮"];
 
@@ -146,6 +147,11 @@ export default function MessageBubble({
           )}
           {message.deleted_at ? (
             <span className="italic text-white/70">تم حذف هذه الرسالة</span>
+          ) : isLocationBody(message.body) ? (
+            (() => {
+              const loc = parseLocationBody(message.body);
+              return loc ? <LocationMessage lat={loc.lat} lng={loc.lng} /> : null;
+            })()
           ) : (
             renderMessageBody(message.body)
           )}
