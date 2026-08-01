@@ -35,6 +35,7 @@ import CreateGroup from "./pages/chat/Group";
 import JoinGroup from "./pages/chat/JoinGroup";
 import GroupsList from "./pages/chat/GroupsList";
 import GroupChat from "./pages/chat/GroupChat";
+import StoryViewer from "./pages/chat/StoryViewer";
 
 import {
   initAds,
@@ -138,6 +139,7 @@ const App = () => {
                 <Route path="groups/join/:code?" element={<JoinGroup />} />
                 <Route path="c/:id" element={<ChatConversation />} />
                 <Route path="g/:id" element={<GroupChat />} />
+                <Route path="story/:userId" element={<StoryViewer />} />
               </Route>
 
               <Route path="*" element={<Index />} />
