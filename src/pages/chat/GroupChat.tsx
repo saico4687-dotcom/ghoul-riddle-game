@@ -15,14 +15,28 @@ import {
   updateGroup,
   markGroupRead,
   deleteGroup,
+  DISAPPEARING_OPTIONS,
+  dropExpired,
+  extractMentionedUserIds,
+  insertGroupMessageMentions,
+  createGroupPoll,
+  fetchGroupPolls,
+  voteOnPoll,
+  type GroupPoll,
+  type GroupPollOption,
+  type GroupPollVote,
 } from "@/lib/chat/groupQueries";
 import { fetchPublicProfilesByIds, type PublicProfile } from "@/lib/chat/queries";
 import { checkSingleLine, filterMessage, MAX_LINE_CHARS } from "@/lib/chat/contentFilter";
 import { noteChatMessageSent, showInterstitial } from "@/lib/adsMediation";
 import { APP_WEB_ORIGIN } from "@/lib/appOrigin";
+import { supabase } from "@/integrations/supabase/client";
 import UserAvatar from "@/components/chat/UserAvatar";
 import MediaComposerButtons from "@/components/chat/MediaComposerButtons";
 import MediaMessageBubble from "@/components/chat/MediaMessageBubble";
+import PollComposerDialog from "@/components/chat/PollComposerDialog";
+import PollMessageBubble from "@/components/chat/PollMessageBubble";
+import MentionAutocomplete from "@/components/chat/MentionAutocomplete";
 import { sendGroupMediaMessage } from "@/lib/chat/mediaUpload";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,6 +57,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import {
   Send,
@@ -60,11 +79,27 @@ import {
   RefreshCw,
   Trash2,
   UserPlus,
+  Timer,
+  BarChart3,
 } from "lucide-react";
 import { toast } from "sonner";
 
 // نصوص رسائل النظام (انضم/غادر/حُظر/اتشال) اللي بتتحط جوه الشات
 // نفسها زي واتساب، بدل ما تكون فقاعة رسالة عادية
+// بيلوّن أي @username جوه نص الرسالة عشان يبان كمنشن (زي واتساب)
+function renderWithMentions(body: string) {
+  const parts = body.split(/(@[A-Za-z0-9_\u0600-\u06FF]+)/g);
+  return parts.map((p, i) =>
+    p.startsWith("@") ? (
+      <span key={i} className="font-bold underline decoration-dotted">
+        {p}
+      </span>
+    ) : (
+      <span key={i}>{p}</span>
+    )
+  );
+}
+
 const SYSTEM_EVENT_LABEL: Record<string, (name: string) => string> = {
   joined: (name) => `${name} انضم إلى الجروب`,
   left: (name) => `${name} غادر الجروب`,
@@ -89,6 +124,15 @@ export default function GroupChat() {
   const [profiles, setProfiles] = useState<Map<string, PublicProfile>>(new Map());
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // ----- استطلاعات الرأي (Polls) -----
+  const [pollOpen, setPollOpen] = useState(false);
+  const [polls, setPolls] = useState<Map<string, GroupPoll>>(new Map()); // key = message_id
+  const [pollOptions, setPollOptions] = useState<Map<string, GroupPollOption[]>>(new Map()); // key = poll_id
+  const [pollVotes, setPollVotes] = useState<Map<string, GroupPollVote[]>>(new Map()); // key = poll_id
+
+  // ----- منشن @username -----
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
@@ -105,6 +149,37 @@ export default function GroupChat() {
     });
   }, [members]);
 
+  // تحميل الاستطلاعات الحالية للجروب + متابعتها لحظياً (تصويت جديد/استطلاع جديد)
+  useEffect(() => {
+    if (!groupId) return;
+    let active = true;
+
+    const load = async () => {
+      const { polls: pollList, options, votes } = await fetchGroupPolls(groupId);
+      if (!active) return;
+      setPolls(new Map(pollList.filter((p) => p.message_id).map((p) => [p.message_id as string, p])));
+      const optMap = new Map<string, GroupPollOption[]>();
+      options.forEach((o) => optMap.set(o.poll_id, [...(optMap.get(o.poll_id) ?? []), o]));
+      setPollOptions(optMap);
+      const voteMap = new Map<string, GroupPollVote[]>();
+      votes.forEach((v) => voteMap.set(v.poll_id, [...(voteMap.get(v.poll_id) ?? []), v]));
+      setPollVotes(voteMap);
+    };
+    load();
+
+    const ch = supabase
+      .channel(`group-polls:${groupId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "group_polls", filter: `group_id=eq.${groupId}` }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "group_poll_options" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "group_poll_votes" }, () => load())
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(ch);
+    };
+  }, [groupId]);
+
   const send = async () => {
     if (!text.trim() || !user || !groupId || sending) return;
 
@@ -116,9 +191,19 @@ export default function GroupChat() {
 
     setSending(true);
     try {
-      const m = await sendGroupMessage(groupId, user.id, filterMessage(text.trim()));
+      const cleanBody = filterMessage(text.trim());
+      const m = await sendGroupMessage(groupId, user.id, cleanBody);
       setMessages((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, m]));
       setText("");
+      setMentionQuery(null);
+
+      const mentioned = extractMentionedUserIds(
+        cleanBody,
+        activeMembers.filter((mem) => mem.user_id !== user.id).map((mem) => ({ user_id: mem.user_id, username: profiles.get(mem.user_id)?.username ?? null }))
+      );
+      if (mentioned.length > 0) {
+        void insertGroupMessageMentions(m.id, mentioned);
+      }
 
       if (noteChatMessageSent() && !isAdFree) {
         void showInterstitial("chat");
@@ -127,6 +212,38 @@ export default function GroupChat() {
       toast.error(e?.message ?? "تعذر إرسال الرسالة");
     } finally {
       setSending(false);
+    }
+  };
+
+  // كتابة نص جديد جوه الـ Textarea — لو آخر حاجة اليوزر كاتبها هي "@..."
+  // نظهر قائمة الأعضاء المطابقين عشان يختار منهم (Autocomplete)
+  const onTextChange = (v: string) => {
+    setText(v);
+    const match = v.match(/(?:^|\s)@([A-Za-z0-9_\u0600-\u06FF]*)$/);
+    setMentionQuery(match ? match[1] : null);
+  };
+
+  const pickMention = (username: string) => {
+    if (!username) return;
+    setText((cur) => cur.replace(/(?:^|\s)@([A-Za-z0-9_\u0600-\u06FF]*)$/, (full) => {
+      const prefix = full.startsWith(" ") ? " " : "";
+      return `${prefix}@${username} `;
+    }));
+    setMentionQuery(null);
+  };
+
+  const handleCreatePoll = async (question: string, options: string[], allowMultiple: boolean) => {
+    if (!user || !groupId) return;
+    const { message } = await createGroupPoll(groupId, user.id, question, options, allowMultiple);
+    setMessages((cur) => (cur.some((x) => x.id === message.id) ? cur : [...cur, message]));
+  };
+
+  const handleVote = async (pollId: string, optionId: string, allowMultiple: boolean) => {
+    if (!user) return;
+    try {
+      await voteOnPoll(pollId, optionId, user.id, allowMultiple);
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذر التصويت");
     }
   };
 
@@ -336,6 +453,33 @@ export default function GroupChat() {
                 {group.lock_chat ? "فتح الدردشة للجميع" : "قفل الدردشة (مشرفين فقط)"}
               </DropdownMenuItem>
             )}
+            {isStaff && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Timer className="w-4 h-4 ml-2" /> الرسائل المؤقتة
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuRadioGroup
+                    value={String(group.disappearing_seconds ?? "off")}
+                    onValueChange={async (v) => {
+                      const seconds = v === "off" ? null : Number(v);
+                      try {
+                        await updateGroup(groupId!, { disappearing_seconds: seconds });
+                        toast.success("تم تحديث إعداد الرسائل المؤقتة");
+                      } catch (e: any) {
+                        toast.error(e?.message ?? "تعذر تحديث الإعداد");
+                      }
+                    }}
+                  >
+                    {DISAPPEARING_OPTIONS.map((opt) => (
+                      <DropdownMenuRadioItem key={opt.label} value={opt.seconds === null ? "off" : String(opt.seconds)}>
+                        {opt.label}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
             <DropdownMenuItem onClick={handleLeave} className="text-destructive">
               <LogOut className="w-4 h-4 ml-2" /> مغادرة الجروب
             </DropdownMenuItem>
@@ -349,7 +493,7 @@ export default function GroupChat() {
             لا توجد رسائل بعد — ابدأ المحادثة!
           </p>
         )}
-        {messages.map((m) => {
+        {dropExpired(messages).map((m) => {
           const sender = profiles.get(m.sender_id);
 
           if (m.system_event) {
@@ -364,6 +508,7 @@ export default function GroupChat() {
           }
 
           const mine = m.sender_id === user!.id;
+          const poll = polls.get(m.id);
           return (
             <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} gap-2`}>
               {!mine && (
@@ -380,7 +525,16 @@ export default function GroupChat() {
                 }`}
               >
                 {!mine && <div className="text-[10px] text-primary font-horror mb-0.5">{sender?.username ?? "..."}</div>}
-                {m.media_type ? (
+                {poll ? (
+                  <PollMessageBubble
+                    poll={poll}
+                    options={pollOptions.get(poll.id) ?? []}
+                    votes={pollVotes.get(poll.id) ?? []}
+                    myUserId={user!.id}
+                    mine={mine}
+                    onVote={(optionId) => handleVote(poll.id, optionId, poll.allow_multiple)}
+                  />
+                ) : m.media_type ? (
                   <MediaMessageBubble
                     messageId={m.id}
                     kind="group"
@@ -394,11 +548,13 @@ export default function GroupChat() {
                     mine={mine}
                   />
                 ) : (
-                  m.body && <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
+                  m.body && <p className="text-sm whitespace-pre-wrap break-words">{renderWithMentions(m.body)}</p>
                 )}
-                <div className="text-[9px] opacity-70 mt-1 text-left">
-                  {new Date(m.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}
-                </div>
+                {!poll && (
+                  <div className="text-[9px] opacity-70 mt-1 text-left">
+                    {new Date(m.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -409,15 +565,34 @@ export default function GroupChat() {
       <div className="border-t border-border p-2 bg-card">
         {canPost ? (
           <>
+            {mentionQuery !== null && (
+              <MentionAutocomplete
+                candidates={activeMembers
+                  .filter((mem) => mem.user_id !== user!.id)
+                  .map((mem) => profiles.get(mem.user_id))
+                  .filter((p): p is PublicProfile => !!p?.username && p.username.toLowerCase().startsWith(mentionQuery.toLowerCase()))
+                  .slice(0, 6)}
+                onPick={pickMention}
+              />
+            )}
             <div className="flex gap-2 items-end">
               <MediaComposerButtons
                 disabled={sending}
                 onPickFile={handlePickFile}
                 onRecordedAudio={handleRecordedAudio}
               />
+              <button
+                type="button"
+                onClick={() => setPollOpen(true)}
+                disabled={sending}
+                className="p-2 text-muted-foreground hover:text-primary shrink-0"
+                title="إنشاء استطلاع رأي"
+              >
+                <BarChart3 className="w-5 h-5" />
+              </button>
               <Textarea
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => onTextChange(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -526,6 +701,8 @@ export default function GroupChat() {
           )}
         </DialogContent>
       </Dialog>
+
+      <PollComposerDialog open={pollOpen} onOpenChange={setPollOpen} onCreate={handleCreatePoll} />
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent dir="rtl">
