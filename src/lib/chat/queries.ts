@@ -441,12 +441,14 @@ export async function submitReport(opts: {
   targetUserId: string;
   targetMessageId?: string;
   reason: string;
+  category: string;
 }) {
   const { error } = await supabase.from("reports").insert({
     reporter_id: opts.reporterId,
     target_user_id: opts.targetUserId,
     target_message_id: opts.targetMessageId ?? null,
     reason: opts.reason,
+    category: opts.category,
   });
   if (error) throw error;
 }
