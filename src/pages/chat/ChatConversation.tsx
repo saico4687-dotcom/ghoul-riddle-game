@@ -32,7 +32,8 @@ import MessageBubble from "@/components/chat/MessageBubble";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, ArrowRight, Ban, Flag, MoreVertical, X, Timer, MapPin, Loader2 as LoaderIcon } from "lucide-react";
+import { Send, ArrowRight, Ban, Flag, MoreVertical, X, Timer, MapPin, Loader2 as LoaderIcon, Phone, Video } from "lucide-react";
+import { useCallContext } from "@/hooks/useCallContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,6 +55,7 @@ export default function ChatConversation() {
   const { user } = useAuth();
   const { isAdFree } = useAdFree();
   const navigate = useNavigate();
+  const { phase: callPhase, startCall } = useCallContext();
   const [messages, setMessages] = useState<Message[]>([]);
   const [reactions, setReactions] = useState<Reaction[]>([]);
   const [other, setOther] = useState<PublicProfile | null>(null);
@@ -357,6 +359,19 @@ export default function ChatConversation() {
     catch (e: any) { toast.error(e?.message ?? "فشل"); }
   };
 
+  const handleCall = async (kind: "audio" | "video") => {
+    if (!other) return;
+    if (callPhase !== "idle" && callPhase !== "ended") {
+      toast.error("في مكالمة شغالة بالفعل");
+      return;
+    }
+    try {
+      await startCall(other.user_id, kind);
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذّر بدء المكالمة");
+    }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]" dir="rtl">
       <div className="sticky top-0 bg-card/95 backdrop-blur border-b border-border px-3 py-2 flex items-center gap-3 z-10">
@@ -377,6 +392,26 @@ export default function ChatConversation() {
               </div>
             </div>
           </button>
+        )}
+        {other && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => handleCall("audio")}
+              className="p-2 text-primary disabled:opacity-40"
+              aria-label="مكالمة صوتية"
+              title="مكالمة صوتية"
+            >
+              <Phone className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => handleCall("video")}
+              className="p-2 text-primary disabled:opacity-40"
+              aria-label="مكالمة فيديو"
+              title="مكالمة فيديو"
+            >
+              <Video className="w-5 h-5" />
+            </button>
+          </div>
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
