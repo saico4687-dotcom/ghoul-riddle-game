@@ -12,6 +12,8 @@ export type PublicProfile = {
   is_muted_until: string | null;
   is_suspended_until: string | null;
   ad_free_until: string | null;
+  // المفتاح العام (ECDH P-256, raw/base64) — لتشفير طرف لطرف. راجع src/lib/chat/e2e.ts
+  public_key: string | null;
 };
 
 export type Message = {
@@ -295,7 +297,11 @@ export async function sendMessage(conversationId: string, senderId: string, body
   if (!rl.ok) {
     throw new Error(`تجاوزت الحد المسموح. حاول بعد ${Math.ceil(rl.retryInMs / 1000)} ثانية`);
   }
-  const cleaned = filterMessage(body).trim();
+  // لو الرسالة متشفّرة طرف-لطرف (e2e1:...) أو رسالة موقع (geo:...)، مينفعش
+  // فلتر الكلمات يشتغل عليها (النص عمليًا مش قابل للقراءة أو مش نص حر
+  // أصلًا)، فبنعديها زي ما هي.
+  const isOpaque = body.startsWith("e2e1:") || /^geo:-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(body.trim());
+  const cleaned = isOpaque ? body.trim() : filterMessage(body).trim();
   if (!cleaned) throw new Error("رسالة فارغة");
   const { data, error } = await supabase
     .from("messages")
