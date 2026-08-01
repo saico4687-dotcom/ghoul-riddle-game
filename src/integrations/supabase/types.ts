@@ -1328,6 +1328,10 @@ export type Database = {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
+      end_call: {
+        Args: { _call_id: string; _final_status?: string }
+        Returns: Database["public"]["Tables"]["calls"]["Row"]
+      }
       get_fastest_answers: {
         Args: never
         Returns: {
@@ -1362,6 +1366,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      has_active_call: { Args: { _a: string; _b: string }; Returns: boolean }
       has_completed_400: { Args: { _uid: string }; Returns: boolean }
       has_role: {
         Args: {
@@ -1397,6 +1402,14 @@ export type Database = {
       }
       mark_group_message_view_once: { Args: { _message_id: string }; Returns: boolean }
       mark_message_view_once: { Args: { _message_id: string }; Returns: boolean }
+      respond_to_call: {
+        Args: { _call_id: string; _new_status: string }
+        Returns: Database["public"]["Tables"]["calls"]["Row"]
+      }
+      start_call: {
+        Args: { _callee_id: string; _kind: string }
+        Returns: Database["public"]["Tables"]["calls"]["Row"]
+      }
       pin_group_message: {
         Args: { _duration_hours: number | null; _group_id: string; _message_id: string }
         Returns: undefined
