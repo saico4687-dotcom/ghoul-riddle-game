@@ -35,7 +35,7 @@ import CreateGroup from "./pages/chat/Group";
 import JoinGroup from "./pages/chat/JoinGroup";
 import GroupsList from "./pages/chat/GroupsList";
 import GroupChat from "./pages/chat/GroupChat";
-import StoryViewer from "./pages/chat/StoryViewer";
+import StoryViewer from "./components/chat/StoryViewer";
 
 import {
   initAds,
