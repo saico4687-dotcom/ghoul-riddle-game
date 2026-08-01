@@ -618,8 +618,8 @@ export default function GroupChat() {
                 />
               )}
               <div
-                className={`max-w-[75%] relative rounded-lg px-3 py-2 ${
-                  mine ? "bg-primary text-primary-foreground" : "bg-card border border-border"
+                className={`max-w-[75%] relative rounded-lg px-3 py-2 backdrop-blur-md border text-white ${
+                  mine ? "bg-primary/25 border-primary/40" : "bg-white/10 border-white/20"
                 }`}
               >
                 {!mine && <div className="text-[10px] text-primary font-horror mb-0.5">{sender?.username ?? "..."}</div>}
