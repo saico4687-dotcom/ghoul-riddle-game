@@ -320,10 +320,10 @@ export default function GroupChat() {
     }
   };
 
-  const handlePickFile = async (file: File) => {
+  const handlePickFile = async (file: File, viewOnce: boolean) => {
     if (!user || !groupId) return;
     try {
-      const m = await sendGroupMediaMessage(groupId, user.id, file, file.type);
+      const m = await sendGroupMediaMessage(groupId, user.id, file, file.type, { viewOnce });
       setMessages((cur) => (cur.some((x) => x.id === (m as any).id) ? cur : [...cur, m as any]));
       if (noteChatMessageSent() && !isAdFree) {
         void showInterstitial("chat");
@@ -644,6 +644,8 @@ export default function GroupChat() {
                     mediaDeletedAt={m.media_deleted_at}
                     durationSeconds={m.media_duration_seconds}
                     mine={mine}
+                    viewOnce={m.view_once}
+                    viewedAt={m.viewed_at}
                   />
                 ) : m.deleted_at ? (
                   <p className="text-sm italic opacity-70">تم حذف هذه الرسالة</p>
@@ -793,7 +795,7 @@ export default function GroupChat() {
             <Tabs value={membersTab} onValueChange={(v) => setMembersTab(v as "active" | "banned")}>
               <TabsList className="w-full">
                 <TabsTrigger value="active" className="flex-1">
-                  الأعضاء ({activeMembers.length})
+                  الأعضاء ({activeMembers.length}/{group?.max_members ?? 1024})
                 </TabsTrigger>
                 <TabsTrigger value="banned" className="flex-1">
                   المحظورون ({bannedMembers.length})
