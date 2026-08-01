@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
-import { Paperclip, Mic, Square, Loader2 } from "lucide-react";
+import { Paperclip, Mic, Square, Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
   disabled?: boolean;
-  onPickFile: (file: File) => Promise<void> | void;
+  onPickFile: (file: File, viewOnce: boolean) => Promise<void> | void;
   onRecordedAudio: (blob: Blob, mime: string, durationSeconds: number) => Promise<void> | void;
 }
 
@@ -13,6 +13,7 @@ const MAX_RECORD_MS = 2 * 60 * 1000; // دقيقتين كحد أقصى
 export default function MediaComposerButtons({ disabled, onPickFile, onRecordedAudio }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [viewOnceArmed, setViewOnceArmed] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordMs, setRecordMs] = useState(0);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -26,8 +27,10 @@ export default function MediaComposerButtons({ disabled, onPickFile, onRecordedA
     e.target.value = "";
     if (!file) return;
     setUploading(true);
+    const viewOnce = viewOnceArmed;
+    setViewOnceArmed(false);
     try {
-      await onPickFile(file);
+      await onPickFile(file, viewOnce);
     } catch (err: any) {
       toast.error(err?.message ?? "تعذر إرسال الملف");
     } finally {
@@ -114,6 +117,16 @@ export default function MediaComposerButtons({ disabled, onPickFile, onRecordedA
         aria-label="إرفاق صورة أو فيديو"
       >
         {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Paperclip className="w-5 h-5" />}
+      </button>
+      <button
+        type="button"
+        disabled={disabled || uploading}
+        onClick={() => setViewOnceArmed((v) => !v)}
+        className={`p-2 disabled:opacity-50 ${viewOnceArmed ? "text-primary" : "text-white/70 hover:text-white"}`}
+        aria-label="إرسال الوسائط القادمة كـ مشاهدة مرة واحدة"
+        title="شاهدها مرة واحدة"
+      >
+        {viewOnceArmed ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
       </button>
       <button
         type="button"
