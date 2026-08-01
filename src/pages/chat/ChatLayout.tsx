@@ -8,6 +8,8 @@ import AdFreeTimer from "@/components/chat/AdFreeTimer";
 import ChatBannerSlot, { BOTTOM_NAV_HEIGHT, BANNER_SLOT_HEIGHT } from "@/components/chat/ChatBannerSlot";
 import WaterWavesBackground from "@/components/chat/WaterWavesBackground";
 import AppLockScreen from "@/components/chat/AppLockScreen";
+import CallScreen from "@/components/chat/CallScreen";
+import { CallProvider } from "@/hooks/useCallContext";
 
 export default function ChatLayout() {
   usePresence();
@@ -27,11 +29,17 @@ export default function ChatLayout() {
   }
 
   return (
+    <CallProvider>
     <div className="min-h-screen flex flex-col relative text-white" dir="rtl">
       {/* خلفية الأمواج المتحركة — ثابتة خلف كل شاشات الدردشة (المحادثات،
           الشات، الجروبات، الإعدادات، البحث...) من لحظة الدخول للدردشة
           وحتى الخروج منها */}
       <WaterWavesBackground />
+
+      {/* شاشة المكالمة (رنين واردة/صادرة + أثناء المكالمة) — عنصر عائم
+          فوق كل شيء، بتظهر بس لما فيه مكالمة شغالة أيًا كانت الصفحة
+          الحالية جوّه قسم الدردشة */}
+      <CallScreen />
 
       <header className="sticky top-0 z-40 bg-white/10 backdrop-blur-md border-b border-white/15 px-4 py-3 flex items-center justify-between">
         <button onClick={() => navigate("/")} className="flex items-center gap-2 text-white">
@@ -70,6 +78,7 @@ export default function ChatLayout() {
         </div>
       </nav>
     </div>
+    </CallProvider>
   );
 }
 
