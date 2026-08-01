@@ -13,5 +13,14 @@
  * الحل: نستخدم الدومين المنشور فعليًا للويب دايمًا لبناء الروابط
  * القابلة للمشاركة، بغض النظر عن الـ origin الحالي اللي التطبيق شغال
  * جواه.
+ *
+ * القيمة تُقرأ من VITE_APP_WEB_ORIGIN (لازم تتحط في .env بعد ما تعرف
+ * دومين النشر الفعلي بتاعك). لو مش متعرّفة، بيرجع لـ
+ * window.location.origin كحل احتياطي وقت التطوير المحلي — ده كويس جوّه
+ * المتصفح العادي، لكن جوّه تطبيق Capacitor (Android/iOS) هيرجّع سكيم
+ * محلي مش قابل للفتح من حد تاني، فلازم تتأكد من ضبط المتغيّر قبل
+ * النشر للإنتاج.
  */
-export const APP_WEB_ORIGIN = "https://ghoul-riddle-game.lovable.app";
+export const APP_WEB_ORIGIN =
+  (import.meta.env.VITE_APP_WEB_ORIGIN as string | undefined) ||
+  (typeof window !== "undefined" ? window.location.origin : "");
