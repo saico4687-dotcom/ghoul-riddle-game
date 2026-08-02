@@ -85,6 +85,17 @@
     font-family: 'Tajawal', 'Cairo', sans-serif;
     font-weight: 700;
   }
+
+  /* لما نكون جوه شاشات الشات (ChatLayout بيضيف الكلاس ده على body عند
+     الدخول ويشيله عند الخروج)، لازم نلغي خلفية اللعبة المعتمة (الموروثة
+     من html/body في index.html والمتغير --background هنا) لأن أي خلفية
+     غير شفافة على body بتترسم زي "خلفية الصفحة الجذرية" اللي بتتحط تحت
+     أي عنصر حتى لو z-index سالب — فكانفاس الأمواج (WaterWavesBackground)
+     كان مستحيل يبان مهما كان z-index بتاعه، لأنه بيترسم فوق كل عناصر
+     الصفحة العادية لكن تحت خلفية body الجذرية نفسها. */
+  body.chat-mode {
+    background: transparent !important;
+  }
 }
 
 @layer components {
