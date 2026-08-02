@@ -19,9 +19,8 @@
     <!-- الميكروفون: للرسائل الصوتية والمكالمات الصوتية/الفيديو -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-    <!-- مشاركة الموقع اللحظي -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- تم حذف ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION
+         بعد إزالة ميزة مشاركة الموقع من التطبيق، طبقًا لنموذج أمان البيانات. -->
 
     <!-- تم حذف READ_MEDIA_IMAGES / READ_MEDIA_VIDEO / READ_EXTERNAL_STORAGE
          لأن اختيار الصور والفيديوهات يتم عبر <input type="file"> داخل الـ WebView،
