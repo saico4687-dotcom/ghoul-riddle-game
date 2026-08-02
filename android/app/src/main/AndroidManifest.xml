@@ -23,11 +23,10 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <!-- اختيار صور/فيديو من الجهاز لإرسالها في المحادثة -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    <!-- للأجهزة الأقدم من أندرويد 13 (API أقل من 33) -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <!-- تم حذف READ_MEDIA_IMAGES / READ_MEDIA_VIDEO / READ_EXTERNAL_STORAGE
+         لأن اختيار الصور والفيديوهات يتم عبر <input type="file"> داخل الـ WebView،
+         وهذا يستخدم أداة الاختيار المضمّنة بالنظام (Photo Picker) تلقائيًا
+         بدون الحاجة لهذه الأذونات، طبقًا لسياسة Google Play. -->
 
     <!-- قفل التطبيق بالبصمة/الوجه -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
