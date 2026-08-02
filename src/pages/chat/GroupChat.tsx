@@ -34,7 +34,7 @@ import {
   type GroupPollVote,
 } from "@/lib/chat/groupQueries";
 import { fetchPublicProfilesByIds, canEditMessage, canDeleteForEveryone, type PublicProfile } from "@/lib/chat/queries";
-import { renderMessageBody, isLocationBody, parseLocationBody, makeLocationBody } from "@/lib/chat/formatting";
+import { renderMessageBody, isLocationBody, parseLocationBody } from "@/lib/chat/formatting";
 import LocationMessage from "@/components/chat/LocationMessage";
 import { checkSingleLine, filterMessage, MAX_LINE_CHARS } from "@/lib/chat/contentFilter";
 import { noteChatMessageSent, showInterstitial } from "@/lib/adsMediation";
@@ -345,20 +345,6 @@ export default function GroupChat() {
     } catch (e: any) {
       toast.error(e?.message ?? "تعذر إرسال الرسالة الصوتية");
     }
-  };
-
-  const handleShareLocation = async () => {
-    if (!user || !groupId) return;
-    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
-    }).catch(() => null);
-    if (!position) {
-      toast.error("تعذر الوصول للموقع — تأكد من إذن الموقع");
-      return;
-    }
-    const body = makeLocationBody(position.coords.latitude, position.coords.longitude);
-    const m = await sendGroupMessage(groupId, user.id, body);
-    setMessages((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, m]));
   };
 
   const copyInvite = async () => {
@@ -776,7 +762,6 @@ export default function GroupChat() {
                 disabled={sending}
                 onPickFile={handlePickFile}
                 onRecordedAudio={handleRecordedAudio}
-                onShareLocation={handleShareLocation}
               />
               <button
                 type="button"
