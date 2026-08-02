@@ -26,13 +26,12 @@ import {
 } from "@/lib/chat/queries";
 import { checkSingleLine, MAX_LINE_CHARS } from "@/lib/chat/contentFilter";
 import { noteChatMessageSent, showInterstitial } from "@/lib/adsMediation";
-import { makeLocationBody } from "@/lib/chat/formatting";
 import { ensureLocalKeyPair, deriveSharedKey, encryptBody, decryptBody } from "@/lib/chat/e2e";
 import MessageBubble from "@/components/chat/MessageBubble";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, ArrowRight, Ban, Flag, MoreVertical, X, Timer, MapPin, Loader2 as LoaderIcon, Phone, Video } from "lucide-react";
+import { Send, ArrowRight, Ban, Flag, MoreVertical, X, Timer, Loader2 as LoaderIcon, Phone, Video } from "lucide-react";
 import { useCallContext } from "@/hooks/useCallContext";
 import {
   DropdownMenu,
@@ -82,7 +81,6 @@ export default function ChatConversation() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [disappearingSeconds, setDisappearingSecondsState] = useState<number | null>(null);
-  const [sharingLocation, setSharingLocation] = useState(false);
   // مفتاحي الخاص (ECDH) على الجهاز، والمفتاح المشترك المشتق مع الطرف
   // التاني في المحادثة دي — راجع src/lib/chat/e2e.ts. لو الطرف التاني
   // لسه معندوش مفتاح عام مرفوع (أول مرة يفتح فيها الشات)، sharedKeyRef
@@ -302,29 +300,6 @@ export default function ChatConversation() {
     setText(m.body);
   };
 
-  const handleShareLocation = async () => {
-    if (!user || !conversationId || sharingLocation) return;
-    if (!navigator.geolocation) {
-      toast.error("المتصفح لا يدعم مشاركة الموقع");
-      return;
-    }
-    setSharingLocation(true);
-    try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
-      });
-      // إحداثيات الموقع بتتبعت نص عادي (مش مشفّرة) — نفس الاتفاق إن بيانات
-      // الموقع نصية بحتة ومفيش حرج في تخزينها دائم زي باقي بيانات النصوص.
-      const body = makeLocationBody(position.coords.latitude, position.coords.longitude);
-      const m = await sendMessage(conversationId, user.id, body, null);
-      setMessages((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, m]));
-    } catch {
-      toast.error("تعذر الوصول للموقع — تأكد من إذن الموقع");
-    } finally {
-      setSharingLocation(false);
-    }
-  };
-
   const cancelEdit = () => {
     setEditingMessage(null);
     setText("");
@@ -530,16 +505,6 @@ export default function ChatConversation() {
           </div>
         )}
         <div className="flex gap-2 items-end">
-          <button
-            type="button"
-            disabled={sharingLocation}
-            onClick={handleShareLocation}
-            className="p-2 h-10 shrink-0 text-white/70 hover:text-white disabled:opacity-50"
-            aria-label="مشاركة الموقع"
-            title="مشاركة الموقع"
-          >
-            {sharingLocation ? <LoaderIcon className="w-5 h-5 animate-spin" /> : <MapPin className="w-5 h-5" />}
-          </button>
           <Textarea
             value={text}
             onChange={(e) => onTypingChange(e.target.value)}
