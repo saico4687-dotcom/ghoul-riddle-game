@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { Home, Users, MessageSquare, Bell, Settings as SettingsIcon, ArrowRight } from "lucide-react";
 import { usePresence } from "@/hooks/usePresence";
@@ -16,6 +17,19 @@ export default function ChatLayout() {
   const unread = useUnreadCount();
   const navigate = useNavigate();
   const { enabled: lockEnabled, loading: lockLoading, unlocked, verify, unlock } = useAppLock();
+
+  // مهم جدًا: لغاية دلوقتي خلفية html/body المعتمة (بتاعة لعبة "ربح"
+  // الأصلية) كانت بتتغطى على كانفاس الأمواج (WaterWavesBackground) لأنها
+  // بتترسم كخلفية جذرية للصفحة تحت أي عنصر حتى لو z-index سالب. هنا
+  // بنحط كلاس "chat-mode" على body بس وإحنا داخلين شاشات الشات (اللي
+  // بيلغي الخلفية المعتمة دي عبر index.css)، وبنشيله تاني لما نخرج من
+  // الشات عشان اللعبة الأصلية تفضل شغالة بشكلها المعتاد.
+  useEffect(() => {
+    document.body.classList.add("chat-mode");
+    return () => {
+      document.body.classList.remove("chat-mode");
+    };
+  }, []);
 
   // القفل مفعّل ولسه مقفول: نعرض شاشة القفل بس (وراها الأمواج برضه
   // عشان الهوية البصرية متتكسرش حتى قبل الدخول للمحتوى).
