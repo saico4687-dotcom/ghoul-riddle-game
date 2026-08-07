@@ -338,6 +338,25 @@ const Index = () => {
     const addMs = typeof elapsedMs === "number" && elapsedMs > 0 ? elapsedMs : 60000;
     totalTimeMsRef.current += addMs;
 
+    // نفس معادلة النقاط المستخدمة في دالة submit-answer على السيرفر:
+    // 10 نقاط للإجابة الصحيحة + بونص وقت (0-5) حسب سرعة الإجابة.
+    let bonusEarned = 0;
+    if (isCorrect && addMs >= 250 && addMs <= 60000) {
+      const remainingSec = Math.max(0, Math.floor((60000 - addMs) / 1000));
+      bonusEarned = Math.min(5, Math.floor(remainingSec / 12));
+    }
+    const pointsEarned = isCorrect ? 10 + bonusEarned : 0;
+
+    const newScore = isCorrect ? score + 1 : score;
+    const newPoints = totalPoints + pointsEarned;
+    const newTimeBonus = timeBonus + bonusEarned;
+
+    if (isCorrect) {
+      setScore(newScore);
+      setTotalPoints(newPoints);
+      setTimeBonus(newTimeBonus);
+    }
+
     if (user) {
       try {
         await supabase.from("answer_times").insert({
@@ -349,22 +368,30 @@ const Index = () => {
       } catch (e) {
         console.error("answer_times insert failed", e);
       }
-    }
 
-    if (!user) {
-      const newScore = isCorrect ? score + 1 : score;
-      const newPoints = isCorrect ? totalPoints + 10 : totalPoints;
-
-      if (isCorrect) {
-        setScore(newScore);
-        setTotalPoints(newPoints);
+      // نحفظ النتيجة والنقاط في قاعدة البيانات بعد كل إجابة، بدل ما نسيبها
+      // في الذاكرة بس. ده اللي كان بيخلي شاشة النتيجة ترجع تعرض صفر بعد
+      // إعادة فتح التطبيق.
+      try {
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            saved_score: newScore,
+            saved_total_points: newPoints,
+            saved_time_bonus: newTimeBonus,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", user.id);
+        if (error) console.error("saved score update failed", error);
+      } catch (e) {
+        console.error("saved score update exception", e);
       }
-
+    } else {
       saveGuestProgress({
         currentRiddleIndex,
         score: newScore,
         totalPoints: newPoints,
-        timeBonus,
+        timeBonus: newTimeBonus,
       });
     }
   };
@@ -379,6 +406,9 @@ const Index = () => {
           completed_at: new Date().toISOString(),
           total_time_ms: totalTimeMsRef.current,
           last_puzzle_index: allRiddles.length - 1,
+          saved_score: score,
+          saved_total_points: totalPoints,
+          saved_time_bonus: timeBonus,
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", user.id)
@@ -394,7 +424,7 @@ const Index = () => {
       console.error("mark completed exception", e);
       return false;
     }
-  }, [user, allRiddles.length]);
+  }, [user, allRiddles.length, score, totalPoints, timeBonus]);
 
   useEffect(() => {
     if (gameState === "result" && completed && user) {
