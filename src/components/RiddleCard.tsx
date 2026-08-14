@@ -11,6 +11,7 @@ import { Brain, Mic, MicOff, Scissors, Clock } from "lucide-react";
 
 import { useHorrorSounds } from "@/hooks/useHorrorSounds";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
+import { usePurchases } from "@/hooks/usePurchases";
 
 import { showRewarded, showBannerAd, hideBannerAd } from "@/lib/adsMediation";
 
@@ -53,6 +54,7 @@ const RiddleCard = ({
 
   const { playSound, setMuted } = useHorrorSounds();
   const { setVolume: setMusicVolume } = useHorrorBackgroundMusic();
+  const { purchasedRewardUnlock, purchasedNoAds } = usePurchases();
 
   const handleMuteToggle = () => {
     const newMutedState = !isMuted;
@@ -79,16 +81,36 @@ const RiddleCard = ({
     }
   }, [isTypingComplete, startTime]);
 
-  // Show banner on puzzle screen; hide when leaving
+  // Show banner on puzzle screen; hide when leaving. لو المستخدم اشترى
+  // "إلغاء الإعلانات" ميتعرضش أي بانر إطلاقًا لحسابه.
   useEffect(() => {
+    if (purchasedNoAds) {
+      void hideBannerAd();
+      return;
+    }
     void showBannerAd();
     return () => {
       void hideBannerAd();
     };
-  }, []);
+  }, [purchasedNoAds]);
 
   const handleUseFifty = async () => {
     if (lifelineUsed || showResult) return;
+
+    // اشترى "فتح ميزة المكافأة" → الأداة تتفعّل فورًا من غير ما يشوف
+    // أي إعلان مكافأة.
+    if (purchasedRewardUnlock) {
+      const wrongIndices = riddle.options
+        .map((_, i) => i)
+        .filter((i) => i !== riddle.correctIndex);
+      const toRemove = [...wrongIndices].sort(() => Math.random() - 0.5).slice(0, 2);
+      setRemovedOptions(toRemove);
+      setLifelineUsed("fifty");
+      if (selectedOption !== null && toRemove.includes(selectedOption)) {
+        setSelectedOption(null);
+      }
+      return;
+    }
 
     const before = Date.now();
 
@@ -127,6 +149,12 @@ const RiddleCard = ({
 
   const handleAddTime = async () => {
     if (lifelineUsed || showResult) return;
+
+    if (purchasedRewardUnlock) {
+      setExtraTime((p) => p + 60);
+      setLifelineUsed("time");
+      return;
+    }
 
     const before = Date.now();
 
@@ -221,17 +249,17 @@ const RiddleCard = ({
               aria-label="حذف إجابتين خاطئتين"
             >
               <Scissors className="w-4 h-4" />
-              <span>شاهد الإعلان لحذف إجابتين</span>
+              <span>{purchasedRewardUnlock ? "حذف إجابتين" : "شاهد الإعلان لحذف إجابتين"}</span>
             </button>
             <button
               type="button"
               onClick={handleAddTime}
               disabled={lifelineUsed !== null || showResult || !isTypingComplete}
               className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary border border-primary/40 text-primary text-sm font-typewriter hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              aria-label="شاهد الإعلان لإضافة دقيقة"
+              aria-label="إضافة دقيقة"
             >
               <Clock className="w-4 h-4" />
-              <span>شاهد الإعلان لإضافة دقيقة</span>
+              <span>{purchasedRewardUnlock ? "إضافة دقيقة" : "شاهد الإعلان لإضافة دقيقة"}</span>
             </button>
           </div>
         )}
