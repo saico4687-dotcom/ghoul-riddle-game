@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { useHorrorSounds } from "@/hooks/useHorrorSounds";
 
 interface HorrorClockProps {
   duration: number;
@@ -16,9 +17,16 @@ const HorrorClock = ({
   paused = false,
   extraTime = 0,
   onTimeUp,
+  isMuted = false,
 }: HorrorClockProps) => {
 
   const [timeLeft, setTimeLeft] = useState(duration);
+  const { playSound, setMuted } = useHorrorSounds();
+  const lastTickedSecondRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setMuted(isMuted);
+  }, [isMuted, setMuted]);
 
   // رصيد الوقت المتبقي بالميلي ثانية. لا يُخصم منه إلا وقت "التكة"
   // الفعلي أثناء العد الحقيقي (isActive && !paused). أي وقت يمر أثناء
@@ -37,6 +45,7 @@ const HorrorClock = ({
     setTimeLeft(duration);
 
     firedRef.current = false;
+    lastTickedSecondRef.current = null;
 
     lastExtraRef.current = 0;
 
@@ -68,6 +77,7 @@ const HorrorClock = ({
     if (!isActive || paused) {
       // عند التوقف نُصفّر "آخر تكة" حتى لا يُحتسب وقت التوقف عند الاستئناف
       lastTickRef.current = null;
+      lastTickedSecondRef.current = null;
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -87,6 +97,14 @@ const HorrorClock = ({
 
       const remainSec = Math.ceil(remainingMsRef.current / 1000);
       setTimeLeft(remainSec);
+
+      // صوت "تكة" الساعة — مرة واحدة بالظبط عند كل ثانية جديدة تمر
+      // فعليًا أثناء العد (مش أثناء التوقف/الإعلان، لأن الـ effect
+      // ده أصلًا مش شغال غير وقت isActive && !paused).
+      if (remainSec !== lastTickedSecondRef.current) {
+        lastTickedSecondRef.current = remainSec;
+        playSound("tick");
+      }
 
       if (remainingMsRef.current <= 0 && !firedRef.current) {
         firedRef.current = true;
