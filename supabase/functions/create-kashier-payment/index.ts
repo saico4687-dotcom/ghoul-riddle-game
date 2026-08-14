@@ -95,7 +95,9 @@ Deno.serve(async (req) => {
       currency,
       hash,
       merchantRedirect,
-      allowedMethods: "card,wallet,bank_installments",
+      // بس المحفظة الإلكترونية — من غير فيزا ولا تقسيط بنكي ولا أي
+      // وسيلة تانية.
+      allowedMethods: "wallet",
       display: "ar",
     });
 
