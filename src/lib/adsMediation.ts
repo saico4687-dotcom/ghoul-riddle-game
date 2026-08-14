@@ -123,6 +123,60 @@ export const showInterstitial = async (variant: "main" | "chat" = "main"): Promi
 };
 
 /* ============================================================
+ * Interstitial — نسخة "حاجزة" (blocking): تفضل تحاول تحمّل/تعرض
+ * الإعلان باستمرار (بمهلة بسيطة بين كل محاولة وأخرى) وما ترجعش
+ * إلا بعد ما الإعلان اتعرض فعليًا واتقفل. لو العرض فشل (displayFailed)
+ * بتعيد المحاولة تلقائيًا بدل ما تسيب اللغز التالي يظهر من غير إعلان.
+ * في معاينة الويب (مش نيتيف) مفيش إعلانات أصلًا فبترجع فورًا.
+ * ============================================================ */
+export const showInterstitialBlocking = async (
+    variant: "main" | "chat" = "main"
+): Promise<void> => {
+    if (!isNative()) return;
+    await initAds();
+
+    const tag = variant === "chat" ? "interstitial_chat" : "interstitial_main";
+    const adUnitId = variant === "chat" ? LP_INTERSTITIAL_CHAT_AD_UNIT : LP_INTERSTITIAL_MAIN_AD_UNIT;
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+        if (!lpReady[tag]) {
+            void LevelPlayAds.loadInterstitial({ adUnitId, tag });
+            await new Promise((r) => setTimeout(r, 1500));
+            continue;
+        }
+
+        try {
+            const shown = await new Promise<boolean>((resolve, reject) => {
+                let handle: { remove: () => void } | null = null;
+                LevelPlayAds.addListener("levelPlayEvent", (e) => {
+                    if (e.tag !== tag) return;
+                    if (e.type === "closed") {
+                        handle?.remove();
+                        resolve(true);
+                    }
+                    if (e.type === "displayFailed") {
+                        handle?.remove();
+                        reject(new Error(e.error || "displayFailed"));
+                    }
+                }).then((h) => (handle = h));
+
+                void LevelPlayAds.showInterstitial({ tag }).catch(reject);
+            });
+
+            if (shown) {
+                reloadInterstitial(tag, adUnitId);
+                return;
+            }
+        } catch (e) {
+            console.error("[LevelPlay] Blocking interstitial show failed, retrying...", e);
+            reloadInterstitial(tag, adUnitId);
+            await new Promise((r) => setTimeout(r, 1500));
+        }
+    }
+};
+
+/* ============================================================
  * Rewarded
  * ============================================================ */
 export const showRewarded = async (
