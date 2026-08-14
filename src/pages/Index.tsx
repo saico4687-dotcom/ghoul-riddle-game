@@ -10,7 +10,7 @@ import UserHeader from "@/components/UserHeader";
 import { riddles } from "@/data/riddles";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { showInterstitial } from "@/lib/adsMediation";
+import { showInterstitialBlocking } from "@/lib/adsMediation";
 import { usePurchases } from "@/hooks/usePurchases";
 import OfferWall from "@/components/OfferWall";
 
@@ -463,7 +463,10 @@ const Index = () => {
       if (!purchasedNoAds && solved % 5 === 0) {
         setAdBreakActive(true);
         try {
-          await showInterstitial();
+          // بننتظر هنا لحد ما الإعلان يتعرض فعليًا ويتقفل — لو فشل
+          // العرض أو مكانش جاهز، بتعيد المحاولة تلقائيًا من غير ما
+          // تكمل. اللغز التالي ما بيظهرش ولا الساعة بتتحرك قبل كده.
+          await showInterstitialBlocking();
         } finally {
           setAdBreakActive(false);
         }
@@ -582,6 +585,7 @@ const Index = () => {
               onNext={handleNext}
               onExitToHome={handleExitToHome}
               gameMode="fun"
+              paused={adBreakActive || showOfferWall}
             />
           </motion.div>
         )}
