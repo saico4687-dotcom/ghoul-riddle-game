@@ -10,12 +10,12 @@ interface OfferWallProps {
 }
 
 /**
- * شاشة بيضاء بملء الشاشة تظهر كل 11 لغز، تفضل 6 ثواني وتختفي
+ * شاشة بيضاء بملء الشاشة تظهر كل 11 لغز، تفضل 15 ثانية وتختفي
  * تلقائيًا (وممكن تتقفل يدويًا كمان بزر ✕). في أول سطر في المنتصف
  * تنبيه بالخط الأحمر إن الشاشة هتختفي تاني، وتحتها العرض التسويقي
  * لمنتجَي الشراء.
  */
-const OfferWall = ({ open, onClose, durationMs = 6000 }: OfferWallProps) => {
+const OfferWall = ({ open, onClose, durationMs = 15000 }: OfferWallProps) => {
   const [busyProduct, setBusyProduct] = useState<null | "reward_unlock" | "no_ads">(null);
   const { refresh } = usePurchases();
 
@@ -97,8 +97,7 @@ const OfferWall = ({ open, onClose, durationMs = 6000 }: OfferWallProps) => {
             </div>
 
             <p className="text-xs text-center text-gray-500 leading-relaxed">
-              الدفع سهل وآمن عبر كاشير، بجميع وسائل الدفع المتداولة —
-              وعلى رأسها الدفع بالمحفظة الإلكترونية.
+              الدفع سهل وآمن، بأسهل وسيلة وهي الدفع بالمحفظة الإلكترونية.
             </p>
 
             <p className="text-xs text-center text-gray-400 leading-relaxed border-t border-gray-200 pt-3">
