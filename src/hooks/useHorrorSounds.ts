@@ -176,6 +176,35 @@ export const useHorrorSounds = () => {
     resonance.stop(now + 0.05);
   }, [getAudioContext]);
 
+  // Clock tick - short dry click, يتكرر كل ثانية أثناء عد اللغز التنازلي
+  const playClockTick = useCallback(() => {
+    if (isMutedRef.current) return;
+
+    const ctx = getAudioContext();
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(1800, now);
+    filter.Q.setValueAtTime(4, now);
+
+    osc.type = "square";
+    osc.frequency.setValueAtTime(1000, now);
+
+    gain.gain.setValueAtTime(0.06, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+    osc.start(now);
+    osc.stop(now + 0.05);
+  }, [getAudioContext]);
+
   // Horror ambient sound for background
   const playHorrorAmbient = useCallback(() => {
     if (isMutedRef.current) return;
@@ -208,7 +237,7 @@ export const useHorrorSounds = () => {
     drone.stop(now + 2);
   }, [getAudioContext]);
 
-  const playSound = useCallback((type: "correct" | "wrong" | "typewriter" | "ambient") => {
+  const playSound = useCallback((type: "correct" | "wrong" | "typewriter" | "ambient" | "tick") => {
     switch (type) {
       case "correct":
         playEvilLaugh();
@@ -222,8 +251,11 @@ export const useHorrorSounds = () => {
       case "ambient":
         playHorrorAmbient();
         break;
+      case "tick":
+        playClockTick();
+        break;
     }
-  }, [playEvilLaugh, playChildCry, playTypewriter, playHorrorAmbient]);
+  }, [playEvilLaugh, playChildCry, playTypewriter, playHorrorAmbient, playClockTick]);
 
   return {
     playSound,
