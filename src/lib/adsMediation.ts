@@ -178,19 +178,54 @@ export const showRewarded = async (
 
 /* ============================================================
  * Banner
- * ============================================================ */
+ * ============================================================
+ * البانر عنده listener خاص بيه بيعيد تحميله لوحده لو فشل (مفيش
+ * إعادة محاولة كانت موجودة قبل كده — لو فشل تحميل أول مرة، كان
+ * بيفضل فاضي للأبد وده كان سبب شائع لظهوره "مش شغال"). كمان بنمنع
+ * أكتر من نداء showBanner متوازي في نفس الوقت.
+ */
+let bannerListenerAttached = false;
+let bannerRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let bannerShouldBeVisible = false;
+const BANNER_RETRY_MS = 15000;
+
+const ensureBannerListener = async () => {
+    if (bannerListenerAttached) return;
+    bannerListenerAttached = true;
+    await LevelPlayAds.addListener("levelPlayEvent", (e: LevelPlayEvent) => {
+        if (e.format !== "banner") return;
+        if (e.type === "failedToLoad" && bannerShouldBeVisible) {
+            if (bannerRetryTimer) clearTimeout(bannerRetryTimer);
+            bannerRetryTimer = setTimeout(() => {
+                if (bannerShouldBeVisible) void showBannerAd();
+            }, BANNER_RETRY_MS);
+        }
+    });
+};
+
 export const showBannerAd = async (opts?: { marginBottom?: number }) => {
     if (!isNative()) return;
+    bannerShouldBeVisible = true;
     await initAds();
+    await ensureBannerListener();
 
     try {
         await LevelPlayAds.showBanner({ adUnitId: LP_BANNER_AD_UNIT, marginBottom: opts?.marginBottom });
     } catch (e) {
         console.error("[LevelPlay] Banner show failed", e);
+        if (bannerRetryTimer) clearTimeout(bannerRetryTimer);
+        bannerRetryTimer = setTimeout(() => {
+            if (bannerShouldBeVisible) void showBannerAd(opts);
+        }, BANNER_RETRY_MS);
     }
 };
 
 export const hideBannerAd = async () => {
+    bannerShouldBeVisible = false;
+    if (bannerRetryTimer) {
+        clearTimeout(bannerRetryTimer);
+        bannerRetryTimer = null;
+    }
     if (!isNative()) return;
     await LevelPlayAds.hideBanner().catch(() => {});
 };
