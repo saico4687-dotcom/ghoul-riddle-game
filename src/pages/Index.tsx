@@ -11,6 +11,8 @@ import { riddles } from "@/data/riddles";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { showInterstitial } from "@/lib/adsMediation";
+import { usePurchases } from "@/hooks/usePurchases";
+import OfferWall from "@/components/OfferWall";
 
 const LAST_PUZZLE_KEY = "rabh_last_puzzle_index_v1";
 
@@ -59,7 +61,23 @@ const Index = () => {
   const [completed, setCompleted] = useState(false);
   const totalTimeMsRef = useRef(0);
 
+  // شاشة حجب أثناء عرض إعلان الفاصل: تخفي اللغز والساعة تمامًا لحد
+  // ما الإعلان يقفل — لا اللغز التالي ولا الساعة يظهروا قبل كده.
+  const [adBreakActive, setAdBreakActive] = useState(false);
+
+  // شاشة العرض التسويقي البيضاء (كل 11 لغز)
+  const [showOfferWall, setShowOfferWall] = useState(false);
+  const lastOfferWallAtRef = useRef(0);
+  const offerWallResolveRef = useRef<(() => void) | null>(null);
+
+  const closeOfferWall = useCallback(() => {
+    setShowOfferWall(false);
+    offerWallResolveRef.current?.();
+    offerWallResolveRef.current = null;
+  }, []);
+
   const { user } = useAuth();
+  const { purchasedNoAds } = usePurchases();
 
   const allRiddles = useMemo(() => riddles.slice(0, 400), []);
 
@@ -435,12 +453,32 @@ const Index = () => {
   const handleNext = async () => {
     if (currentRiddleIndex < allRiddles.length - 1) {
       const solved = currentRiddleIndex + 1;
+      const nextIdx = currentRiddleIndex + 1;
 
-      if (solved % 5 === 0) {
-        await showInterstitial();
+      // بوابة الإعلان الفاصل كل 5 ألغاز: نفعّل شاشة الحجب الكاملة
+      // قبل عرض الإعلان بأي حاجة تانية، وما نكمّلش (وما نظهرش اللغز
+      // التالي) إلا بعد ما الإعلان يقفل فعليًا — بغض النظر عن توقيت
+      // الـ SDK نفسه. لو المستخدم اشترى "إلغاء الإعلانات" نتخطى
+      // الخطوة دي تمامًا.
+      if (!purchasedNoAds && solved % 5 === 0) {
+        setAdBreakActive(true);
+        try {
+          await showInterstitial();
+        } finally {
+          setAdBreakActive(false);
+        }
       }
 
-      const nextIdx = currentRiddleIndex + 1;
+      // شاشة العرض التسويقي كل 11 لغز — نفس منطق الحجب: اللغز التالي
+      // ما بيظهرش إلا بعد ما الشاشة دي تختفي (تلقائيًا بعد 6 ثواني
+      // أو بزر الإغلاق).
+      if (solved % 11 === 0 && lastOfferWallAtRef.current !== solved) {
+        lastOfferWallAtRef.current = solved;
+        setShowOfferWall(true);
+        await new Promise<void>((resolve) => {
+          offerWallResolveRef.current = resolve;
+        });
+      }
 
       setCurrentRiddleIndex(nextIdx);
       void persistLastPuzzleIndex(nextIdx);
@@ -562,6 +600,14 @@ const Index = () => {
           />
         )}
       </AnimatePresence>
+
+      {adBreakActive && (
+        <div className="fixed inset-0 z-[9998] bg-black flex items-center justify-center" dir="rtl">
+          <p className="text-primary font-typewriter text-lg animate-pulse">جارٍ عرض الإعلان...</p>
+        </div>
+      )}
+
+      <OfferWall open={showOfferWall} onClose={closeOfferWall} />
     </div>
   );
 };
