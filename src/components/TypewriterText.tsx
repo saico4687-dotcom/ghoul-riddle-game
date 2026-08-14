@@ -7,6 +7,9 @@ interface TypewriterTextProps {
   onComplete?: () => void;
   className?: string;
   onCharacterTyped?: () => void;
+  // true أثناء إعلان فاصل/شاشة العرض التسويقي — بيوقف كتابة اللغز
+  // تمامًا لحد ما يختفي الإعلان.
+  paused?: boolean;
 }
 
 const TypewriterText = ({
@@ -15,6 +18,7 @@ const TypewriterText = ({
   onComplete,
   className = "",
   onCharacterTyped,
+  paused = false,
 }: TypewriterTextProps) => {
   const [displayedText, setDisplayedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -27,6 +31,7 @@ const TypewriterText = ({
   }, [text]);
 
   useEffect(() => {
+    if (paused) return;
     if (currentIndex < text.length) {
       const timeout = setTimeout(() => {
         setDisplayedText((prev) => prev + text[currentIndex]);
@@ -43,7 +48,7 @@ const TypewriterText = ({
         onComplete();
       }
     }
-  }, [currentIndex, text, speed, onComplete, isComplete, onCharacterTyped]);
+  }, [currentIndex, text, speed, onComplete, isComplete, onCharacterTyped, paused]);
 
   return (
     <motion.div
