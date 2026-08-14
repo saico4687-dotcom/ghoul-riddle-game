@@ -30,6 +30,10 @@ interface RiddleCardProps {
   onNext: () => void;
   onExitToHome?: () => void;
   gameMode: "fun" | "competition";
+  // true أثناء عرض إعلان فاصل أو شاشة العرض التسويقي — يوقف الساعة
+  // تمامًا، يوقف كتابة اللغز، ويمنع أي تفاعل مع الخيارات لحد ما
+  // يختفي الإعلان/الشاشة.
+  paused?: boolean;
 }
 
 const RiddleCard = ({
@@ -40,6 +44,7 @@ const RiddleCard = ({
   onNext,
   onExitToHome,
   gameMode,
+  paused = false,
 }: RiddleCardProps) => {
 
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -190,12 +195,12 @@ const RiddleCard = ({
   };
 
   const handleOptionClick = (index: number) => {
-    if (showResult || !isTypingComplete) return;
+    if (showResult || !isTypingComplete || paused) return;
     setSelectedOption(index);
   };
 
   const handleSubmit = () => {
-    if (selectedOption === null) return;
+    if (selectedOption === null || paused) return;
 
     const isCorrect = selectedOption === riddle.correctIndex;
     setShowResult(true);
@@ -233,7 +238,7 @@ const RiddleCard = ({
           key={riddleNumber}
           duration={60}
           isActive={isTypingComplete && !showResult}
-          paused={adPaused}
+          paused={adPaused || paused}
           onTimeUp={handleTimeUp}
           isMuted={isMuted}
           extraTime={extraTime}
@@ -312,6 +317,7 @@ const RiddleCard = ({
           className="text-xl md:text-2xl leading-relaxed text-right"
           onComplete={() => setIsTypingComplete(true)}
           onCharacterTyped={() => playSound("typewriter")}
+          paused={paused}
         />
       </div>
 
