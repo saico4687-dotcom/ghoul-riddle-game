@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 export const useHorrorSounds = () => {
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -9,10 +9,42 @@ export const useHorrorSounds = () => {
   }, []);
 
   const getAudioContext = useCallback(() => {
-    if (!audioContextRef.current) {
+    if (!audioContextRef.current || audioContextRef.current.state === "closed") {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
+    // متصفحات كتير (خصوصًا على الموبايل) بتوقف الـ AudioContext تلقائيًا
+    // (state = "suspended") لما التطبيق يروح للخلفية، أو لما إعلان
+    // (Interstitial/Rewarded) ياخد الفوكس مؤقتًا، أو حتى أول ما بيتعمل
+    // إنشاء للـ context قبل أي user gesture. من غير الـ resume() ده،
+    // أي صوت مجدول بعد كده (تكة الساعة، الطباعة، ...) بيتجدول فعلاً
+    // من غير ما يتسمع أبدًا — وده كان سبب توقف صوت دقات الساعة.
+    if (audioContextRef.current.state === "suspended") {
+      void audioContextRef.current.resume().catch(() => {});
+    }
     return audioContextRef.current;
+  }, []);
+
+  // نحاول نرجّع الـ context لحالة "running" في أي لحظة يرجع فيها
+  // التطبيق للواجهة (بعد إغلاق إعلان، أو رجوع من الخلفية)، مش بس
+  // وقت تشغيل صوت جديد — عشان الساعة اللي بتشتغل بـ setInterval
+  // ماتفضلش صامتة لحد ما حدث تاني يحصل يستدعي getAudioContext.
+  useEffect(() => {
+    const resumeIfNeeded = () => {
+      const ctx = audioContextRef.current;
+      if (ctx && ctx.state === "suspended") {
+        void ctx.resume().catch(() => {});
+      }
+    };
+
+    document.addEventListener("visibilitychange", resumeIfNeeded);
+    window.addEventListener("focus", resumeIfNeeded);
+    window.addEventListener("pointerdown", resumeIfNeeded);
+
+    return () => {
+      document.removeEventListener("visibilitychange", resumeIfNeeded);
+      window.removeEventListener("focus", resumeIfNeeded);
+      window.removeEventListener("pointerdown", resumeIfNeeded);
+    };
   }, []);
 
   // Evil laugh - multiple layered oscillators for creepy effect
