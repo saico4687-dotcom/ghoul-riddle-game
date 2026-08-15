@@ -10,8 +10,10 @@ import UserHeader from "@/components/UserHeader";
 import { riddles } from "@/data/riddles";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { showInterstitialBlocking } from "@/lib/adsMediation";
+import { showInterstitialGate, isInterstitialReady } from "@/lib/adsMediation";
 import { usePurchases } from "@/hooks/usePurchases";
+import { App as CapacitorApp } from "@capacitor/app";
+import { isNativePlatform } from "@/lib/isNative";
 import OfferWall from "@/components/OfferWall";
 
 const LAST_PUZZLE_KEY = "rabh_last_puzzle_index_v1";
@@ -65,10 +67,39 @@ const Index = () => {
   // ما الإعلان يقفل — لا اللغز التالي ولا الساعة يظهروا قبل كده.
   const [adBreakActive, setAdBreakActive] = useState(false);
 
+  // true لما التطبيق يبقى في الخلفية (خرجنا لتطبيق تاني، أو فتحنا
+  // متصفح الدفع الداخلي فوقه) — بتوقف الساعة واللغز تمامًا لحد ما
+  // نرجع، عشان الألغاز ميفضلوش شغالين وإحنا مش شايفينهم (زي ما بيحصل
+  // وقت صفحة الدفع).
+  const [appHidden, setAppHidden] = useState(false);
+
+  useEffect(() => {
+    const onVisibility = () => setAppHidden(document.visibilityState === "hidden");
+    document.addEventListener("visibilitychange", onVisibility);
+
+    let appListenerHandle: { remove: () => void } | null = null;
+    if (isNativePlatform()) {
+      CapacitorApp.addListener("appStateChange", ({ isActive }) => {
+        setAppHidden(!isActive);
+      }).then((h) => (appListenerHandle = h));
+    }
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      appListenerHandle?.remove();
+    };
+  }, []);
+
   // شاشة العرض التسويقي البيضاء (كل 11 لغز)
   const [showOfferWall, setShowOfferWall] = useState(false);
   const lastOfferWallAtRef = useRef(0);
   const offerWallResolveRef = useRef<(() => void) | null>(null);
+
+  // يمنع تنفيذ handleNext أكتر من مرة في نفس اللحظة (مثلًا لو ضغط
+  // المستخدم زرار "اللغز التالي" يدويًا قبل ما الـ setTimeout التلقائي
+  // بعد الإجابة الغلط يطلق onNext لوحده) — ده كان سبب ظهور الإعلان
+  // البيني مرتين على نفس اللغز.
+  const isAdvancingRef = useRef(false);
 
   const closeOfferWall = useCallback(() => {
     setShowOfferWall(false);
@@ -451,53 +482,62 @@ const Index = () => {
   }, [gameState, completed, user, markCompletedOnServer]);
 
   const handleNext = async () => {
-    if (currentRiddleIndex < allRiddles.length - 1) {
-      const solved = currentRiddleIndex + 1;
-      const nextIdx = currentRiddleIndex + 1;
+    if (isAdvancingRef.current) return;
+    isAdvancingRef.current = true;
+    try {
+      if (currentRiddleIndex < allRiddles.length - 1) {
+        const solved = currentRiddleIndex + 1;
+        const nextIdx = currentRiddleIndex + 1;
 
-      // بوابة الإعلان الفاصل كل 5 ألغاز: نفعّل شاشة الحجب الكاملة
-      // قبل عرض الإعلان بأي حاجة تانية، وما نكمّلش (وما نظهرش اللغز
-      // التالي) إلا بعد ما الإعلان يقفل فعليًا — بغض النظر عن توقيت
-      // الـ SDK نفسه. لو المستخدم اشترى "إلغاء الإعلانات" نتخطى
-      // الخطوة دي تمامًا.
-      if (!purchasedNoAds && solved % 5 === 0) {
-        setAdBreakActive(true);
-        try {
-          // بننتظر هنا لحد ما الإعلان يتعرض فعليًا ويتقفل — لو فشل
-          // العرض أو مكانش جاهز، بتعيد المحاولة تلقائيًا من غير ما
-          // تكمل. اللغز التالي ما بيظهرش ولا الساعة بتتحرك قبل كده.
-          await showInterstitialBlocking();
-        } finally {
-          setAdBreakActive(false);
+        // بوابة الإعلان الفاصل كل 5 ألغاز: منحجبش شاشة اللغز أصلًا
+        // إلا لو فيه إعلان بيني جاهز فعلًا دلوقتي. لو جاهز: نحجب،
+        // نعرضه، ونستنى قفله فعليًا قبل ما نكمل. لو مش جاهز: نكمل
+        // الألغاز عادي من غير أي حجب أو شاشة سوداء، ونسيب تحميله
+        // يشتغل في الخلفية لحد ما يجهز للمرة الجاية.
+        let adShownThisTurn = false;
+        if (!purchasedNoAds && solved % 5 === 0 && isInterstitialReady("main")) {
+          setAdBreakActive(true);
+          try {
+            adShownThisTurn = await showInterstitialGate("main");
+          } finally {
+            setAdBreakActive(false);
+          }
         }
-      }
 
-      // شاشة العرض التسويقي كل 11 لغز — نفس منطق الحجب: اللغز التالي
-      // ما بيظهرش إلا بعد ما الشاشة دي تختفي (تلقائيًا بعد 6 ثواني
-      // أو بزر الإغلاق).
-      if (solved % 11 === 0 && lastOfferWallAtRef.current !== solved) {
-        lastOfferWallAtRef.current = solved;
-        setShowOfferWall(true);
-        await new Promise<void>((resolve) => {
-          offerWallResolveRef.current = resolve;
-        });
-      }
+        // شاشة العرض التسويقي كل 11 لغز — لو نفس اللحظة دي فيها إعلان
+        // بيني اتعرض فعلًا (تزامن مضاعفات 5 و 11)، منعرضهاش فوقه؛
+        // بننتظر الـ11 لغز الجايين بدل كده (العداد بيكمل عادي).
+        if (
+          !purchasedNoAds &&
+          solved % 11 === 0 &&
+          !adShownThisTurn &&
+          lastOfferWallAtRef.current !== solved
+        ) {
+          lastOfferWallAtRef.current = solved;
+          setShowOfferWall(true);
+          await new Promise<void>((resolve) => {
+            offerWallResolveRef.current = resolve;
+          });
+        }
 
-      setCurrentRiddleIndex(nextIdx);
-      void persistLastPuzzleIndex(nextIdx);
+        setCurrentRiddleIndex(nextIdx);
+        void persistLastPuzzleIndex(nextIdx);
 
-      if (!user) {
-        saveGuestProgress({
-          currentRiddleIndex: nextIdx,
-          score,
-          totalPoints,
-          timeBonus,
-        });
+        if (!user) {
+          saveGuestProgress({
+            currentRiddleIndex: nextIdx,
+            score,
+            totalPoints,
+            timeBonus,
+          });
+        }
+      } else {
+        setCompleted(true);
+        void markCompletedOnServer();
+        setGameState("result");
       }
-    } else {
-      setCompleted(true);
-      void markCompletedOnServer();
-      setGameState("result");
+    } finally {
+      isAdvancingRef.current = false;
     }
   };
 
@@ -585,7 +625,7 @@ const Index = () => {
               onNext={handleNext}
               onExitToHome={handleExitToHome}
               gameMode="fun"
-              paused={adBreakActive || showOfferWall}
+              paused={adBreakActive || showOfferWall || appHidden}
             />
           </motion.div>
         )}
