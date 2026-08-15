@@ -46,6 +46,31 @@ const reloadRewarded = (tag: string, adUnitId: string) => {
     void LevelPlayAds.loadRewarded({ adUnitId, tag });
 };
 
+/* ============================================================
+ * إعادة محاولة تلقائية للفاصل والمكافأة لو التحميل فشل (failedToLoad)
+ * — عشان إعلانات المكافأة/الفاصل تبقى جاهزة قد الإمكان بدل ما تفضل
+ * فاضية للأبد بعد أول فشل. البانر عنده آلية شبيهة مستقلة بالفعل.
+ * ============================================================ */
+const AD_RETRY_MS = 15000;
+const pendingReload: Record<string, ReturnType<typeof setTimeout> | null> = {};
+
+const TAG_TO_UNIT: Record<string, string> = {
+    interstitial_main: LP_INTERSTITIAL_MAIN_AD_UNIT,
+    interstitial_chat: LP_INTERSTITIAL_CHAT_AD_UNIT,
+    rewarded_main: LP_REWARDED_MAIN_AD_UNIT,
+    rewarded_chat: LP_REWARDED_CHAT_AD_UNIT,
+};
+
+const scheduleAutoReload = (format: "interstitial" | "rewarded", tag: string) => {
+    const adUnitId = TAG_TO_UNIT[tag];
+    if (!adUnitId || pendingReload[tag]) return;
+    pendingReload[tag] = setTimeout(() => {
+        pendingReload[tag] = null;
+        if (format === "interstitial") void LevelPlayAds.loadInterstitial({ adUnitId, tag });
+        else void LevelPlayAds.loadRewarded({ adUnitId, tag });
+    }, AD_RETRY_MS);
+};
+
 export const initAds = async (): Promise<void> => {
     if (!isNative()) return;
     if (lpInitialized) return;
@@ -56,7 +81,12 @@ export const initAds = async (): Promise<void> => {
             await LevelPlayAds.addListener("levelPlayEvent", (e: LevelPlayEvent) => {
                 if (e.type === "loaded") {
                     lpReady[e.tag] = true;
-                } else if (e.type === "failedToLoad" || e.type === "displayFailed") {
+                } else if (e.type === "failedToLoad") {
+                    lpReady[e.tag] = false;
+                    if (e.format === "interstitial" || e.format === "rewarded") {
+                        scheduleAutoReload(e.format, e.tag);
+                    }
+                } else if (e.type === "displayFailed") {
                     lpReady[e.tag] = false;
                 } else if (e.type === "closed") {
                     lpReady[e.tag] = false;
@@ -123,56 +153,60 @@ export const showInterstitial = async (variant: "main" | "chat" = "main"): Promi
 };
 
 /* ============================================================
- * Interstitial — نسخة "حاجزة" (blocking): تفضل تحاول تحمّل/تعرض
- * الإعلان باستمرار (بمهلة بسيطة بين كل محاولة وأخرى) وما ترجعش
- * إلا بعد ما الإعلان اتعرض فعليًا واتقفل. لو العرض فشل (displayFailed)
- * بتعيد المحاولة تلقائيًا بدل ما تسيب اللغز التالي يظهر من غير إعلان.
- * في معاينة الويب (مش نيتيف) مفيش إعلانات أصلًا فبترجع فورًا.
+ * Interstitial — فحص جاهزية فوري (sync) عشان الكلاينت يقرر يحجب
+ * شاشة اللغز أو لأ *قبل* ما يحاول يعرض أي حاجة. من غير الفحص ده،
+ * أي محاولة عرض بتحصل وهي مش جاهزة كانت بتخلي شاشة "جارٍ عرض
+ * الإعلان..." تفضل ظاهرة (أو تتكرر) من غير داعي.
  * ============================================================ */
-export const showInterstitialBlocking = async (
+export const isInterstitialReady = (variant: "main" | "chat" = "main"): boolean => {
+    const tag = variant === "chat" ? "interstitial_chat" : "interstitial_main";
+    return !!lpReady[tag];
+};
+
+/* ============================================================
+ * Interstitial — نسخة "بوابة" (gate): بتتنادى بس لما isInterstitialReady
+ * يكون true. بتعرض الإعلان وتستنى قفله (أو فشل العرض) وترجع فورًا —
+ * من غير أي حلقة إعادة محاولة، عشان ميحصلش تجميد لشاشة سوداء لو
+ * الإعلان مش موجود. لو مفيش إعلان جاهز أصلًا، الكود اللي بينادي
+ * الدالة دي المفروض يتخطاها تمامًا ويكمل الألغاز عادي.
+ * ============================================================ */
+export const showInterstitialGate = async (
     variant: "main" | "chat" = "main"
-): Promise<void> => {
-    if (!isNative()) return;
+): Promise<boolean> => {
+    if (!isNative()) return false;
     await initAds();
 
     const tag = variant === "chat" ? "interstitial_chat" : "interstitial_main";
     const adUnitId = variant === "chat" ? LP_INTERSTITIAL_CHAT_AD_UNIT : LP_INTERSTITIAL_MAIN_AD_UNIT;
 
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-        if (!lpReady[tag]) {
-            void LevelPlayAds.loadInterstitial({ adUnitId, tag });
-            await new Promise((r) => setTimeout(r, 1500));
-            continue;
-        }
+    if (!lpReady[tag]) {
+        void LevelPlayAds.loadInterstitial({ adUnitId, tag });
+        return false;
+    }
 
-        try {
-            const shown = await new Promise<boolean>((resolve, reject) => {
-                let handle: { remove: () => void } | null = null;
-                LevelPlayAds.addListener("levelPlayEvent", (e) => {
-                    if (e.tag !== tag) return;
-                    if (e.type === "closed") {
-                        handle?.remove();
-                        resolve(true);
-                    }
-                    if (e.type === "displayFailed") {
-                        handle?.remove();
-                        reject(new Error(e.error || "displayFailed"));
-                    }
-                }).then((h) => (handle = h));
+    try {
+        const shown = await new Promise<boolean>((resolve) => {
+            let handle: { remove: () => void } | null = null;
+            LevelPlayAds.addListener("levelPlayEvent", (e) => {
+                if (e.tag !== tag) return;
+                if (e.type === "closed") {
+                    handle?.remove();
+                    resolve(true);
+                }
+                if (e.type === "displayFailed") {
+                    handle?.remove();
+                    resolve(false);
+                }
+            }).then((h) => (handle = h));
 
-                void LevelPlayAds.showInterstitial({ tag }).catch(reject);
-            });
-
-            if (shown) {
-                reloadInterstitial(tag, adUnitId);
-                return;
-            }
-        } catch (e) {
-            console.error("[LevelPlay] Blocking interstitial show failed, retrying...", e);
-            reloadInterstitial(tag, adUnitId);
-            await new Promise((r) => setTimeout(r, 1500));
-        }
+            void LevelPlayAds.showInterstitial({ tag }).catch(() => resolve(false));
+        });
+        reloadInterstitial(tag, adUnitId);
+        return shown;
+    } catch (e) {
+        console.error("[LevelPlay] Interstitial gate show failed", e);
+        reloadInterstitial(tag, adUnitId);
+        return false;
     }
 };
 
