@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Riddle } from "@/data/riddles";
 
@@ -76,9 +76,30 @@ const RiddleCard = ({
     setRemovedOptions([]);
     setExtraTime(0);
     setStartTime(null);
+    nextCalledRef.current = false;
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+      autoNextTimerRef.current = null;
+    }
 
     playSound("ambient");
   }, [riddle, playSound]);
+
+  // بيضمن onNext ميتنادوش غير مرة واحدة لكل لغز — لو المستخدم ضغط
+  // "اللغز التالي" يدويًا قبل ما الـ setTimeout التلقائي (بعد إجابة
+  // غلط) يطلق، كان بيحصل نداءين لـ onNext على نفس اللغز، وده سبب
+  // ظهور الإعلان البيني مرتين على نفس اللغز.
+  const nextCalledRef = useRef(false);
+  const autoNextTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const goNext = () => {
+    if (nextCalledRef.current) return;
+    nextCalledRef.current = true;
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+      autoNextTimerRef.current = null;
+    }
+    onNext();
+  };
 
   useEffect(() => {
     if (isTypingComplete && startTime === null) {
@@ -190,7 +211,7 @@ const RiddleCard = ({
       playSound("wrong");
       onAnswer(false, null);
 
-      setTimeout(() => onNext(), 1800);
+      autoNextTimerRef.current = setTimeout(() => goNext(), 1800);
     }
   };
 
@@ -211,7 +232,7 @@ const RiddleCard = ({
     onAnswer(isCorrect, selectedOption, undefined, elapsedMs);
 
     if (!isCorrect) {
-      setTimeout(() => onNext(), 1800);
+      autoNextTimerRef.current = setTimeout(() => goNext(), 1800);
     }
   };
 
@@ -390,7 +411,7 @@ const RiddleCard = ({
             تحقق من الإجابة
           </HorrorButton>
         ) : (
-          <HorrorButton onClick={onNext}>
+          <HorrorButton onClick={goNext}>
             {riddleNumber < totalRiddles ? "اللغز التالي" : "النتيجة النهائية"}
           </HorrorButton>
         )}
