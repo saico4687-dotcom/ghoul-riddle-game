@@ -307,6 +307,9 @@ public class LevelPlayAdsPlugin extends Plugin {
             root.addView(bannerView, params);
 
             bannerView.loadAd();
+            // نتأكد إن التحديث التلقائي شغال دايمًا (مش موقوف) — البانر
+            // يفضل يتغير باستمرار من غير ما يحتاج أي نداء تاني من الجافاسكريبت.
+            bannerView.resumeAutoRefresh();
         });
 
         call.resolve();
