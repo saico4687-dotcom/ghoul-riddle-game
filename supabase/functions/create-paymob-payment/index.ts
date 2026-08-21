@@ -26,6 +26,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 const PRODUCTS: Record<string, { amountEgp: number; label: string }> = {
   reward_unlock: { amountEgp: 30, label: "فتح ميزة المكافأة" },
+  no_interstitial: { amountEgp: 30, label: "إلغاء إعلانات الفاصل" },
   no_ads: { amountEgp: 50, label: "إلغاء الإعلانات" },
 };
 
