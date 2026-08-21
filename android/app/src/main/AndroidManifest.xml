@@ -51,10 +51,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- رابط رجوع الدفع من كاشير: com.rebh.app://payment-result
+            <!-- رابط رجوع الدفع من بايموب: com.rebh.app://payment-result
                  بيتقفل بيه المتصفح الداخلي (Capacitor Browser) ويرجع
                  المستخدم لداخل التطبيق تلقائيًا بعد الدفع، بدل ما يفضل
-                 برّه في المتصفح. راجع src/lib/kashier.ts. -->
+                 برّه في المتصفح. راجع src/lib/paymob.ts. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
