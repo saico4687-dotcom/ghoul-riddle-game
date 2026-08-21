@@ -3,7 +3,7 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { supabase } from "@/integrations/supabase/client";
 import { isNativePlatform as isNative } from "@/lib/isNative";
 
-export type PurchaseProduct = "reward_unlock" | "no_ads";
+export type PurchaseProduct = "reward_unlock" | "no_interstitial" | "no_ads";
 
 /**
  * يبدأ عملية دفع بايموب (Paymob) لمنتج معيّن:
