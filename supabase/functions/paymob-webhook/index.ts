@@ -5,10 +5,12 @@ import { createClient } from "npm:@supabase/supabase-js@2";
  * بيستقبل "Transaction Processed Callback"، يتحقق من توقيع HMAC،
  * ثم يفتح الميزة فعليًا على حساب صاحب الطلب:
  *
- *   - reward_unlock ناجح → profiles.purchased_reward_unlock = true
- *   - no_ads ناجح        → profiles.purchased_no_ads = true
- *                           (وبيشمل أيضًا purchased_reward_unlock،
- *                           لأن باقة الـ 50 جنيه أشمل من باقة الـ 30)
+ *   - reward_unlock ناجح    → profiles.purchased_reward_unlock = true
+ *   - no_interstitial ناجح → profiles.purchased_no_interstitial = true
+ *   - no_ads ناجح           → profiles.purchased_no_ads = true
+ *                             (وبيشمل أيضًا purchased_reward_unlock و
+ *                             purchased_no_interstitial، لأن باقة الـ
+ *                             50 جنيه أشمل حاجة وبتلغي كل الإعلانات)
  *
  * التحقق من التوقيع هنا مطابق لتوثيق بايموب الرسمي وقت الكتابة
  * (developers.paymob.com → Transaction Callbacks → HMAC Calculation):
@@ -130,10 +132,21 @@ Deno.serve(async (req) => {
       .eq("order_id", orderId);
 
     if (success) {
-      const patch: Record<string, boolean> =
-        purchase.product === "no_ads"
-          ? { purchased_no_ads: true, purchased_reward_unlock: true }
-          : { purchased_reward_unlock: true };
+      let patch: Record<string, boolean>;
+      switch (purchase.product) {
+        case "no_ads":
+          patch = {
+            purchased_no_ads: true,
+            purchased_reward_unlock: true,
+            purchased_no_interstitial: true,
+          };
+          break;
+        case "no_interstitial":
+          patch = { purchased_no_interstitial: true };
+          break;
+        default:
+          patch = { purchased_reward_unlock: true };
+      }
 
       const { error: updErr } = await admin
         .from("profiles")
