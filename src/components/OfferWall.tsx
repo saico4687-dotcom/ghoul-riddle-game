@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { startKashierCheckout } from "@/lib/kashier";
+import { startPaymobCheckout } from "@/lib/paymob";
 import { usePurchases } from "@/hooks/usePurchases";
 
 interface OfferWallProps {
@@ -28,7 +28,7 @@ const OfferWall = ({ open, onClose, durationMs = 15000 }: OfferWallProps) => {
   const handleBuy = async (product: "reward_unlock" | "no_ads") => {
     setBusyProduct(product);
     try {
-      await startKashierCheckout(product, () => {
+      await startPaymobCheckout(product, () => {
         void refresh();
       });
     } finally {
