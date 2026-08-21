@@ -1,1 +1,11 @@
 project_id = "znyeowpftkhyfcopiebs"
+
+# بايموب وGitHub Actions بيبعتوا للفنكشنين دول من غير JWT بتاع
+# مستخدم مسجّل دخول (بايموب بيوثّق بتوقيع HMAC خاص بيه، وGitHub
+# Actions بيوثّق بهيدر x-deploy-secret) — لازم نطفّي التحقق التلقائي
+# من JWT بتاع Supabase عشان الطلبات دي توصل للكود أصلًا.
+[functions.paymob-webhook]
+verify_jwt = false
+
+[functions.notify-app-update]
+verify_jwt = false
