@@ -32,3 +32,34 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
+      - name: Deploy notify-app-update
+        run: supabase functions deploy notify-app-update
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      # ⚠️ الفنكشنز دي كمان لازم تتنشر عشان الدفع والإشعارات والحذف
+      # الدوري يشتغلوا فعليًا — كانوا ناقصين من الـ workflow ده خالص.
+      - name: Deploy create-paymob-payment
+        run: supabase functions deploy create-paymob-payment
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy paymob-webhook
+        run: supabase functions deploy paymob-webhook
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy send-push
+        run: supabase functions deploy send-push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy ack-media-view
+        run: supabase functions deploy ack-media-view
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy cleanup-expired-media
+        run: supabase functions deploy cleanup-expired-media
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
