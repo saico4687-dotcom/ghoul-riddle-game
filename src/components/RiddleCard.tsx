@@ -34,6 +34,10 @@ interface RiddleCardProps {
   // تمامًا، يوقف كتابة اللغز، ويمنع أي تفاعل مع الخيارات لحد ما
   // يختفي الإعلان/الشاشة.
   paused?: boolean;
+  // true وقت ظهور شاشة العرض التسويقي (OfferWall) — لازم نقفل إعلان
+  // البانر فورًا طول ما هي ظاهرة (ممنوع ظهور أي إعلان في نفس وقتها)،
+  // ونرجّعه تلقائي بعد ما تقفل (لو المستخدم لسه ملوش no_ads).
+  bannerSuppressed?: boolean;
 }
 
 const RiddleCard = ({
@@ -45,6 +49,7 @@ const RiddleCard = ({
   onExitToHome,
   gameMode,
   paused = false,
+  bannerSuppressed = false,
 }: RiddleCardProps) => {
 
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -108,9 +113,11 @@ const RiddleCard = ({
   }, [isTypingComplete, startTime]);
 
   // Show banner on puzzle screen; hide when leaving. لو المستخدم اشترى
-  // "إلغاء الإعلانات" ميتعرضش أي بانر إطلاقًا لحسابه.
+  // "إلغاء الإعلانات" ميتعرضش أي بانر إطلاقًا لحسابه. وكمان بنقفله
+  // فورًا وقت ظهور شاشة العرض (bannerSuppressed) ونرجّعه تلقائي بعد
+  // ما تقفل — عشان مفيش إعلان (بانر أو فاصل) يظهر في نفس وقتها.
   useEffect(() => {
-    if (purchasedNoAds) {
+    if (purchasedNoAds || bannerSuppressed) {
       void hideBannerAd();
       return;
     }
@@ -118,7 +125,7 @@ const RiddleCard = ({
     return () => {
       void hideBannerAd();
     };
-  }, [purchasedNoAds]);
+  }, [purchasedNoAds, bannerSuppressed]);
 
   const handleUseFifty = async () => {
     if (lifelineUsed || showResult) return;
