@@ -108,7 +108,7 @@ const Index = () => {
   }, []);
 
   const { user } = useAuth();
-  const { purchasedNoAds } = usePurchases();
+  const { purchasedNoInterstitial, purchasedNoAds } = usePurchases();
 
   const allRiddles = useMemo(() => riddles.slice(0, 400), []);
 
@@ -495,7 +495,12 @@ const Index = () => {
         // الألغاز عادي من غير أي حجب أو شاشة سوداء، ونسيب تحميله
         // يشتغل في الخلفية لحد ما يجهز للمرة الجاية.
         let adShownThisTurn = false;
-        if (!purchasedNoAds && solved % 5 === 0 && isInterstitialReady("main")) {
+        if (
+          !purchasedNoAds &&
+          !purchasedNoInterstitial &&
+          solved % 5 === 0 &&
+          isInterstitialReady("main")
+        ) {
           setAdBreakActive(true);
           try {
             adShownThisTurn = await showInterstitialGate("main");
@@ -626,6 +631,7 @@ const Index = () => {
               onExitToHome={handleExitToHome}
               gameMode="fun"
               paused={adBreakActive || showOfferWall || appHidden}
+              bannerSuppressed={showOfferWall}
             />
           </motion.div>
         )}
