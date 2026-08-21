@@ -65,3 +65,19 @@ jobs:
         with:
           name: app-release-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
+
+      # آخر خطوة بس بعد نجاح البناء والتوقيع بالكامل — بتنادي فانكشن
+      # notify-app-update عشان تبعت إشعار Push حقيقي لكل المستخدمين
+      # المسجّلين يعلمهم إن فيه نسخة جديدة جاهزة. لو الخطوة دي فشلت
+      # (مثلاً السر مش مضبوط لسه)، مش بنوقف الـ workflow ولا نعتبره
+      # فشل في البناء نفسه — البناء والتوقيع خلصوا صح بالفعل.
+      - name: Notify users of new app version
+        continue-on-error: true
+        run: |
+          VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' android/app/build.gradle)
+          echo "Notifying users of version $VERSION"
+          curl -sf -X POST \
+            "https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/notify-app-update" \
+            -H "Content-Type: application/json" \
+            -H "x-deploy-secret: ${{ secrets.APP_UPDATE_NOTIFY_SECRET }}" \
+            --data "{\"version\":\"$VERSION\"}"
