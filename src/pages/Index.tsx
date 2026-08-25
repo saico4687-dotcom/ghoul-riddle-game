@@ -15,8 +15,14 @@ import { usePurchases } from "@/hooks/usePurchases";
 import { App as CapacitorApp } from "@capacitor/app";
 import { isNativePlatform } from "@/lib/isNative";
 import OfferWall from "@/components/OfferWall";
+import { enableDevicePush, isPushSupported } from "@/lib/chat/push";
 
 const LAST_PUZZLE_KEY = "rabh_last_puzzle_index_v1";
+// بيتسجّل في localStorage أول ما نطلب إذن الإشعارات من المستخدم مرة
+// واحدة، عشان مانطلبوش تاني كل ما يفتح التطبيق (لو رفض أو وافق،
+// أندرويد أصلًا مش هيوري الـ popup تاني من نفسه، لكن مفيش داعي
+// نستدعي الدالة نفسها كل مرة برضه).
+const PUSH_PROMPT_ASKED_KEY = "push_prompt_asked_v1";
 
 type GameState = "welcome" | "playing" | "result";
 
@@ -216,6 +222,34 @@ const Index = () => {
       setShowAuth(false);
     })();
   }, [user, ensureProfile, allRiddles.length]);
+
+  // نطلب إذن إشعارات الجهاز تلقائيًا (مرة واحدة بس لكل مستخدم) بعد ما
+  // يسجّل دخول، من غير ما يحتاج يروح لإعدادات الشات بنفسه. بنستنى 4
+  // ثواني الأول عشان الطلب ميقاطعش شاشة الترحيب/تسجيل الدخول، ولو
+  // المستخدم سبق وشاف الطلب ده (وافق أو رفض) مش هنسأله تاني.
+  useEffect(() => {
+    if (!user) return;
+    if (!isPushSupported()) return;
+
+    let already = false;
+    try {
+      already = localStorage.getItem(PUSH_PROMPT_ASKED_KEY) === "1";
+    } catch {}
+    if (already) return;
+
+    // Notification.permission بيرجع "denied" لو المستخدم رفض قبل كده
+    // من غير ما يعرض أي حاجة تاني — فمفيش خطورة إننا نستدعي الدالة،
+    // بس بنسجّل إننا سألنا عشان منكررش المحاولة كل مرة يفتح فيها التطبيق.
+    const timer = setTimeout(() => {
+      void enableDevicePush(user.id).finally(() => {
+        try {
+          localStorage.setItem(PUSH_PROMPT_ASKED_KEY, "1");
+        } catch {}
+      });
+    }, 4000);
+
+    return () => clearTimeout(timer);
+  }, [user]);
 
   useEffect(() => {
     try {
