@@ -49,6 +49,19 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
+      # ⚠️ كانوا ناقصين من الـ workflow ده كمان — بدونهم فنكشنات
+      # فواتيرك (Fawaterak) بتفضل موجودة في الكود بس مش شغالة فعليًا
+      # على السيرفر.
+      - name: Deploy create-fawaterak-payment
+        run: supabase functions deploy create-fawaterak-payment
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy fawaterak-webhook
+        run: supabase functions deploy fawaterak-webhook
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
       - name: Deploy send-push
         run: supabase functions deploy send-push
         env:
