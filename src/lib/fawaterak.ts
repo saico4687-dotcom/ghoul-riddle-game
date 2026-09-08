@@ -2,13 +2,17 @@ import { Browser } from "@capacitor/browser";
 import { App as CapacitorApp } from "@capacitor/app";
 import { supabase } from "@/integrations/supabase/client";
 import { isNativePlatform as isNative } from "@/lib/isNative";
-import type { PurchaseProduct } from "@/lib/paymob";
+import type { PurchaseProduct } from "@/lib/billing";
 
 /**
- * نفس فكرة startPaymobCheckout بالظبط، بس بتنادي
- * create-fawaterak-payment بدل create-paymob-payment. مخصصة أساسًا
- * لخيار "ادفع بالمحفظة الإلكترونية" لحد ما بايموب يفعّل الـ Mobile
- * Wallet integration بتاعه.
+ * ⚠️ الدالة دي مش مستخدمة في النسخة اللي بتنزل على Google Play —
+ * تلك النسخة بتستخدم src/lib/billing.ts (Google Play Billing عبر
+ * RevenueCat) حصريًا، عشان سياسة "Anti-Steering" بتاعة جوجل بتمنع
+ * وجود أي بوابة دفع بديلة لمحتوى رقمي جوه تطبيق منزّل من المتجر.
+ *
+ * دالة startFawaterakCheckout دي مخصصة بس للنسخة اللي بتتوزّع مباشرة
+ * (APK بره Google Play) واللي فيها الدفع بالمحفظة الإلكترونية مسموح
+ * ومفيش قيود عليه.
  */
 export async function startFawaterakCheckout(
   product: PurchaseProduct,
