@@ -6,9 +6,11 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
  * أو "no_ads" (50 جنيه)، ويسجّل عملية الشراء كـ "pending" في جدول
  * purchases عشان الويبهوك يقدر يربطها لاحقًا بصاحبها بأمان.
  *
- * ده بديل/إضافة لـ create-paymob-payment، مخصص أساسًا للمحفظة
- * الإلكترونية (فودافون كاش / اتصالات كاش) بما إن حساب بايموب لسه
- * مالوش Mobile Wallet integration مفعّل.
+ * ⚠️ الفنكشن ده مخصص فقط لنسخة التوزيع المباشر (APK بره Google
+ * Play) — نسخة المتجر بتستخدم src/lib/billing.ts (Google Play
+ * Billing) حصريًا، مش فواتيرك، عشان سياسة "Anti-Steering" بتاعة
+ * جوجل. مخصص أساسًا للدفع بالمحفظة الإلكترونية (فودافون كاش /
+ * اتصالات كاش).
  *
  * ⚠️ لازم تضبط السر ده في Supabase (Project Settings → Edge
  * Functions → Secrets) قبل ما الدفع يشتغل فعليًا:
@@ -83,9 +85,8 @@ Deno.serve(async (req) => {
       return json({ error: "Could not start payment" }, 500);
     }
 
-    // نفس سكيم الرجوع المستخدم مع بايموب (com.rebh.app://) عشان
-    // نفس منطق الاعتراض في src/lib/paymob.ts يشتغل هنا كمان — راجع
-    // src/lib/fawaterak.ts.
+    // نفس سكيم الرجوع (com.rebh.app://) اللي منطق الاعتراض بتاعه
+    // موجود في src/lib/fawaterak.ts.
     const successUrl = "com.rebh.app://payment-result?status=success";
     const failUrl = "com.rebh.app://payment-result?status=fail";
     const pendingUrl = "com.rebh.app://payment-result?status=pending";
