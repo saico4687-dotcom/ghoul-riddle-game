@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, Check } from "lucide-react";
-import { startPaymobCheckout, PurchaseProduct } from "@/lib/paymob";
+import { purchaseProduct, PurchaseProduct } from "@/lib/billing";
 import { usePurchases } from "@/hooks/usePurchases";
+import { useAuth } from "@/hooks/useAuth";
+import VodafoneCardGuide from "@/components/VodafoneCardGuide";
 
 interface OfferWallProps {
   open: boolean;
@@ -85,11 +87,14 @@ const OfferSection = ({
 
 const OfferWall = ({ open, onClose, durationMs = 15000 }: OfferWallProps) => {
   const [busyProduct, setBusyProduct] = useState<null | PurchaseProduct>(null);
+  const [showCardGuide, setShowCardGuide] = useState(false);
+  const { user } = useAuth();
   const { purchasedRewardUnlock, purchasedNoInterstitial, purchasedNoAds, refresh } =
     usePurchases();
 
   useEffect(() => {
     if (!open) return;
+    setShowCardGuide(false);
     const t = setTimeout(onClose, durationMs);
     return () => clearTimeout(t);
   }, [open, durationMs, onClose]);
@@ -97,7 +102,7 @@ const OfferWall = ({ open, onClose, durationMs = 15000 }: OfferWallProps) => {
   const handleBuy = async (product: PurchaseProduct) => {
     setBusyProduct(product);
     try {
-      await startPaymobCheckout(product, () => {
+      await purchaseProduct(product, user?.id ?? null, () => {
         void refresh();
       });
     } finally {
@@ -141,60 +146,79 @@ const OfferWall = ({ open, onClose, durationMs = 15000 }: OfferWallProps) => {
           </p>
 
           <div className="max-w-xl mx-auto px-6 py-6 space-y-6 text-right">
-            <h2 className="text-2xl font-extrabold text-center text-gray-900">
-              ارتقِ بتجربتك في تحدي الألغاز 🔓
-            </h2>
+            {showCardGuide ? (
+              <VodafoneCardGuide onBack={() => setShowCardGuide(false)} />
+            ) : (
+              <>
+                <h2 className="text-2xl font-extrabold text-center text-gray-900">
+                  ارتقِ بتجربتك في تحدي الألغاز 🔓
+                </h2>
 
-            <OfferSection
-              borderColor="border-amber-400"
-              bgColor="bg-amber-50"
-              titleColor="text-amber-700"
-              title="فتح ميزة المكافأة — 30 جنيهًا"
-              description="احذف إجابتين خاطئتين وأضف دقيقة كاملة في كل لغز طوال حل ألغاز التحدي، دفعة واحدة وبدون مشاهدة أي إعلان في كل مرة."
-              buttonIdleColor="bg-amber-500 hover:bg-amber-600"
-              buttonLabel="شراء المكافأة"
-              purchased={purchasedRewardUnlock}
-              busy={busyProduct === "reward_unlock"}
-              disabled={busyProduct !== null}
-              onBuy={() => handleBuy("reward_unlock")}
-            />
+                <OfferSection
+                  borderColor="border-amber-400"
+                  bgColor="bg-amber-50"
+                  titleColor="text-amber-700"
+                  title="فتح ميزة المكافأة — 30 جنيهًا"
+                  description="احذف إجابتين خاطئتين وأضف دقيقة كاملة في كل لغز طوال حل ألغاز التحدي، دفعة واحدة وبدون مشاهدة أي إعلان في كل مرة."
+                  buttonIdleColor="bg-amber-500 hover:bg-amber-600"
+                  buttonLabel="شراء المكافأة"
+                  purchased={purchasedRewardUnlock}
+                  busy={busyProduct === "reward_unlock"}
+                  disabled={busyProduct !== null}
+                  onBuy={() => handleBuy("reward_unlock")}
+                />
 
-            <OfferSection
-              borderColor="border-sky-400"
-              bgColor="bg-sky-50"
-              titleColor="text-sky-700"
-              title="إلغاء إعلانات الفاصل — 30 جنيهًا"
-              description="أوقف ظهور إعلان الفاصل اللي بيقاطعك بعد كل 5 ألغاز، والعب التحدي متواصل من غير أي توقف بسبب الإعلانات."
-              buttonIdleColor="bg-sky-500 hover:bg-sky-600"
-              buttonLabel="شراء بدون إعلانات فاصل"
-              purchased={purchasedNoInterstitial || purchasedNoAds}
-              busy={busyProduct === "no_interstitial"}
-              disabled={busyProduct !== null}
-              onBuy={() => handleBuy("no_interstitial")}
-            />
+                <OfferSection
+                  borderColor="border-sky-400"
+                  bgColor="bg-sky-50"
+                  titleColor="text-sky-700"
+                  title="إلغاء إعلانات الفاصل — 30 جنيهًا"
+                  description="أوقف ظهور إعلان الفاصل اللي بيقاطعك بعد كل 5 ألغاز، والعب التحدي متواصل من غير أي توقف بسبب الإعلانات."
+                  buttonIdleColor="bg-sky-500 hover:bg-sky-600"
+                  buttonLabel="شراء بدون إعلانات فاصل"
+                  purchased={purchasedNoInterstitial || purchasedNoAds}
+                  busy={busyProduct === "no_interstitial"}
+                  disabled={busyProduct !== null}
+                  onBuy={() => handleBuy("no_interstitial")}
+                />
 
-            <OfferSection
-              borderColor="border-emerald-400"
-              bgColor="bg-emerald-50"
-              titleColor="text-emerald-700"
-              title="إلغاء كل الإعلانات — 50 جنيهًا"
-              description="استمتع بالتحدي من أوله لآخره بدون أي إعلانات إطلاقًا — بانر ولا فاصل — وتحصل معها أيضًا على ميزة المكافأة كاملة."
-              buttonIdleColor="bg-emerald-600 hover:bg-emerald-700"
-              buttonLabel="شراء No اعلانات"
-              purchased={purchasedNoAds}
-              busy={busyProduct === "no_ads"}
-              disabled={busyProduct !== null}
-              onBuy={() => handleBuy("no_ads")}
-            />
+                <OfferSection
+                  borderColor="border-emerald-400"
+                  bgColor="bg-emerald-50"
+                  titleColor="text-emerald-700"
+                  title="إلغاء كل الإعلانات — 50 جنيهًا"
+                  description="استمتع بالتحدي من أوله لآخره بدون أي إعلانات إطلاقًا — بانر ولا فاصل — وتحصل معها أيضًا على ميزة المكافأة كاملة."
+                  buttonIdleColor="bg-emerald-600 hover:bg-emerald-700"
+                  buttonLabel="شراء No اعلانات"
+                  purchased={purchasedNoAds}
+                  busy={busyProduct === "no_ads"}
+                  disabled={busyProduct !== null}
+                  onBuy={() => handleBuy("no_ads")}
+                />
 
-            <p className="text-xs text-center text-gray-500 leading-relaxed">
-              الدفع سهل وآمن، بأسهل وسيلة وهي الدفع بالمحفظة الإلكترونية.
-            </p>
+                <div className="rounded-2xl border-2 border-red-200 bg-gradient-to-l from-red-50 to-orange-50 p-4 text-center space-y-2">
+                  <p className="text-sm font-bold text-gray-900">
+                    💳 معندكش كارت بنكي؟ خليك خطوة واحدة بس!
+                  </p>
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    تقدر تجهّز فيزا حقيقية من محفظتك الإلكترونية في أقل من
+                    دقيقة، وتكمل بيها شراءك على طول من غير أي تعقيد.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowCardGuide(true)}
+                    className="mt-1 px-5 py-2 rounded-full bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition-colors"
+                  >
+                    الخطوات 🎟️
+                  </button>
+                </div>
 
-            <p className="text-xs text-center text-gray-400 leading-relaxed border-t border-gray-200 pt-3">
-              تنبيه: قد تظهر بعض الإعلانات لأشخاص فوق 18 عامًا. احمِ نفسك
-              وأغلق الإعلان إذا كنت في مكان عام أو أمام أفراد الأسرة.
-            </p>
+                <p className="text-xs text-center text-gray-400 leading-relaxed border-t border-gray-200 pt-3">
+                  تنبيه: قد تظهر بعض الإعلانات لأشخاص فوق 18 عامًا. احمِ نفسك
+                  وأغلق الإعلان إذا كنت في مكان عام أو أمام أفراد الأسرة.
+                </p>
+              </>
+            )}
           </div>
         </motion.div>
       )}
