@@ -3,8 +3,11 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 /**
  * Endpoint عام (بيتنادى من سيرفرات Fawaterak مباشرة، مش من التطبيق) —
  * بيستقبل "Paid transactions webhook"، يتحقق من توقيع hashKey، ثم
- * يفتح الميزة فعليًا على حساب صاحب الطلب. نفس فكرة paymob-webhook
- * بالظبط، بس بصيغة توقيع مختلفة.
+ * يفتح الميزة فعليًا على حساب صاحب الطلب (نفس منطق فتح الميزات
+ * الموجود في revenuecat-webhook، بس بصيغة توقيع مختلفة).
+ *
+ * ⚠️ الفنكشن ده مخصص فقط لنسخة التوزيع المباشر (APK بره Google
+ * Play) — نسخة المتجر بتستخدم revenuecat-webhook حصريًا.
  *
  * شكل الـ body حسب توثيق Fawaterak (fawaterak-api.readme.io → Web Hook)
  * وقت الكتابة:
