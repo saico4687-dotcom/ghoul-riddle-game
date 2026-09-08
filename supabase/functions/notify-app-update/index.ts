@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     }
 
     // مقارنة constant-time بدل ===  عشان نمنع timing attack بسيط على
-    // السر، زي ما بنعمل بالظبط في paymob-webhook مع الـ HMAC.
+    // السر، زي ما بنعمل بالظبط في revenuecat-webhook.
     const receivedSecret = req.headers.get("x-deploy-secret") ?? "";
     if (!timingSafeEqual(receivedSecret, deploySecret)) {
       console.error("notify-app-update: invalid deploy secret");
