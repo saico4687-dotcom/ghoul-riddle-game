@@ -64,24 +64,20 @@ Deno.serve(async (req) => {
 
     const title = "🔔 تحديث جديد متاح!";
     const message = version
-      ? `النسخة ${version} من رعب الألغاز نزلت — حدّث التطبيق دلوقتي عشان تلعب بآخر إضافة.`
-      : "نسخة جديدة من رعب الألغاز نزلت — حدّث التطبيق دلوقتي.";
+      ? `النسخة ${version} من ربح نزلت — حدّث التطبيق دلوقتي عشان تلعب بآخر إضافة.`
+      : "نسخة جديدة من ربح نزلت — حدّث التطبيق دلوقتي.";
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // بنجيب كل أجهزة الويب المسجّلة (بدون فلترة user_id — التحديث
-    // يهم كل مستخدم عنده اشتراك Push فعّال). بنقسّمها صفحات (1000
-    // في كل مرة) عشان لو عدد المستخدمين كبير مستقبلًا.
     const PAGE_SIZE = 1000;
     let from = 0;
     let sent = 0;
     let failed = 0;
     const staleIds: string[] = [];
 
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const { data: tokens, error } = await supabase
         .from("device_tokens")
@@ -105,7 +101,6 @@ Deno.serve(async (req) => {
           sent++;
         } catch (err: any) {
           failed++;
-          // 404/410 يعني الاشتراك بايظ (مسح المتصفح/غيّر الجهاز) — نمسحه.
           if (err?.statusCode === 404 || err?.statusCode === 410) {
             staleIds.push(row.id);
           } else {
