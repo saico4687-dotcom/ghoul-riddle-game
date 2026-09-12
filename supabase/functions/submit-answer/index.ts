@@ -107,7 +107,8 @@ Deno.serve(async (req) => {
       .eq("user_id", userId);
     if (uErr) return json({ error: "Update failed" }, 500);
 
-    // Log timing (best effort, server-side only)
+    // Log timing (best effort, server-side only) — is_correct مهم عشان
+    // نقدر نحسب صاحب أسرع إجابة صحيحة كل أسبوع (الجائزة الأسبوعية).
     if (elapsedMs !== null && elapsedMs >= 0) {
       const clamped = Math.min(elapsedMs, QUESTION_TIMER_MS);
       await admin.from("answer_times").insert({
@@ -115,6 +116,7 @@ Deno.serve(async (req) => {
         riddle_index: riddleIndex + 1,
         elapsed_ms: clamped,
         game_mode: "fun",
+        is_correct: isCorrect,
       });
     }
 
