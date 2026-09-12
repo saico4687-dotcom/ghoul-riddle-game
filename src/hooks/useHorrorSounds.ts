@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef } from "react";
+import correctSound from "@/assets/audio/answer-correct-yes.mp3";
+import wrongSound from "@/assets/audio/answer-wrong-noo.mp3";
 
 export const useHorrorSounds = () => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const isMutedRef = useRef(false);
+  const correctAudioRef = useRef<HTMLAudioElement | null>(null);
+  const wrongAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const setMuted = useCallback((muted: boolean) => {
     isMutedRef.current = muted;
@@ -47,121 +51,29 @@ export const useHorrorSounds = () => {
     };
   }, []);
 
-  // Evil laugh - multiple layered oscillators for creepy effect
+  // إجابة صحيحة — صوت حقيقي "Yes"
   const playEvilLaugh = useCallback(() => {
     if (isMutedRef.current) return;
-    
-    const ctx = getAudioContext();
-    const now = ctx.currentTime;
-    
-    // Create multiple laugh "ha" sounds
-    for (let i = 0; i < 5; i++) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      const filter = ctx.createBiquadFilter();
-      
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(ctx.destination);
-      
-      filter.type = "lowpass";
-      filter.frequency.setValueAtTime(800, now);
-      
-      const startTime = now + i * 0.25;
-      const baseFreq = 150 - i * 10;
-      
-      // Each "ha" starts high and drops
-      osc.frequency.setValueAtTime(baseFreq + 50, startTime);
-      osc.frequency.exponentialRampToValueAtTime(baseFreq - 30, startTime + 0.2);
-      
-      osc.type = "sawtooth";
-      
-      gain.gain.setValueAtTime(0, startTime);
-      gain.gain.linearRampToValueAtTime(0.15, startTime + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.2);
-      
-      osc.start(startTime);
-      osc.stop(startTime + 0.25);
-    }
-    
-    // Add creepy undertone
-    const undertone = ctx.createOscillator();
-    const undertoneGain = ctx.createGain();
-    undertone.connect(undertoneGain);
-    undertoneGain.connect(ctx.destination);
-    
-    undertone.type = "sine";
-    undertone.frequency.setValueAtTime(80, now);
-    undertoneGain.gain.setValueAtTime(0.08, now);
-    undertoneGain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
-    
-    undertone.start(now);
-    undertone.stop(now + 1.5);
-  }, [getAudioContext]);
 
-  // Child crying - sad wavering tones
+    if (!correctAudioRef.current) {
+      correctAudioRef.current = new Audio(correctSound);
+    }
+    const audio = correctAudioRef.current;
+    audio.currentTime = 0;
+    void audio.play().catch(() => {});
+  }, []);
+
+  // إجابة خاطئة — صوت حقيقي "Noo"
   const playChildCry = useCallback(() => {
     if (isMutedRef.current) return;
-    
-    const ctx = getAudioContext();
-    const now = ctx.currentTime;
-    
-    // Create crying sounds - wavering high-pitched tones
-    for (let i = 0; i < 4; i++) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      const vibrato = ctx.createOscillator();
-      const vibratoGain = ctx.createGain();
-      
-      vibrato.connect(vibratoGain);
-      vibratoGain.connect(osc.frequency);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      
-      const startTime = now + i * 0.4;
-      const baseFreq = 600 + Math.random() * 100;
-      
-      // Vibrato for crying effect
-      vibrato.frequency.setValueAtTime(6, startTime);
-      vibratoGain.gain.setValueAtTime(30, startTime);
-      
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(baseFreq, startTime);
-      osc.frequency.exponentialRampToValueAtTime(baseFreq - 150, startTime + 0.35);
-      
-      gain.gain.setValueAtTime(0, startTime);
-      gain.gain.linearRampToValueAtTime(0.12, startTime + 0.05);
-      gain.gain.setValueAtTime(0.12, startTime + 0.15);
-      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
-      
-      osc.start(startTime);
-      osc.stop(startTime + 0.4);
-      vibrato.start(startTime);
-      vibrato.stop(startTime + 0.4);
+
+    if (!wrongAudioRef.current) {
+      wrongAudioRef.current = new Audio(wrongSound);
     }
-    
-    // Add sobbing undertone
-    const sob = ctx.createOscillator();
-    const sobGain = ctx.createGain();
-    const sobFilter = ctx.createBiquadFilter();
-    
-    sob.connect(sobFilter);
-    sobFilter.connect(sobGain);
-    sobGain.connect(ctx.destination);
-    
-    sobFilter.type = "lowpass";
-    sobFilter.frequency.setValueAtTime(400, now);
-    
-    sob.type = "sawtooth";
-    sob.frequency.setValueAtTime(200, now);
-    sob.frequency.linearRampToValueAtTime(150, now + 2);
-    
-    sobGain.gain.setValueAtTime(0.03, now);
-    sobGain.gain.exponentialRampToValueAtTime(0.001, now + 2);
-    
-    sob.start(now);
-    sob.stop(now + 2);
-  }, [getAudioContext]);
+    const audio = wrongAudioRef.current;
+    audio.currentTime = 0;
+    void audio.play().catch(() => {});
+  }, []);
 
   // Typewriter click - sharp mechanical sound
   const playTypewriter = useCallback(() => {
