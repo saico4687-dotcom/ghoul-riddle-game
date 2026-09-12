@@ -63,7 +63,7 @@ const RiddleCard = ({
   const [adPaused, setAdPaused] = useState(false);
 
   const { playSound, setMuted } = useHorrorSounds();
-  const { setVolume: setMusicVolume } = useHorrorBackgroundMusic();
+  const { setVolume: setMusicVolume, startMusic, stopMusic } = useHorrorBackgroundMusic();
   const { purchasedRewardUnlock, purchasedNoAds } = usePurchases();
 
   const handleMuteToggle = () => {
@@ -87,8 +87,10 @@ const RiddleCard = ({
       autoNextTimerRef.current = null;
     }
 
+    // موسيقى اللغز اللي فات لازم توقف مع أول لغز جديد.
+    stopMusic();
     playSound("ambient");
-  }, [riddle, playSound]);
+  }, [riddle, playSound, stopMusic]);
 
   // بيضمن onNext ميتنادوش غير مرة واحدة لكل لغز — لو المستخدم ضغط
   // "اللغز التالي" يدويًا قبل ما الـ setTimeout التلقائي (بعد إجابة
@@ -111,6 +113,14 @@ const RiddleCard = ({
       setStartTime(Date.now());
     }
   }, [isTypingComplete, startTime]);
+
+  // لو المستخدم خرج من الشاشة فجأة (زر الرجوع للرئيسية مثلًا)، لازم
+  // موسيقى وقت التفكير توقف ومتفضلش شغالة في الخلفية.
+  useEffect(() => {
+    return () => {
+      stopMusic();
+    };
+  }, [stopMusic]);
 
   // Show banner on puzzle screen; hide when leaving. لو المستخدم اشترى
   // "إلغاء الإعلانات" ميتعرضش أي بانر إطلاقًا لحسابه. وكمان بنقفله
@@ -215,6 +225,7 @@ const RiddleCard = ({
   const handleTimeUp = () => {
     if (!showResult && selectedOption === null) {
       setShowResult(true);
+      stopMusic();
       playSound("wrong");
       onAnswer(false, null);
 
@@ -233,6 +244,8 @@ const RiddleCard = ({
     const isCorrect = selectedOption === riddle.correctIndex;
     setShowResult(true);
 
+    // موسيقى التفكير تقف فورًا لحظة "تحقق من الإجابة".
+    stopMusic();
     playSound(isCorrect ? "correct" : "wrong");
 
     const elapsedMs = startTime ? Date.now() - startTime : null;
@@ -343,7 +356,11 @@ const RiddleCard = ({
           text={riddle.question}
           speed={40}
           className="text-xl md:text-2xl leading-relaxed text-right"
-          onComplete={() => setIsTypingComplete(true)}
+          onComplete={() => {
+            setIsTypingComplete(true);
+            // موسيقى وقت التفكير تبدأ فورًا بعد ما ينتهي صوت كتابة اللغز.
+            startMusic();
+          }}
           onCharacterTyped={() => playSound("typewriter")}
           paused={paused}
         />
@@ -356,6 +373,9 @@ const RiddleCard = ({
             animate={{ opacity: 1, y: 0 }}
             className="space-y-4 mb-8"
           >
+            <p className="text-center text-amber-400 font-typewriter text-sm md:text-base leading-relaxed">
+              🏆 الفائز بالجائزة الأسبوعية هو صاحب أسرع إجابة صحيحة!
+            </p>
             {riddle.options.map((option, index) => {
               const isRemoved = removedOptions.includes(index);
               if (isRemoved) {
