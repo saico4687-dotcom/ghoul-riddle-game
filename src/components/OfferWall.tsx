@@ -9,6 +9,7 @@ interface OfferWallProps {
   open: boolean;
   onClose: () => void;
   durationMs?: number;
+  onPurchaseSuccess?: () => void;
 }
 
 /**
@@ -36,6 +37,7 @@ interface OfferSectionProps {
   description: string;
   buttonIdleColor: string;
   buttonLabel: string;
+  badge?: string;
   purchased: boolean;
   busy: boolean;
   disabled: boolean;
@@ -50,6 +52,7 @@ const OfferSection = ({
   description,
   buttonIdleColor,
   buttonLabel,
+  badge,
   purchased,
   busy,
   disabled,
@@ -72,19 +75,31 @@ const OfferSection = ({
         <PurchasedStars />
       </>
     ) : (
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={onBuy}
-        className={`w-full py-3 rounded-xl ${buttonIdleColor} text-white font-bold disabled:opacity-50 transition-colors`}
-      >
-        {busy ? "جارٍ التحويل إلى الدفع..." : buttonLabel}
-      </button>
+      <>
+        {badge && (
+          <span className="inline-block text-xs font-bold text-white bg-black/70 rounded-full px-3 py-1">
+            {badge}
+          </span>
+        )}
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onBuy}
+          className={`w-full py-3 rounded-xl ${buttonIdleColor} text-white font-bold disabled:opacity-50 transition-colors`}
+        >
+          {busy ? "جارٍ التحويل إلى الدفع..." : buttonLabel}
+        </button>
+      </>
     )}
   </div>
 );
 
-const OfferWall = ({ open, onClose, durationMs = 20000 }: OfferWallProps) => {
+const OfferWall = ({
+  open,
+  onClose,
+  durationMs = 20000,
+  onPurchaseSuccess,
+}: OfferWallProps) => {
   const [busyProduct, setBusyProduct] = useState<null | PurchaseProduct>(null);
   const { user } = useAuth();
   const { purchasedRewardUnlock, purchasedNoInterstitial, purchasedNoAds, refresh } =
@@ -101,6 +116,9 @@ const OfferWall = ({ open, onClose, durationMs = 20000 }: OfferWallProps) => {
     try {
       await purchaseProduct(product, user?.id ?? null, () => {
         void refresh();
+        // بعد أي عملية شراء ناجحة: فتح أول لغز من البداية عشان
+        // المستخدم يستمتع بالميزة اللي اشتراها من أول لحظة.
+        onPurchaseSuccess?.();
       });
     } finally {
       setBusyProduct(null);
@@ -180,14 +198,20 @@ const OfferWall = ({ open, onClose, durationMs = 20000 }: OfferWallProps) => {
               bgColor="bg-emerald-50"
               titleColor="text-emerald-700"
               title="🔥 إلغاء كل الإعلانات نهائيًا — 50 جنيهًا فقط"
-              description="فكّر في الأمر: كل شهر بتضيّع وقتك ورصيدك في مشاهدة إعلانات ما تنفعش. بـ50 جنيه مرة واحدة بس — أقل من تكلفة إعلانين اتنين بتتفرج عليهم عادي — تتخلص من كل الإعلانات نهائيًا (بانر وفاصل) طول عمر التحدي، وكمان تاخد ميزة المكافأة كاملة هدية معاها. استثمار صغير يوفرلك وقت ومجهود أكبر بكتير."
+              description="تخلص من كل الإعلانات (بانر وفاصل) نهائيًا طول عمر التحدي."
               buttonIdleColor="bg-emerald-600 hover:bg-emerald-700"
               buttonLabel="🔥 احذف كل الإعلانات نهائيًا"
+              badge="وفّر باقتك في الإعلانات"
               purchased={purchasedNoAds}
               busy={busyProduct === "no_ads"}
               disabled={busyProduct !== null}
               onBuy={() => handleBuy("no_ads")}
             />
+
+            <p className="text-xs text-center text-emerald-700 font-semibold leading-relaxed">
+              ✅ بعد إتمام أي عملية شراء، هيتم فتح أول لغز من البداية تلقائيًا
+              عشان تستمتع بالميزة اللي اشتريتها من أول لحظة.
+            </p>
 
             <p className="text-xs text-center text-gray-400 leading-relaxed border-t border-gray-200 pt-3">
               تنبيه: قد تظهر بعض الإعلانات لأشخاص فوق 18 عامًا. احمِ نفسك
