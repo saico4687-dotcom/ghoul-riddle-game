@@ -16,7 +16,6 @@ import { usePurchases } from "@/hooks/usePurchases";
 import { showRewarded, showBannerAd, hideBannerAd } from "@/lib/adsMediation";
 
 import moneyBg from "@/assets/money-bg.jpg";
-import riddleCompetition from "@/assets/riddle-competition.jpg";
 import riddleCompetitionVideo from "@/assets/riddle-competition.mp4";
 
 interface RiddleCardProps {
@@ -358,45 +357,32 @@ const RiddleCard = ({
         </div>
       </motion.div>
 
-      {riddle.image && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="image-horror mb-8"
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="image-horror mb-8 relative"
+      >
+        <video
+          src={riddleCompetitionVideo}
+          className="w-full max-h-80 object-cover"
+          autoPlay
+          loop
+          muted={videoMuted}
+          playsInline
+        />
+        <button
+          type="button"
+          onClick={handleVideoMuteToggle}
+          className="absolute top-2 left-2 p-2 rounded-full bg-black/60 hover:bg-black/80 transition-colors z-10"
+          aria-label={videoMuted ? "تشغيل صوت الفيديو" : "كتم صوت الفيديو"}
         >
-          {riddle.image === riddleCompetition ? (
-            <div className="relative">
-              <video
-                src={riddleCompetitionVideo}
-                className="w-full max-h-80 object-cover"
-                autoPlay
-                loop
-                muted={videoMuted}
-                playsInline
-              />
-              <button
-                type="button"
-                onClick={handleVideoMuteToggle}
-                className="absolute top-2 left-2 p-2 rounded-full bg-black/60 hover:bg-black/80 transition-colors z-10"
-                aria-label={videoMuted ? "تشغيل صوت الفيديو" : "كتم صوت الفيديو"}
-              >
-                {videoMuted ? (
-                  <VolumeX className="w-5 h-5 text-white" />
-                ) : (
-                  <Volume2 className="w-5 h-5 text-white" />
-                )}
-              </button>
-            </div>
+          {videoMuted ? (
+            <VolumeX className="w-5 h-5 text-white" />
           ) : (
-            <img
-              src={riddle.image}
-              alt={`صورة اللغز ${riddleNumber}`}
-              className="w-full max-h-80 object-cover"
-              loading="lazy"
-            />
+            <Volume2 className="w-5 h-5 text-white" />
           )}
-        </motion.div>
-      )}
+        </button>
+      </motion.div>
 
       <div className="card-horror p-6 mb-8 min-h-[120px]">
         <TypewriterText
