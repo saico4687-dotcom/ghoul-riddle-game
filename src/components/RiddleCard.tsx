@@ -7,7 +7,7 @@ import RiddleOption from "./RiddleOption";
 import HorrorButton from "./HorrorButton";
 import HorrorClock from "./HorrorClock";
 
-import { Brain, Mic, MicOff, Scissors, Clock } from "lucide-react";
+import { Brain, Mic, MicOff, Scissors, Clock, Volume2, VolumeX } from "lucide-react";
 
 import { useHorrorSounds } from "@/hooks/useHorrorSounds";
 import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
@@ -16,6 +16,8 @@ import { usePurchases } from "@/hooks/usePurchases";
 import { showRewarded, showBannerAd, hideBannerAd } from "@/lib/adsMediation";
 
 import moneyBg from "@/assets/money-bg.jpg";
+import riddleCompetition from "@/assets/riddle-competition.jpg";
+import riddleCompetitionVideo from "@/assets/riddle-competition.mp4";
 
 interface RiddleCardProps {
   riddle: Riddle;
@@ -56,6 +58,9 @@ const RiddleCard = ({
   const [showResult, setShowResult] = useState(false);
   const [isTypingComplete, setIsTypingComplete] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  // صوت الفيديو بيبدأ مكتوم افتراضيًا (منفصل عن حالة صوت اللعبة العامة)،
+  // لكن بيتزامن بالكامل مع الزرار التاني بعد كده في الاتجاهين.
+  const [videoMuted, setVideoMuted] = useState(true);
   const [lifelineUsed, setLifelineUsed] = useState<null | "fifty" | "time">(null);
   const [removedOptions, setRemovedOptions] = useState<number[]>([]);
   const [extraTime, setExtraTime] = useState(0);
@@ -71,6 +76,23 @@ const RiddleCard = ({
     setIsMuted(newMutedState);
     setMuted(newMutedState);
     setMusicVolume(newMutedState ? 0 : 0.5);
+    // لو صوت اللعبة اتفتح، صوت الفيديو لازم يتكتم عشان الصوتين
+    // ميشتغلوش مع بعض في نفس الوقت.
+    if (!newMutedState) {
+      setVideoMuted(true);
+    }
+  };
+
+  // زرار صوت الفيديو بس — مستقل عن زرار اللعبة، لكن الاتنين ميشتغلوش
+  // مع بعض أبدًا: لو فتحت صوت الفيديو، صوت اللعبة يتكتم أوتوماتيكيًا.
+  const handleVideoMuteToggle = () => {
+    const newMutedState = !videoMuted;
+    setVideoMuted(newMutedState);
+    if (!newMutedState) {
+      setIsMuted(true);
+      setMuted(true);
+      setMusicVolume(0);
+    }
   };
 
   useEffect(() => {
@@ -342,12 +364,37 @@ const RiddleCard = ({
           animate={{ opacity: 1, scale: 1 }}
           className="image-horror mb-8"
         >
-          <img
-            src={riddle.image}
-            alt={`صورة اللغز ${riddleNumber}`}
-            className="w-full max-h-80 object-cover"
-            loading="lazy"
-          />
+          {riddle.image === riddleCompetition ? (
+            <div className="relative">
+              <video
+                src={riddleCompetitionVideo}
+                className="w-full max-h-80 object-cover"
+                autoPlay
+                loop
+                muted={videoMuted}
+                playsInline
+              />
+              <button
+                type="button"
+                onClick={handleVideoMuteToggle}
+                className="absolute top-2 left-2 p-2 rounded-full bg-black/60 hover:bg-black/80 transition-colors z-10"
+                aria-label={videoMuted ? "تشغيل صوت الفيديو" : "كتم صوت الفيديو"}
+              >
+                {videoMuted ? (
+                  <VolumeX className="w-5 h-5 text-white" />
+                ) : (
+                  <Volume2 className="w-5 h-5 text-white" />
+                )}
+              </button>
+            </div>
+          ) : (
+            <img
+              src={riddle.image}
+              alt={`صورة اللغز ${riddleNumber}`}
+              className="w-full max-h-80 object-cover"
+              loading="lazy"
+            />
+          )}
         </motion.div>
       )}
 
