@@ -16,7 +16,6 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { isNativePlatform } from "@/lib/isNative";
 import OfferWall from "@/components/OfferWall";
 import WeeklyAnnouncementBanner from "@/components/WeeklyAnnouncementBanner";
-import WeeklySaturdayBanner from "@/components/WeeklySaturdayBanner";
 import { enableDevicePush, isPushSupported } from "@/lib/chat/push";
 
 const LAST_PUZZLE_KEY = "rabh_last_puzzle_index_v1";
@@ -645,7 +644,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
-      <WeeklySaturdayBanner />
       <UserHeader />
 
       {process.env.NODE_ENV === 'development' && (
@@ -731,6 +729,7 @@ const Index = () => {
       <WeeklyAnnouncementBanner
         open={showWeeklyBanner && !adBreakActive && !showOfferWall}
         onClose={() => setShowWeeklyBanner(false)}
+        durationMs={10000}
       />
     </div>
   );
