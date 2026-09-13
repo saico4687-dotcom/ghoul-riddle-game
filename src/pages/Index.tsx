@@ -15,6 +15,8 @@ import { usePurchases } from "@/hooks/usePurchases";
 import { App as CapacitorApp } from "@capacitor/app";
 import { isNativePlatform } from "@/lib/isNative";
 import OfferWall from "@/components/OfferWall";
+import WeeklyAnnouncementBanner from "@/components/WeeklyAnnouncementBanner";
+import WeeklySaturdayBanner from "@/components/WeeklySaturdayBanner";
 import { enableDevicePush, isPushSupported } from "@/lib/chat/push";
 
 const LAST_PUZZLE_KEY = "rabh_last_puzzle_index_v1";
@@ -99,6 +101,8 @@ const Index = () => {
   // شاشة العرض التسويقي البيضاء (كل 11 لغز)
   const [showOfferWall, setShowOfferWall] = useState(false);
   const lastOfferWallAtRef = useRef(0);
+  const [showWeeklyBanner, setShowWeeklyBanner] = useState(false);
+  const lastWeeklyBannerAtRef = useRef(0);
   const offerWallResolveRef = useRef<(() => void) | null>(null);
 
   // يمنع تنفيذ handleNext أكتر من مرة في نفس اللحظة (مثلًا لو ضغط
@@ -360,6 +364,21 @@ const Index = () => {
     [user, flushSync]
   );
 
+  // بعد أي عملية شراء ناجحة: نرجّع المستخدم لأول لغز فورًا عشان يستمتع
+  // بالميزة اللي اشتراها من أول لحظة.
+  const handlePurchaseSuccess = useCallback(() => {
+    setCurrentRiddleIndex(0);
+    persistLastPuzzleIndex(0);
+  }, [persistLastPuzzleIndex]);
+
+  // بانر السبت الأسبوعي ميظهرش أبدًا فوق إعلان أو فوق صفحة الدفع —
+  // لو أي حاجة منهم بدأت وهو ظاهر، نقفله فورًا.
+  useEffect(() => {
+    if (adBreakActive || showOfferWall) {
+      setShowWeeklyBanner(false);
+    }
+  }, [adBreakActive, showOfferWall]);
+
   useEffect(() => {
     const flush = () => {
       if (syncTimerRef.current) {
@@ -559,6 +578,18 @@ const Index = () => {
           });
         }
 
+        // بانر السبت الأسبوعي كل 23 لغز — بس لو مفيش إعلان بيني اتعرض
+        // أو شاشة دفع فتحت في نفس اللحظة دي (منعرضهوش فوقهم خالص).
+        if (
+          solved % 23 === 0 &&
+          !adShownThisTurn &&
+          !showOfferWall &&
+          lastWeeklyBannerAtRef.current !== solved
+        ) {
+          lastWeeklyBannerAtRef.current = solved;
+          setShowWeeklyBanner(true);
+        }
+
         setCurrentRiddleIndex(nextIdx);
         void persistLastPuzzleIndex(nextIdx);
 
@@ -614,6 +645,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
+      <WeeklySaturdayBanner />
       <UserHeader />
 
       {process.env.NODE_ENV === 'development' && (
@@ -691,7 +723,15 @@ const Index = () => {
         </div>
       )}
 
-      <OfferWall open={showOfferWall} onClose={closeOfferWall} />
+      <OfferWall
+        open={showOfferWall}
+        onClose={closeOfferWall}
+        onPurchaseSuccess={handlePurchaseSuccess}
+      />
+      <WeeklyAnnouncementBanner
+        open={showWeeklyBanner && !adBreakActive && !showOfferWall}
+        onClose={() => setShowWeeklyBanner(false)}
+      />
     </div>
   );
 };
