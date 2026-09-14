@@ -40,6 +40,21 @@ export const useHorrorBackgroundMusic = () => {
     setIsPlaying(false);
   }, []);
 
+  // بيوقف الموسيقى مؤقتًا من غير ما يرجّع البداية (لما التطبيق يروح
+  // للخلفية) — عكس stopMusic اللي بينهي المقطوعة تمامًا.
+  const pauseMusic = useCallback(() => {
+    audioRef.current?.pause();
+  }, []);
+
+  // بيكمّل الموسيقى من نفس المكان بعد ما التطبيق يرجع للواجهة، لو كانت
+  // شغّالة قبل كده.
+  const resumeMusic = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio && audio.paused && audio.currentTime > 0) {
+      void audio.play().catch(() => {});
+    }
+  }, []);
+
   const setVolume = useCallback((newVolume: number) => {
     setVolumeState(newVolume);
     if (audioRef.current) {
@@ -56,6 +71,8 @@ export const useHorrorBackgroundMusic = () => {
     isPlaying,
     startMusic,
     stopMusic,
+    pauseMusic,
+    resumeMusic,
     volume,
     setVolume,
     toggleMute,
