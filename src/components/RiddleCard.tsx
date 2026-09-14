@@ -67,7 +67,8 @@ const RiddleCard = ({
   const [adPaused, setAdPaused] = useState(false);
 
   const { playSound, setMuted } = useHorrorSounds();
-  const { setVolume: setMusicVolume, startMusic, stopMusic } = useHorrorBackgroundMusic();
+  const { setVolume: setMusicVolume, startMusic, stopMusic, pauseMusic, resumeMusic } = useHorrorBackgroundMusic();
+  const videoRef = useRef<HTMLVideoElement>(null);
   const { purchasedRewardUnlock, purchasedNoAds } = usePurchases();
 
   const handleMuteToggle = () => {
@@ -82,17 +83,33 @@ const RiddleCard = ({
     }
   };
 
-  // زرار صوت الفيديو بس — مستقل عن زرار اللعبة، لكن الاتنين ميشتغلوش
-  // مع بعض أبدًا: لو فتحت صوت الفيديو، صوت اللعبة يتكتم أوتوماتيكيًا.
+  // زرار صوت الفيديو بس — مستقل عن زرار اللعبة. الموسيقى بس هي اللي
+  // بتتكتم عشان متتعارضش مع صوت الفيديو، أما صوت الإجابة صح/غلط
+  // (Yes/Noo) فبيفضل شغال عادي مع صوت الفيديو زي ما بيشتغل مع الموسيقى.
   const handleVideoMuteToggle = () => {
     const newMutedState = !videoMuted;
     setVideoMuted(newMutedState);
     if (!newMutedState) {
       setIsMuted(true);
-      setMuted(true);
       setMusicVolume(0);
     }
   };
+
+  // لما "paused" تبقى true (خرجنا للخلفية، أو فتح إعلان/شاشة عرض)
+  // نوقف الفيديو والموسيقى فورًا زي ما بيحصل مع الساعة بالظبط، وبيرجعوا
+  // يشتغلوا تاني تلقائي لحظة ما نرجع للتطبيق.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (paused) {
+      video?.pause();
+      pauseMusic();
+    } else {
+      if (video && video.paused) {
+        void video.play().catch(() => {});
+      }
+      resumeMusic();
+    }
+  }, [paused, pauseMusic, resumeMusic]);
 
   useEffect(() => {
     setSelectedOption(null);
@@ -363,6 +380,7 @@ const RiddleCard = ({
         className="image-horror mb-8 relative"
       >
         <video
+          ref={videoRef}
           src={riddleCompetitionVideo}
           className="w-full max-h-80 object-cover"
           autoPlay
