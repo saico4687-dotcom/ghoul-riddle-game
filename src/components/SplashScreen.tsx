@@ -17,7 +17,7 @@ const SplashScreen = () => {
       className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden"
       style={{
         background:
-          "linear-gradient(160deg, #3b1466 0%, #5b1f8a 45%, #2a0d4a 100%)",
+          "radial-gradient(circle at 50% 45%, #0a1a2e 0%, #000000 70%)",
       }}
       dir="rtl"
     >
@@ -26,7 +26,7 @@ const SplashScreen = () => {
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "radial-gradient(circle at 50% 45%, rgba(255,200,60,0.18), transparent 55%)",
+            "radial-gradient(circle at 50% 45%, rgba(56,189,248,0.28), transparent 55%)",
         }}
         animate={{ opacity: [0.5, 0.9, 0.5] }}
         transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
