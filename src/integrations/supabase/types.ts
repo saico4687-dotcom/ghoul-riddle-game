@@ -39,6 +39,135 @@ export type Database = {
         }
         Relationships: []
       }
+      riddle_purchase_intents: {
+        Row: {
+          buyer_id: string
+          consumed: boolean
+          created_at: string
+          id: string
+          offer_id: string | null
+          seller_id: string | null
+          tier: number
+        }
+        Insert: {
+          buyer_id: string
+          consumed?: boolean
+          created_at?: string
+          id?: string
+          offer_id?: string | null
+          seller_id?: string | null
+          tier: number
+        }
+        Update: {
+          buyer_id?: string
+          consumed?: boolean
+          created_at?: string
+          id?: string
+          offer_id?: string | null
+          seller_id?: string | null
+          tier?: number
+        }
+        Relationships: []
+      }
+      riddle_sale_offers: {
+        Row: {
+          created_at: string
+          id: string
+          price_egp: number
+          seller_id: string
+          slots_sold: number
+          slots_total: number
+          status: string
+          tier: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          price_egp: number
+          seller_id: string
+          slots_sold?: number
+          slots_total?: number
+          status?: string
+          tier: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          price_egp?: number
+          seller_id?: string
+          slots_sold?: number
+          slots_total?: number
+          status?: string
+          tier?: number
+        }
+        Relationships: []
+      }
+      riddle_sale_purchases: {
+        Row: {
+          amount_egp: number
+          buyer_id: string
+          created_at: string
+          id: string
+          offer_id: string | null
+          order_id: string | null
+          payout_status: string
+          seller_id: string | null
+          seller_payout_egp: number
+          tier: number
+        }
+        Insert: {
+          amount_egp: number
+          buyer_id: string
+          created_at?: string
+          id?: string
+          offer_id?: string | null
+          order_id?: string | null
+          payout_status?: string
+          seller_id?: string | null
+          seller_payout_egp?: number
+          tier: number
+        }
+        Update: {
+          amount_egp?: number
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          offer_id?: string | null
+          order_id?: string | null
+          payout_status?: string
+          seller_id?: string | null
+          seller_payout_egp?: number
+          tier?: number
+        }
+        Relationships: []
+      }
+      support_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          read_by_admin: boolean
+          sender: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          read_by_admin?: boolean
+          sender: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          read_by_admin?: boolean
+          sender?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       blocked_users: {
         Row: {
           blocked_id: string
@@ -1053,12 +1182,15 @@ export type Database = {
           is_suspended_until: string | null
           last_puzzle_index: number
           last_seen_at: string | null
+          milestone_100_resolved: boolean
+          milestone_200_resolved: boolean
           name: string | null
           phone: string | null
           privacy_friend_requests: Database["public"]["Enums"]["chat_visibility"]
           privacy_last_seen: Database["public"]["Enums"]["chat_visibility"]
           privacy_messages: Database["public"]["Enums"]["chat_visibility"]
           profile_image: string | null
+          riddle_unlock_offset: number
           riddles_completed_count: number
           saved_score: number
           saved_time_bonus: number
@@ -1087,12 +1219,15 @@ export type Database = {
           is_suspended_until?: string | null
           last_puzzle_index?: number
           last_seen_at?: string | null
+          milestone_100_resolved?: boolean
+          milestone_200_resolved?: boolean
           name?: string | null
           phone?: string | null
           privacy_friend_requests?: Database["public"]["Enums"]["chat_visibility"]
           privacy_last_seen?: Database["public"]["Enums"]["chat_visibility"]
           privacy_messages?: Database["public"]["Enums"]["chat_visibility"]
           profile_image?: string | null
+          riddle_unlock_offset?: number
           riddles_completed_count?: number
           saved_score?: number
           saved_time_bonus?: number
@@ -1121,12 +1256,15 @@ export type Database = {
           is_suspended_until?: string | null
           last_puzzle_index?: number
           last_seen_at?: string | null
+          milestone_100_resolved?: boolean
+          milestone_200_resolved?: boolean
           name?: string | null
           phone?: string | null
           privacy_friend_requests?: Database["public"]["Enums"]["chat_visibility"]
           privacy_last_seen?: Database["public"]["Enums"]["chat_visibility"]
           privacy_messages?: Database["public"]["Enums"]["chat_visibility"]
           profile_image?: string | null
+          riddle_unlock_offset?: number
           riddles_completed_count?: number
           saved_score?: number
           saved_time_bonus?: number
@@ -1351,6 +1489,17 @@ export type Database = {
         Returns: Database["public"]["Enums"]["group_role"]
       }
       get_or_create_conversation: { Args: { _other: string }; Returns: string }
+      list_active_riddle_offers: {
+        Args: { _tier: number }
+        Returns: {
+          avatar_url: string | null
+          offer_id: string
+          price_egp: number
+          seller_id: string
+          slots_left: number
+          username: string
+        }[]
+      }
       get_public_profile: {
         Args: { _uid: string }
         Returns: {
