@@ -12,6 +12,8 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import DeleteAccount from "./pages/DeleteAccount";
 import Admin from "./pages/Admin";
+import BuyAnswers from "./pages/BuyAnswers";
+import SupportChat from "./pages/SupportChat";
 import OAuthCallback from "./pages/OAuthCallback";
 import NotFound from "./pages/NotFound";
 
@@ -48,6 +50,8 @@ const App = () => (
           <Route path="/terms" element={<Terms />} />
           <Route path="/delete-account" element={<DeleteAccount />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/buy-answers" element={<BuyAnswers />} />
+          <Route path="/support" element={<SupportChat />} />
           <Route path="/auth/callback" element={<OAuthCallback />} />
 
           {/* إعداد اسم المستخدم — لازم يفضل برا حراسة RequireCompletion
