@@ -137,6 +137,15 @@ const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
             </motion.div>
           </div>
 
+          <div className="flex justify-center mb-8">
+            <button
+              onClick={() => (window.location.href = "/buy-answers")}
+              className="text-sm px-6 py-2 rounded-full border border-primary/60 text-primary hover:bg-primary/10 transition-colors"
+            >
+              🔓 شراء إجابات صحيحة
+            </button>
+          </div>
+
           {!user && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
