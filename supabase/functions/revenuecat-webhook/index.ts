@@ -47,6 +47,13 @@ const STATIC_PRICE_EGP: Record<string, number> = {
   reward_unlock: 30,
   no_interstitial: 30,
   no_ads: 50,
+  answers_100: 50,
+  answers_200: 100,
+};
+
+const RIDDLE_ANSWER_PRODUCTS: Record<string, number> = {
+  answers_100: 100,
+  answers_200: 200,
 };
 
 const REVOKE_EVENT_TYPES = new Set(["CANCELLATION", "REFUND", "REVOKE"]);
@@ -91,7 +98,8 @@ Deno.serve(async (req) => {
       return new Response("Anonymous user, ignored", { status: 200 });
     }
 
-    if (!["reward_unlock", "no_interstitial", "no_ads"].includes(productId)) {
+    const knownProducts = ["reward_unlock", "no_interstitial", "no_ads", "answers_100", "answers_200"];
+    if (!knownProducts.includes(productId)) {
       console.error("revenuecat-webhook: unknown product_id", productId);
       return new Response("Unknown product", { status: 200 });
     }
@@ -121,6 +129,88 @@ Deno.serve(async (req) => {
       // أنواع تانية من الأحداث (زي BILLING_ISSUE أو TRANSFER) —
       // بنسجلها بس من غير ما نغيّر أي صلاحية.
       return new Response("OK (ignored event type)", { status: 200 });
+    }
+
+    // ------------------------------------------------------------
+    // منتجات "شراء الإجابات" ليها منطق مختلف تمامًا عن باقي المنتجات
+    // (مش مجرد boolean على profiles — لازم نربط بـ intent ونحدّث
+    // تقدم المشتري ونعلّم البائع ونبعتله إشعار).
+    // ------------------------------------------------------------
+    if (RIDDLE_ANSWER_PRODUCTS[productId] !== undefined) {
+      const tier = RIDDLE_ANSWER_PRODUCTS[productId];
+
+      await admin.from("purchases").upsert({
+        order_id: orderId,
+        user_id: appUserId,
+        product: productId,
+        amount_egp: event.price ?? STATIC_PRICE_EGP[productId] ?? 0,
+        status: isGrant ? "success" : "failed",
+        gateway_reference: eventId,
+        updated_at: new Date().toISOString(),
+      });
+
+      if (!isGrant) {
+        // استرجاع فلوس على شراء إجابات — منسحبش التقدم اللي اتفتح
+        // بالفعل (المستخدم ممكن يكون كمّل ألغاز جداد فوقه)، بس نسجل
+        // الفشل في purchases فوق ونوقف هنا.
+        return new Response("OK (refund logged, progress kept)", { status: 200 });
+      }
+
+      // آخر intent غير مستهلك لنفس المشتري ونفس الشريحة
+      const { data: intent } = await admin
+        .from("riddle_purchase_intents")
+        .select("*")
+        .eq("buyer_id", appUserId)
+        .eq("tier", tier)
+        .eq("consumed", false)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const sellerId: string | null = intent?.seller_id ?? null;
+      const offerId: string | null = intent?.offer_id ?? null;
+      const amount = STATIC_PRICE_EGP[productId] ?? (tier === 100 ? 50 : 100);
+      const payout = sellerId ? amount * 0.5 : 0;
+
+      await admin.from("riddle_sale_purchases").insert({
+        offer_id: offerId,
+        seller_id: sellerId,
+        buyer_id: appUserId,
+        tier,
+        amount_egp: amount,
+        seller_payout_egp: payout,
+        payout_status: sellerId ? "pending" : "not_applicable",
+        order_id: orderId,
+      });
+
+      if (intent) {
+        await admin.from("riddle_purchase_intents").update({ consumed: true }).eq("id", intent.id);
+      }
+
+      // فتح التقدم فعليًا للمشتري: يقفز مباشرة بعد الشريحة، وتتحسب
+      // له كل الإجابات اللي فاتته صحيحة في نقاطه أيضًا.
+      const { data: buyerProfile } = await admin
+        .from("profiles")
+        .select("last_puzzle_index, saved_score, riddle_unlock_offset")
+        .eq("user_id", appUserId)
+        .maybeSingle();
+      const prevIndex = buyerProfile?.last_puzzle_index ?? 0;
+      const prevScore = buyerProfile?.saved_score ?? 0;
+      if (prevIndex < tier) {
+        await admin.from("profiles").update({
+          last_puzzle_index: tier,
+          saved_score: Math.max(prevScore, tier),
+          riddle_unlock_offset: Math.max(buyerProfile?.riddle_unlock_offset ?? 0, tier),
+          updated_at: new Date().toISOString(),
+        }).eq("user_id", appUserId);
+      }
+
+      // إشعار فوري للبائع الحقيقي (لو مفيش بائع، يبقى صاحب التطبيق هو اللي باع)
+      if (sellerId) {
+        await notifySeller(admin, sellerId, tier, amount, payout);
+      }
+
+      return new Response("OK", { status: 200 });
     }
 
     await admin.from("purchases").upsert({
@@ -168,6 +258,56 @@ Deno.serve(async (req) => {
     return new Response("Internal error", { status: 500 });
   }
 });
+
+/**
+ * إشعار push مباشر للبائع لحظة ما حد يشتري منه. بنص بسيط وواضح
+ * يدّي إحساس فوري بالربح (رقم المبلغ ظاهر) عشان يشجّع البائع يكمل
+ * لحد العتبة الجاية (200).
+ */
+async function notifySeller(
+  admin: ReturnType<typeof createClient>,
+  sellerId: string,
+  tier: number,
+  amountEgp: number,
+  payoutEgp: number,
+) {
+  try {
+    const { data: tokens } = await admin
+      .from("device_tokens")
+      .select("id, token")
+      .eq("user_id", sellerId)
+      .eq("platform", "web");
+    if (!tokens || tokens.length === 0) return;
+
+    const webpush = await import("npm:web-push@3.6.7");
+    webpush.default.setVapidDetails(
+      Deno.env.get("VAPID_SUBJECT") ?? "mailto:support@example.com",
+      Deno.env.get("VAPID_PUBLIC_KEY")!,
+      Deno.env.get("VAPID_PRIVATE_KEY")!,
+    );
+
+    const title = "🎉 مبيعات جديدة!";
+    const body = `تم بيع إجاباتك (أول ${tier}) وحصلت على ${payoutEgp} جنيه من إجمالي ${amountEgp} جنيه. تواصل مع خدمة العملاء لاستلامها.`;
+    const staleIds: string[] = [];
+
+    for (const row of tokens) {
+      try {
+        const subscription = JSON.parse(row.token as string);
+        await webpush.default.sendNotification(
+          subscription,
+          JSON.stringify({ title, body, url: "/" }),
+        );
+      } catch (err: any) {
+        if (err?.statusCode === 404 || err?.statusCode === 410) staleIds.push(row.id as string);
+      }
+    }
+    if (staleIds.length > 0) {
+      await admin.from("device_tokens").delete().in("id", staleIds);
+    }
+  } catch (e) {
+    console.error("notifySeller failed", e);
+  }
+}
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
