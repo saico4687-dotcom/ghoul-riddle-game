@@ -17,6 +17,7 @@ import { isNativePlatform } from "@/lib/isNative";
 import OfferWall from "@/components/OfferWall";
 import WeeklyAnnouncementBanner from "@/components/WeeklyAnnouncementBanner";
 import { enableDevicePush, isPushSupported } from "@/lib/chat/push";
+import MilestoneCongratsDialog from "@/components/MilestoneCongratsDialog";
 
 const LAST_PUZZLE_KEY = "rabh_last_puzzle_index_v1";
 // بيتسجّل في localStorage أول ما نطلب إذن الإشعارات من المستخدم مرة
@@ -64,6 +65,7 @@ const Index = () => {
 
   const [currentRiddleIndex, setCurrentRiddleIndex] = useState(0);
   const [score, setScore] = useState(0);
+  const [milestoneTier, setMilestoneTier] = useState<100 | 200 | null>(null);
   const [totalPoints, setTotalPoints] = useState(0);
   const [timeBonus, setTimeBonus] = useState(0);
   const [answeredCount, setAnsweredCount] = useState(0);
@@ -484,6 +486,20 @@ const Index = () => {
           })
           .eq("user_id", user.id);
         if (error) console.error("saved score update failed", error);
+
+        // اتحققنا إن المستخدم لسه واصل بالظبط لأول 100 أو أول 200 إجابة
+        // صحيحة ولسه ما اختارش "يكمل" أو "يبيع" — نعرض صفحة "مبروك".
+        if (newScore === 100 || newScore === 200) {
+          const { data: mProfile } = await supabase
+            .from("profiles")
+            .select("milestone_100_resolved, milestone_200_resolved")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          const resolvedField = newScore === 100 ? "milestone_100_resolved" : "milestone_200_resolved";
+          if (!mProfile?.[resolvedField as "milestone_100_resolved" | "milestone_200_resolved"]) {
+            setMilestoneTier(newScore as 100 | 200);
+          }
+        }
       } catch (e) {
         console.error("saved score update exception", e);
       }
@@ -645,6 +661,10 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <UserHeader />
+
+      {milestoneTier && (
+        <MilestoneCongratsDialog tier={milestoneTier} onResolved={() => setMilestoneTier(null)} />
+      )}
 
       {process.env.NODE_ENV === 'development' && (
         <div className="fixed top-4 right-4 bg-black/80 text-white text-xs p-2 z-50 rounded">
