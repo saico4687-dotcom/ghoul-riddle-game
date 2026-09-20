@@ -120,6 +120,20 @@ Deno.serve(async (req) => {
       });
     }
 
+    // هل المستخدم لسه واصل بالظبط لأول 100 أو أول 200 إجابة صحيحة،
+    // ولسه ما اختارش "يكمل" ولا "يبيع"؟ لو أيوه، الواجهة الأمامية
+    // تعرض صفحة "مبروك" وتنادي resolve-riddle-milestone بعد اختياره.
+    let milestoneReached: 100 | 200 | null = null;
+    if (isCorrect) {
+      const { data: mProfile } = await admin
+        .from("profiles")
+        .select("milestone_100_resolved, milestone_200_resolved")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (newScore === 100 && !mProfile?.milestone_100_resolved) milestoneReached = 100;
+      else if (newScore === 200 && !mProfile?.milestone_200_resolved) milestoneReached = 200;
+    }
+
     return json({
       isCorrect,
       correctIndex,
@@ -130,6 +144,7 @@ Deno.serve(async (req) => {
       timeBonus: newTimeBonus,
       nextIndex,
       finished: nextIndex >= TOTAL_RIDDLES,
+      milestoneReached,
     }, 200);
   } catch (e) {
     console.error("submit-answer error", e);
