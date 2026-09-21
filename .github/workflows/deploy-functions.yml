@@ -32,6 +32,22 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
+      # ميزة بيع/شراء الإجابات الصحيحة بين المستخدمين
+      - name: Deploy reserve-riddle-purchase
+        run: supabase functions deploy reserve-riddle-purchase
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy resolve-riddle-milestone
+        run: supabase functions deploy resolve-riddle-milestone
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy admin-reply-support
+        run: supabase functions deploy admin-reply-support
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
       - name: Deploy notify-app-update
         run: supabase functions deploy notify-app-update
         env:
