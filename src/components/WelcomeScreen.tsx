@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Brain, Lightbulb, Sparkles, Trophy, Settings as SettingsIcon } from "lucide-react";
+import { Brain, Lightbulb, Sparkles, Trophy, Settings as SettingsIcon, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { lovable } from "@/integrations/lovable/index";
 import { clearStaleAuth } from "@/lib/clearStaleAuth";
@@ -17,8 +17,21 @@ interface WelcomeScreenProps {
 }
 
 const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (e) {
+      console.error("signOut failed", e);
+    }
+    try {
+      localStorage.removeItem("rabh_guest_progress_v1");
+      localStorage.removeItem("rabh_last_puzzle_index_v1");
+    } catch {}
+    toast({ title: "تم تسجيل الخروج" });
+  };
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
@@ -174,6 +187,19 @@ const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
                 <span>المتابعة بـ Google</span>
               </button>
             </motion.div>
+          )}
+
+          {user && (
+            <div className="flex justify-center mb-8">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex items-center justify-center gap-2 px-8 py-3 rounded-lg border border-border bg-card/80 text-foreground hover:bg-muted transition font-typewriter"
+              >
+                <LogOut className="w-5 h-5" />
+                <span>تسجيل الخروج</span>
+              </button>
+            </div>
           )}
 
           <motion.div
