@@ -1,7 +1,7 @@
 import { Purchases, PRODUCT_CATEGORY } from "@revenuecat/purchases-capacitor";
 import { isNativePlatform as isNative } from "@/lib/isNative";
 
-export type PurchaseProduct = "reward_unlock" | "no_interstitial" | "no_ads";
+export type PurchaseProduct = "reward_unlock" | "no_interstitial" | "no_ads" | "answers_100" | "answers_200";
 
 /**
  * ⚠️ لازم تتطابق حرفيًا مع الـ Product ID اللي عملته في Play Console
@@ -13,6 +13,11 @@ const PRODUCT_IDS: Record<PurchaseProduct, string> = {
   reward_unlock: "reward_unlock",
   no_interstitial: "no_interstitial",
   no_ads: "no_ads",
+  // ⚠️ لازم تعمل المنتجين دول بنفس الاسم بالظبط في Play Console
+  // (منتجات يتم تحصيل سعرها مرة واحدة): answers_100 بـ50 جنيه،
+  // answers_200 بـ100 جنيه.
+  answers_100: "answers_100",
+  answers_200: "answers_200",
 };
 
 // من RevenueCat Dashboard → Project settings → API keys → Google

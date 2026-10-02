@@ -5,6 +5,9 @@ import WelcomeScreen, { GameMode } from "@/components/WelcomeScreen";
 import EmailAuthScreen from "@/components/EmailAuthScreen";
 import ParticipantInfoForm from "@/components/ParticipantInfoForm";
 import RiddleCard from "@/components/RiddleCard";
+import RiddleIntroVideo from "@/components/RiddleIntroVideo";
+import VideoRatingNotice from "@/components/VideoRatingNotice";
+import { hasRiddleVideo, RIDDLE_VIDEOS_AVAILABLE } from "@/lib/riddleVideos";
 import ResultScreen from "@/components/ResultScreen";
 import UserHeader from "@/components/UserHeader";
 import { riddles } from "@/data/riddles";
@@ -17,6 +20,7 @@ import { isNativePlatform } from "@/lib/isNative";
 import OfferWall from "@/components/OfferWall";
 import WeeklyAnnouncementBanner from "@/components/WeeklyAnnouncementBanner";
 import { enableDevicePush, isPushSupported } from "@/lib/chat/push";
+import MilestoneCongratsDialog from "@/components/MilestoneCongratsDialog";
 
 const LAST_PUZZLE_KEY = "rabh_last_puzzle_index_v1";
 // بيتسجّل في localStorage أول ما نطلب إذن الإشعارات من المستخدم مرة
@@ -26,6 +30,8 @@ const LAST_PUZZLE_KEY = "rabh_last_puzzle_index_v1";
 const PUSH_PROMPT_ASKED_KEY = "push_prompt_asked_v1";
 
 type GameState = "welcome" | "playing" | "result";
+
+const RATING_NOTICE_KEY = "rabh_video_rating_notice_v1";
 
 const GUEST_STORAGE_KEY = "rabh_guest_progress_v1";
 
@@ -64,6 +70,7 @@ const Index = () => {
 
   const [currentRiddleIndex, setCurrentRiddleIndex] = useState(0);
   const [score, setScore] = useState(0);
+  const [milestoneTier, setMilestoneTier] = useState<100 | 200 | null>(null);
   const [totalPoints, setTotalPoints] = useState(0);
   const [timeBonus, setTimeBonus] = useState(0);
   const [answeredCount, setAnsweredCount] = useState(0);
@@ -73,6 +80,29 @@ const Index = () => {
   // شاشة حجب أثناء عرض إعلان الفاصل: تخفي اللغز والساعة تمامًا لحد
   // ما الإعلان يقفل — لا اللغز التالي ولا الساعة يظهروا قبل كده.
   const [adBreakActive, setAdBreakActive] = useState(false);
+
+  // رقم اللغز (index) اللي فيديو التمهيد بتاعه خلص. الفيديو بيظهر قبل
+  // كل لغز، واللغز (الكتابة والساعة) مستني لحد ما يخلص.
+  const [introDoneIndex, setIntroDoneIndex] = useState<number | null>(null);
+
+  // رسالة التقييم: بتظهر مرة واحدة بس، لما المستخدم يوصل لأول لغز
+  // مالوش فيديو (بعد آخر لغز متوفر له فيديو).
+  const [ratingNoticeOpen, setRatingNoticeOpen] = useState(false);
+  useEffect(() => {
+    if (gameState !== "playing" || completed) return;
+    if (currentRiddleIndex !== RIDDLE_VIDEOS_AVAILABLE) return;
+    try {
+      if (localStorage.getItem(RATING_NOTICE_KEY)) return;
+    } catch {}
+    setRatingNoticeOpen(true);
+  }, [gameState, completed, currentRiddleIndex]);
+
+  const closeRatingNotice = () => {
+    try {
+      localStorage.setItem(RATING_NOTICE_KEY, "1");
+    } catch {}
+    setRatingNoticeOpen(false);
+  };
 
   // true لما التطبيق يبقى في الخلفية (خرجنا لتطبيق تاني، أو فتحنا
   // متصفح الدفع الداخلي فوقه) — بتوقف الساعة واللغز تمامًا لحد ما
@@ -484,6 +514,20 @@ const Index = () => {
           })
           .eq("user_id", user.id);
         if (error) console.error("saved score update failed", error);
+
+        // اتحققنا إن المستخدم لسه واصل بالظبط لأول 100 أو أول 200 إجابة
+        // صحيحة ولسه ما اختارش "يكمل" أو "يبيع" — نعرض صفحة "مبروك".
+        if (newScore === 100 || newScore === 200) {
+          const { data: mProfile } = await supabase
+            .from("profiles")
+            .select("milestone_100_resolved, milestone_200_resolved")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          const resolvedField = newScore === 100 ? "milestone_100_resolved" : "milestone_200_resolved";
+          if (!mProfile?.[resolvedField as "milestone_100_resolved" | "milestone_200_resolved"]) {
+            setMilestoneTier(newScore as 100 | 200);
+          }
+        }
       } catch (e) {
         console.error("saved score update exception", e);
       }
@@ -610,6 +654,12 @@ const Index = () => {
     }
   };
 
+  const introActive =
+    gameState === "playing" &&
+    !completed &&
+    hasRiddleVideo(currentRiddleIndex + 1) &&
+    introDoneIndex !== currentRiddleIndex;
+
   const handleExitToHome = () => {
     void persistLastPuzzleIndex(currentRiddleIndex);
     if (!user) {
@@ -645,6 +695,10 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <UserHeader />
+
+      {milestoneTier && (
+        <MilestoneCongratsDialog tier={milestoneTier} onResolved={() => setMilestoneTier(null)} />
+      )}
 
       {process.env.NODE_ENV === 'development' && (
         <div className="fixed top-4 right-4 bg-black/80 text-white text-xs p-2 z-50 rounded">
@@ -694,7 +748,7 @@ const Index = () => {
               onNext={handleNext}
               onExitToHome={handleExitToHome}
               gameMode="fun"
-              paused={adBreakActive || showOfferWall || appHidden}
+              paused={adBreakActive || showOfferWall || appHidden || introActive || ratingNoticeOpen}
               bannerSuppressed={showOfferWall}
             />
           </motion.div>
@@ -714,6 +768,18 @@ const Index = () => {
           />
         )}
       </AnimatePresence>
+
+      {introActive && !adBreakActive && !showOfferWall && (
+        <RiddleIntroVideo
+          key={currentRiddleIndex}
+          riddleNumber={currentRiddleIndex + 1}
+          totalRiddles={allRiddles.length}
+          paused={appHidden}
+          onDone={() => setIntroDoneIndex(currentRiddleIndex)}
+        />
+      )}
+
+      <VideoRatingNotice open={ratingNoticeOpen} onClose={closeRatingNotice} />
 
       {adBreakActive && (
         <div className="fixed inset-0 z-[9998] bg-black flex items-center justify-center" dir="rtl">

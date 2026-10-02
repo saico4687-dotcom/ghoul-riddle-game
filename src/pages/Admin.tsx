@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminModeration from "@/components/AdminModeration";
+import AdminSupportInbox from "@/components/AdminSupportInbox";
 
 
 interface Score {
@@ -156,10 +157,15 @@ const Admin = () => {
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-8">
         <Tabs defaultValue="scores">
-          <TabsList className="grid grid-cols-2 w-full max-w-md">
+          <TabsList className="grid grid-cols-3 w-full max-w-md">
             <TabsTrigger value="scores">النتائج</TabsTrigger>
             <TabsTrigger value="moderation">الإشراف على الدردشة</TabsTrigger>
+            <TabsTrigger value="support">خدمة العملاء</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="support" className="mt-6">
+            <AdminSupportInbox />
+          </TabsContent>
 
           <TabsContent value="moderation" className="mt-6">
             <AdminModeration adminId={user!.id} />
