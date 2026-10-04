@@ -14,6 +14,12 @@ import { useHorrorBackgroundMusic } from "@/hooks/useHorrorBackgroundMusic";
 import { usePurchases } from "@/hooks/usePurchases";
 
 import { showRewarded, showBannerAd, hideBannerAd } from "@/lib/adsMediation";
+import {
+  fiftyOnServer,
+  startRiddleOnServer,
+  submitAnswerToServer,
+  type ServerAnswerResult,
+} from "@/lib/serverAnswers";
 
 import moneyBg from "@/assets/money-bg.jpg";
 import riddleCompetitionVideo from "@/assets/riddle-competition.mp4";
@@ -31,6 +37,11 @@ interface RiddleCardProps {
   onNext: () => void;
   onExitToHome?: () => void;
   gameMode: "fun" | "competition";
+  // true للمستخدم المسجّل: السيرفر هو اللي يصحّح ويحسب الزمن ويسجّل النقاط
+  // ويحذف الإجابتين (التطبيق نفسه مبيعرفش الإجابة الصحيحة).
+  serverTracking?: boolean;
+  // بتتنادى لما رد السيرفر يوصل (النقاط والمجموع الرسمي).
+  onServerResult?: (result: ServerAnswerResult) => void;
   // true أثناء عرض إعلان فاصل أو شاشة العرض التسويقي — يوقف الساعة
   // تمامًا، يوقف كتابة اللغز، ويمنع أي تفاعل مع الخيارات لحد ما
   // يختفي الإعلان/الشاشة.
@@ -49,6 +60,8 @@ const RiddleCard = ({
   onNext,
   onExitToHome,
   gameMode,
+  serverTracking = false,
+  onServerResult,
   paused = false,
   bannerSuppressed = false,
 }: RiddleCardProps) => {
@@ -65,6 +78,14 @@ const RiddleCard = ({
   const [extraTime, setExtraTime] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [adPaused, setAdPaused] = useState(false);
+  // نتيجة السيرفر: null = لسه / مفيش نتيجة.
+  const [serverCorrect, setServerCorrect] = useState<boolean | null>(null);
+  const [serverExplanation, setServerExplanation] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // وعد تسجيل بداية اللغز على السيرفر — بنستناه قبل إرسال الإجابة عشان الترتيب يبقى سليم.
+  const startPromiseRef = useRef<Promise<boolean> | null>(null);
 
   const { playSound, setMuted } = useHorrorSounds();
   const { setVolume: setMusicVolume, startMusic, stopMusic, pauseMusic, resumeMusic } = useHorrorBackgroundMusic();
@@ -119,6 +140,11 @@ const RiddleCard = ({
     setRemovedOptions([]);
     setExtraTime(0);
     setStartTime(null);
+    setServerCorrect(null);
+    setServerExplanation(null);
+    setSubmitting(false);
+    setSubmitError(null);
+    startPromiseRef.current = null;
     nextCalledRef.current = false;
     if (autoNextTimerRef.current) {
       clearTimeout(autoNextTimerRef.current);
@@ -149,8 +175,12 @@ const RiddleCard = ({
   useEffect(() => {
     if (isTypingComplete && startTime === null) {
       setStartTime(Date.now());
+      // نفس لحظة بداية المؤقت: السيرفر يسجّل ساعته هو.
+      if (serverTracking) {
+        startPromiseRef.current = startRiddleOnServer(riddleNumber - 1);
+      }
     }
-  }, [isTypingComplete, startTime]);
+  }, [isTypingComplete, startTime, serverTracking, riddleNumber]);
 
   // لو المستخدم خرج من الشاشة فجأة (زر الرجوع للرئيسية مثلًا)، لازم
   // موسيقى وقت التفكير توقف ومتفضلش شغالة في الخلفية.
@@ -175,21 +205,40 @@ const RiddleCard = ({
     };
   }, [purchasedNoAds, bannerSuppressed]);
 
+  // السيرفر هو اللي بيقول أنهي إجابتين غلط يتشطبوا.
+  const applyFifty = async (): Promise<boolean> => {
+    if (!serverTracking) {
+      alert("سجّل الدخول عشان تقدر تستخدم المساعدة.");
+      return false;
+    }
+    try {
+      await startPromiseRef.current;
+    } catch {
+      /* تجاهل */
+    }
+    const removeTexts = await fiftyOnServer(riddleNumber - 1, riddle.options);
+    if (!removeTexts) {
+      alert("تعذّر حذف الإجابتين الآن، حاول مرة أخرى.");
+      return false;
+    }
+    const toRemove = riddle.options
+      .map((o, i) => (removeTexts.includes(o) ? i : -1))
+      .filter((i) => i >= 0);
+    setRemovedOptions(toRemove);
+    setLifelineUsed("fifty");
+    if (selectedOption !== null && toRemove.includes(selectedOption)) {
+      setSelectedOption(null);
+    }
+    return true;
+  };
+
   const handleUseFifty = async () => {
     if (lifelineUsed || showResult) return;
 
     // اشترى "فتح ميزة المكافأة" → الأداة تتفعّل فورًا من غير ما يشوف
     // أي إعلان مكافأة.
     if (purchasedRewardUnlock) {
-      const wrongIndices = riddle.options
-        .map((_, i) => i)
-        .filter((i) => i !== riddle.correctIndex);
-      const toRemove = [...wrongIndices].sort(() => Math.random() - 0.5).slice(0, 2);
-      setRemovedOptions(toRemove);
-      setLifelineUsed("fifty");
-      if (selectedOption !== null && toRemove.includes(selectedOption)) {
-        setSelectedOption(null);
-      }
+      await applyFifty();
       return;
     }
 
@@ -212,20 +261,7 @@ const RiddleCard = ({
       return;
     }
 
-    const wrongIndices = riddle.options
-      .map((_, i) => i)
-      .filter((i) => i !== riddle.correctIndex);
-
-    const toRemove = [...wrongIndices]
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 2);
-
-    setRemovedOptions(toRemove);
-    setLifelineUsed("fifty");
-
-    if (selectedOption !== null && toRemove.includes(selectedOption)) {
-      setSelectedOption(null);
-    }
+    await applyFifty();
   };
 
   const handleAddTime = async () => {
@@ -272,25 +308,57 @@ const RiddleCard = ({
   };
 
   const handleOptionClick = (index: number) => {
-    if (showResult || !isTypingComplete || paused) return;
+    if (showResult || !isTypingComplete || paused || submitting) return;
     setSelectedOption(index);
   };
 
-  const handleSubmit = () => {
-    if (selectedOption === null || paused) return;
+  const handleSubmit = async () => {
+    if (selectedOption === null || paused || submitting || showResult) return;
+    if (!serverTracking) {
+      setSubmitError("سجّل الدخول عشان تقدر تجاوب.");
+      return;
+    }
 
-    const isCorrect = selectedOption === riddle.correctIndex;
-    setShowResult(true);
+    setSubmitting(true);
+    setSubmitError(null);
 
     // موسيقى التفكير تقف فورًا لحظة "تحقق من الإجابة".
     stopMusic();
-    playSound(isCorrect ? "correct" : "wrong");
 
+    const chosenIndex = selectedOption;
+    const chosenText = riddle.options[chosenIndex];
     const elapsedMs = startTime ? Date.now() - startTime : null;
-    onAnswer(isCorrect, selectedOption, undefined, elapsedMs);
 
-    if (!isCorrect) {
-      autoNextTimerRef.current = setTimeout(() => goNext(), 1800);
+    // بنستنى تسجيل بداية اللغز الأول عشان الترتيب يبقى سليم.
+    try {
+      await startPromiseRef.current;
+    } catch {
+      /* تجاهل */
+    }
+
+    // السيرفر بيصحّح ويحسب الزمن بساعته ويسجّل للترتيب الأسبوعي.
+    const outcome = await submitAnswerToServer(riddleNumber - 1, chosenText);
+    setSubmitting(false);
+
+    if (outcome.status === "ok") {
+      const res = outcome.result;
+      setServerCorrect(res.isCorrect);
+      setServerExplanation(res.explanation);
+      setShowResult(true);
+      playSound(res.isCorrect ? "correct" : "wrong");
+
+      onAnswer(res.isCorrect, chosenIndex, undefined, elapsedMs);
+      onServerResult?.(res);
+
+      if (!res.isCorrect) {
+        autoNextTimerRef.current = setTimeout(() => goNext(), 1800);
+      }
+    } else if (outcome.status === "conflict") {
+      // اتسجّلت قبل كده (الرد الأول ضاع): نكمّل من غير ما نعرض صح/غلط.
+      setServerCorrect(null);
+      setShowResult(true);
+    } else {
+      setSubmitError("تعذّر الاتصال بالسيرفر. اتأكد من النت وجرّب تاني.");
     }
   };
 
@@ -451,7 +519,7 @@ const RiddleCard = ({
                   index={index}
                   selected={selectedOption === index}
                   showResult={showResult}
-                  isCorrect={index === riddle.correctIndex}
+                  isCorrect={serverCorrect === true && selectedOption === index}
                   onClick={() => handleOptionClick(index)}
                   disabled={showResult}
                   hideCorrectInCompetition={false}
@@ -469,24 +537,35 @@ const RiddleCard = ({
             animate={{ opacity: 1, scale: 1 }}
             className="card-horror p-6 mb-8 text-right"
           >
-            {selectedOption === riddle.correctIndex ? (
+            {serverCorrect === true ? (
               <>
                 <h3 className="font-horror text-2xl mb-3 text-primary">🎉 أحسنت!</h3>
-                <p className="font-typewriter text-foreground text-lg leading-relaxed">
-                  {riddle.explanation}
-                </p>
+                {serverExplanation && (
+                  <p className="font-typewriter text-foreground text-lg leading-relaxed">
+                    {serverExplanation}
+                  </p>
+                )}
               </>
-            ) : (
+            ) : serverCorrect === false ? (
               <h3 className="font-horror text-2xl text-primary">🍀 حظ أوفر في المرة القادمة</h3>
+            ) : (
+              <h3 className="font-horror text-2xl text-primary">تم تسجيل إجابتك ✅</h3>
             )}
           </motion.div>
         )}
       </AnimatePresence>
 
+      {submitError && (
+        <p className="text-center text-red-400 font-typewriter text-sm mb-4">{submitError}</p>
+      )}
+
       <div className="flex justify-center gap-4">
         {!showResult ? (
-          <HorrorButton onClick={handleSubmit} disabled={selectedOption === null || !isTypingComplete}>
-            تحقق من الإجابة
+          <HorrorButton
+            onClick={handleSubmit}
+            disabled={selectedOption === null || !isTypingComplete || submitting}
+          >
+            {submitting ? "جاري التحقق..." : "تحقق من الإجابة"}
           </HorrorButton>
         ) : (
           <HorrorButton onClick={goNext}>

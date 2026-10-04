@@ -21,6 +21,7 @@ import OfferWall from "@/components/OfferWall";
 import WeeklyAnnouncementBanner from "@/components/WeeklyAnnouncementBanner";
 import { enableDevicePush, isPushSupported } from "@/lib/chat/push";
 import MilestoneCongratsDialog from "@/components/MilestoneCongratsDialog";
+import type { ServerAnswerResult } from "@/lib/serverAnswers";
 
 const LAST_PUZZLE_KEY = "rabh_last_puzzle_index_v1";
 // بيتسجّل في localStorage أول ما نطلب إذن الإشعارات من المستخدم مرة
@@ -432,7 +433,8 @@ const Index = () => {
 
   const handleStart = async (_mode: GameMode) => {
     const urlIdx = getPuzzleParam();
-    if (urlIdx !== null) {
+    // رابط لغز معيّن بيفتح بس للمستخدم المسجّل (التصحيح على السيرفر محتاج حساب).
+    if (urlIdx !== null && user) {
       setCurrentRiddleIndex(urlIdx);
       setShowAuth(false);
       setGameState("playing");
@@ -489,32 +491,9 @@ const Index = () => {
     }
 
     if (user) {
+      // تسجيل الزمن والنقاط بيتم على السيرفر بس (دالة submit-answer بتنادي
+      // عليها شاشة اللغز) — الموبايل مبقاش يكتب في answer_times ولا في النقاط.
       try {
-        await supabase.from("answer_times").insert({
-          user_id: user.id,
-          riddle_index: currentRiddleIndex,
-          elapsed_ms: addMs,
-          game_mode: "fun",
-        });
-      } catch (e) {
-        console.error("answer_times insert failed", e);
-      }
-
-      // نحفظ النتيجة والنقاط في قاعدة البيانات بعد كل إجابة، بدل ما نسيبها
-      // في الذاكرة بس. ده اللي كان بيخلي شاشة النتيجة ترجع تعرض صفر بعد
-      // إعادة فتح التطبيق.
-      try {
-        const { error } = await supabase
-          .from("profiles")
-          .update({
-            saved_score: newScore,
-            saved_total_points: newPoints,
-            saved_time_bonus: newTimeBonus,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("user_id", user.id);
-        if (error) console.error("saved score update failed", error);
-
         // اتحققنا إن المستخدم لسه واصل بالظبط لأول 100 أو أول 200 إجابة
         // صحيحة ولسه ما اختارش "يكمل" أو "يبيع" — نعرض صفحة "مبروك".
         if (newScore === 100 || newScore === 200) {
@@ -529,7 +508,7 @@ const Index = () => {
           }
         }
       } catch (e) {
-        console.error("saved score update exception", e);
+        console.error("milestone check exception", e);
       }
     } else {
       saveGuestProgress({
@@ -540,6 +519,14 @@ const Index = () => {
       });
     }
   };
+
+  // رد السيرفر الرسمي بعد كل إجابة: النقاط والمجموع الحقيقيين.
+  const handleServerResult = useCallback((res: ServerAnswerResult) => {
+    setScore(res.score);
+    setTotalPoints(res.totalPoints);
+    setTimeBonus(res.timeBonus);
+    if (res.milestoneReached) setMilestoneTier(res.milestoneReached);
+  }, []);
 
   const markCompletedOnServer = useCallback(async () => {
     if (!user) return false;
@@ -745,6 +732,8 @@ const Index = () => {
               riddleNumber={currentRiddleIndex + 1}
               totalRiddles={allRiddles.length}
               onAnswer={handleAnswer}
+              serverTracking={!!user}
+              onServerResult={handleServerResult}
               onNext={handleNext}
               onExitToHome={handleExitToHome}
               gameMode="fun"

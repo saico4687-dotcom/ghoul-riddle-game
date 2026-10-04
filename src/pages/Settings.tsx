@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Shield, FileText, Mail, Info, LogOut, Trash2 } from "lucide-react";
+import { ArrowRight, Shield, FileText, Mail, Info, LogOut, Trash2, Trophy } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -22,6 +22,22 @@ const Settings = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // زر لوحة المالك بيظهر لحساب المالك بس (صلاحية admin في user_roles).
+  useEffect(() => {
+    if (!user) {
+      setIsAdmin(false);
+      return;
+    }
+    supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle()
+      .then(({ data }) => setIsAdmin(!!data));
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -61,6 +77,23 @@ const Settings = () => {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-8 space-y-4 font-typewriter">
+        {isAdmin && (
+          <section className="card-horror p-5">
+            <h2 className="font-horror text-lg text-primary mb-4">المالك</h2>
+            <Link
+              to="/admin"
+              className="flex items-center justify-between gap-3 p-4 rounded-lg border border-border/40 bg-background/40 hover:bg-background/70 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Trophy className="w-5 h-5 text-primary" />
+                <div className="text-right">
+                  <p className="text-base text-foreground">لوحة المالك والفائز الأسبوعي</p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground" />
+            </Link>
+          </section>
+        )}
         <section className="card-horror p-5">
           <h2 className="font-horror text-lg text-primary mb-4">القانونية والخصوصية</h2>
 

@@ -1,13 +1,11 @@
-// Utility function to shuffle riddle options while maintaining correct answer tracking
-import riddleFunBackground from "@/assets/riddle-fun-background.jpg";
+// Utility function to shuffle riddle options.
+// الموبايل مبقاش يعرف الإجابة الصحيحة خالص — السيرفر هو اللي بيصحّح.
 import riddleCompetition from "@/assets/riddle-competition.jpg";
 
 export interface ShuffledRiddle {
   id: number;
   question: string;
   options: string[];
-  correctIndex: number;
-  explanation: string;
   image: string;
 }
 
@@ -19,46 +17,26 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-// Fisher-Yates shuffle with tracking
-export function shuffleOptions(
-  options: string[],
-  correctIndex: number,
-  seed: number
-): { shuffledOptions: string[]; newCorrectIndex: number } {
+// Fisher-Yates shuffle
+export function shuffleOptions(options: string[], seed: number): string[] {
   const random = seededRandom(seed);
-  const correctAnswer = options[correctIndex];
   const shuffledOptions = [...options];
-  
-  // Fisher-Yates shuffle
+
   for (let i = shuffledOptions.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
     [shuffledOptions[i], shuffledOptions[j]] = [shuffledOptions[j], shuffledOptions[i]];
   }
-  
-  // Find the new index of the correct answer
-  const newCorrectIndex = shuffledOptions.indexOf(correctAnswer);
-  
-  return { shuffledOptions, newCorrectIndex };
+
+  return shuffledOptions;
 }
 
 // Apply shuffle to all riddles and assign unified background images
 export function shuffleAllRiddles(riddles: ShuffledRiddle[]): ShuffledRiddle[] {
-  return riddles.map((riddle, index) => {
+  return riddles.map((riddle, index) => ({
+    ...riddle,
     // Use riddle id as seed for consistent shuffling
-    const { shuffledOptions, newCorrectIndex } = shuffleOptions(
-      riddle.options,
-      riddle.correctIndex,
-      riddle.id * 17 + index * 31 // Unique seed per riddle
-    );
-    
+    options: shuffleOptions(riddle.options, riddle.id * 17 + index * 31),
     // All 400 riddles use the unified competition background
-    const unifiedImage = riddleCompetition;
-    
-    return {
-      ...riddle,
-      options: shuffledOptions,
-      correctIndex: newCorrectIndex,
-      image: unifiedImage,
-    };
-  });
+    image: riddleCompetition,
+  }));
 }

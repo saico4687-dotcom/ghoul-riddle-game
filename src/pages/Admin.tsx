@@ -50,16 +50,11 @@ const Admin = () => {
   }, [user]);
 
   const fetchWeeklyWinner = async () => {
-    // Start of current ISO week (Monday 00:00 local)
-    const now = new Date();
-    const day = now.getDay(); // 0=Sun..6=Sat
-    const diff = (day + 6) % 7; // days since Monday
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - diff);
-    weekStart.setHours(0, 0, 0, 0);
-
-    const { data, error } = await supabase.rpc("get_weekly_winner", {
-      p_week_start: weekStart.toISOString(),
+    // الدالة على السيرفر بتاخد أي وقت جوه الأسبوع وبتحدد بداية الأسبوع بنفسها
+    // (اسم البارامتر target_week_start). بنبعت الوقت الحالي عشان نضمن الأسبوع الحالي.
+    // مش بنبعت بداية الأسبوع المحلية لأن فرق التوقيت كان ممكن يرجّعنا للأسبوع اللي فات.
+    const { data, error } = await (supabase.rpc as any)("get_weekly_winner", {
+      target_week_start: new Date().toISOString(),
     });
 
     if (error || !data || data.length === 0) {
@@ -67,10 +62,15 @@ const Admin = () => {
       return;
     }
 
-    const winner = data[0] as {
+    const row = data[0] as {
       user_id: string;
-      riddles_solved: number;
-      fastest_answer_ms: number;
+      fastest_correct_ms: number;
+      correct_answers_count: number;
+    };
+    const winner = {
+      user_id: row.user_id,
+      riddles_solved: Number(row.correct_answers_count),
+      fastest_answer_ms: row.fastest_correct_ms,
     };
 
     const { data: prof } = await supabase
