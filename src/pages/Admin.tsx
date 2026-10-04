@@ -40,13 +40,9 @@ const Admin = () => {
 
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle()
-      .then(({ data }) => setIsAdmin(!!data));
+    // user_roles مقفولة للقراءة من التطبيق، فبنسأل الدالة has_role على السيرفر.
+    (supabase.rpc as any)("has_role", { _user_id: user.id, _role: "admin" })
+      .then(({ data }: { data: boolean | null }) => setIsAdmin(data === true));
   }, [user]);
 
   const fetchWeeklyWinner = async () => {
