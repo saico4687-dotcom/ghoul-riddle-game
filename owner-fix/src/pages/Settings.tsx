@@ -4,8 +4,6 @@ import { ArrowRight, Shield, FileText, Mail, Info, LogOut, Trash2, Trophy } from
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Switch } from "@/components/ui/switch";
-import { helpApi, HELP_AVAILABILITY_EVENT } from "@/lib/helpApi";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,27 +23,6 @@ const Settings = () => {
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [helpAvailable, setHelpAvailable] = useState(false);
-  const [helpBusy, setHelpBusy] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-    void helpApi.settings().then((r) => {
-      if (r.ok) setHelpAvailable(r.data.available);
-    });
-  }, [user]);
-
-  const toggleHelp = async (v: boolean) => {
-    setHelpBusy(true);
-    const r = await helpApi.setAvailable(v);
-    setHelpBusy(false);
-    if (!r.ok) {
-      toast.error("تعذّر تغيير الإعداد، حاول تاني");
-      return;
-    }
-    setHelpAvailable(r.data.available);
-    window.dispatchEvent(new CustomEvent(HELP_AVAILABILITY_EVENT, { detail: r.data.available }));
-  };
 
   // زر لوحة المالك بيظهر لحساب المالك بس (صلاحية admin في user_roles).
   useEffect(() => {
@@ -111,20 +88,6 @@ const Settings = () => {
               </div>
               <ArrowRight className="w-4 h-4 text-muted-foreground" />
             </Link>
-          </section>
-        )}
-        {user && (
-          <section className="card-horror p-5">
-            <h2 className="font-horror text-lg text-primary mb-4">المساعدة</h2>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="font-typewriter text-foreground">أنا متاح للمساعدة (سَنَد)</p>
-                <p className="font-typewriter text-xs text-muted-foreground leading-relaxed mt-1">
-                  لو شغّلتها وإنت فاتح التطبيق، تبقى "سَنَد" لغيرك: ممكن يوصلك طلب مساعدة (والأصدقاء بيوصلهم الطلب الأول) من لاعب في لغز حليته صح. بتاخد نقاط على كل مساعدة صحيحة. اسمك المستعار وصورتك بس هم اللي بيظهروا له.
-                </p>
-              </div>
-              <Switch checked={helpAvailable} disabled={helpBusy} onCheckedChange={toggleHelp} />
-            </div>
           </section>
         )}
         <section className="card-horror p-5">

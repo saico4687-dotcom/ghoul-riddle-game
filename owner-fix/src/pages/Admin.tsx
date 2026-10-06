@@ -29,14 +29,6 @@ interface WeeklyWinner {
   fastest_answer_ms: number;
   full_name?: string | null;
   email?: string | null;
-  assisted_correct?: number;
-}
-
-interface TopHelper {
-  user_id: string;
-  helps: number;
-  points: number;
-  username: string;
 }
 
 const Admin = () => {
@@ -44,7 +36,6 @@ const Admin = () => {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [scores, setScores] = useState<Score[]>([]);
   const [weeklyWinner, setWeeklyWinner] = useState<WeeklyWinner | null>(null);
-  const [topHelpers, setTopHelpers] = useState<TopHelper[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -84,48 +75,11 @@ const Admin = () => {
       .eq("user_id", winner.user_id)
       .maybeSingle();
 
-    // هل الفائز استعان بصديق في إجابات صحيحة هذا الأسبوع؟ (للمراجعة قبل الجائزة)
-    let assistedCorrect = 0;
-    const { data: asst } = await (supabase.rpc as any)("get_weekly_assisted_count", {
-      target_week_start: new Date().toISOString(),
-    });
-    if (Array.isArray(asst)) {
-      const mine = asst.find((a: { user_id: string }) => a.user_id === winner.user_id);
-      assistedCorrect = mine ? Number(mine.assisted_correct) : 0;
-    }
-
     setWeeklyWinner({
       ...winner,
-      assisted_correct: assistedCorrect,
       full_name: (prof as any)?.full_name || (prof as any)?.name || null,
       email: prof?.email || null,
     });
-  };
-
-  const fetchTopHelpers = async () => {
-    const { data, error } = await (supabase.rpc as any)("get_weekly_top_helpers", {
-      target_week_start: new Date().toISOString(),
-    });
-    if (error || !Array.isArray(data) || data.length === 0) {
-      setTopHelpers([]);
-      return;
-    }
-    const ids = data.map((d: { user_id: string }) => d.user_id);
-    const { data: profs } = await supabase
-      .from("public_profiles" as any)
-      .select("user_id, username")
-      .in("user_id", ids);
-    const names = new Map<string, string>(
-      ((profs as any[]) ?? []).map((p) => [p.user_id as string, (p.username as string) || ""]),
-    );
-    setTopHelpers(
-      data.map((d: { user_id: string; helps: number | string; points: number | string }) => ({
-        user_id: d.user_id,
-        helps: Number(d.helps),
-        points: Number(d.points),
-        username: names.get(d.user_id) || d.user_id.slice(0, 6),
-      })),
-    );
   };
 
   const fetchScores = async () => {
@@ -138,7 +92,6 @@ const Admin = () => {
     if (error) toast.error("فشل تحميل البيانات");
     else setScores((data as Score[]) ?? []);
     await fetchWeeklyWinner();
-    await fetchTopHelpers();
     setLoading(false);
   };
 
@@ -237,34 +190,6 @@ const Admin = () => {
                   <span className="text-blood font-bold whitespace-nowrap font-typewriter">
                     {(weeklyWinner.fastest_answer_ms / 1000).toFixed(2)} ث
                   </span>
-                </div>
-              )}
-              {weeklyWinner && (weeklyWinner.assisted_correct ?? 0) > 0 && (
-                <p className="mt-3 text-sm text-amber-400 font-typewriter leading-relaxed">
-                  ⚠️ الفائز استعان بصديق في {weeklyWinner.assisted_correct} إجابة صحيحة هذا الأسبوع — راجع حسابه قبل صرف الجائزة.
-                </p>
-              )}
-            </section>
-
-            <section className="bg-card/60 border border-primary/30 rounded-xl p-4 backdrop-blur-sm">
-              <h2 className="font-horror text-xl text-blood mb-3 flex items-center gap-2">
-                <Trophy className="w-5 h-5" />
-                أفضل سَنَد هذا الأسبوع
-              </h2>
-              {topHelpers.length === 0 ? (
-                <p className="text-sm text-muted-foreground font-typewriter">لسه محدش ساعد حد الأسبوع ده.</p>
-              ) : (
-                <div className="space-y-2">
-                  {topHelpers.map((h, i) => (
-                    <div key={h.user_id} className="flex items-center justify-between bg-background/40 rounded-lg px-4 py-2">
-                      <span className="font-typewriter text-foreground">
-                        {i + 1}. {h.username}
-                      </span>
-                      <span className="text-xs text-muted-foreground font-typewriter">
-                        {h.helps} مساعدة · {h.points} نقطة
-                      </span>
-                    </div>
-                  ))}
                 </div>
               )}
             </section>

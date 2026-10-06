@@ -22,6 +22,7 @@ import WeeklyAnnouncementBanner from "@/components/WeeklyAnnouncementBanner";
 import { enableDevicePush, isPushSupported } from "@/lib/chat/push";
 import MilestoneCongratsDialog from "@/components/MilestoneCongratsDialog";
 import type { ServerAnswerResult } from "@/lib/serverAnswers";
+import { RESUME_PLAY_KEY } from "@/lib/helpApi";
 
 const LAST_PUZZLE_KEY = "rabh_last_puzzle_index_v1";
 // بيتسجّل في localStorage أول ما نطلب إذن الإشعارات من المستخدم مرة
@@ -254,6 +255,15 @@ const Index = () => {
       totalTimeMsRef.current = Number(data?.total_time_ms ?? 0);
       setCurrentRiddleIndex(resumeIdx);
       setShowAuth(false);
+      // رجوع المساعد من جلسة "استعن بصديق": يفتح لغزه مباشرة (من أوله).
+      try {
+        if (sessionStorage.getItem(RESUME_PLAY_KEY)) {
+          sessionStorage.removeItem(RESUME_PLAY_KEY);
+          setGameState("playing");
+        }
+      } catch {
+        /* تجاهل */
+      }
     })();
   }, [user, ensureProfile, allRiddles.length]);
 
@@ -538,9 +548,6 @@ const Index = () => {
           completed_at: new Date().toISOString(),
           total_time_ms: totalTimeMsRef.current,
           last_puzzle_index: allRiddles.length - 1,
-          saved_score: score,
-          saved_total_points: totalPoints,
-          saved_time_bonus: timeBonus,
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", user.id)
@@ -556,7 +563,7 @@ const Index = () => {
       console.error("mark completed exception", e);
       return false;
     }
-  }, [user, allRiddles.length, score, totalPoints, timeBonus]);
+  }, [user, allRiddles.length]);
 
   useEffect(() => {
     if (gameState === "result" && completed && user) {
@@ -683,6 +690,15 @@ const Index = () => {
     <div className="min-h-screen bg-background" dir="rtl">
       <UserHeader />
 
+      {user && gameState === "playing" && !completed && (
+        <div
+          className="fixed top-3 left-3 z-30 rounded-full bg-black/70 border border-primary/40 px-3 py-1 font-typewriter text-sm text-primary"
+          aria-label="نقاطك"
+        >
+          ⭐ {totalPoints}
+        </div>
+      )}
+
       {milestoneTier && (
         <MilestoneCongratsDialog tier={milestoneTier} onResolved={() => setMilestoneTier(null)} />
       )}
@@ -733,6 +749,7 @@ const Index = () => {
               totalRiddles={allRiddles.length}
               onAnswer={handleAnswer}
               serverTracking={!!user}
+              userId={user?.id}
               onServerResult={handleServerResult}
               onNext={handleNext}
               onExitToHome={handleExitToHome}

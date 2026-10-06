@@ -39,9 +39,9 @@ const WeeklyAnnouncementBanner = ({
           <div className="max-w-md mx-auto rounded-2xl bg-gradient-to-l from-amber-500 to-amber-600 text-white shadow-2xl px-4 py-3 flex items-start gap-3">
             <Trophy className="w-6 h-6 shrink-0 mt-0.5" />
             <p className="text-sm leading-relaxed font-semibold">
-              كل أسبوع يوم السبت من الساعة التاسعة مساءً حتى الساعة
-              الحادية عشر تحديث حدث التطبيق ليصلك كل جديد ولمعرفة
-              الفائز بالجائزة الأسبوعية 🏆
+              كل سبت من 9 إلى 11 مساءً تحديث للتطبيق: ترقّب إعلان الفائز
+              بالجائزة الأسبوعية 🏆 وكل جديد! وقد تتغيّر الألغاز لموسم آخر
+              فالمسابقة مستمرة ✨
             </p>
           </div>
         </motion.div>

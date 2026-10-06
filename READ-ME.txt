@@ -1,0 +1,12 @@
+استعن بصديق + خط النجدة + سَنَد + اضافة صديق - الخطوات
+1) Supabase > SQL Editor: شغّل supabase-sql/1-run-this-FIRST.sql ثم supabase-sql/2-restore-owner-panel.sql (الاول آمن لو اتشغل قبل كده).
+2) الاوامر من جذر المشروع (لو الزيب في android):
+   unzip -o android/help-friend-final3.zip
+   rm android/help-friend-final3.zip
+   sh android-mic-permission.sh
+   git add -A
+   git commit -m "help a friend: khat el-najda, sanad, friends"
+   git pull --rebase
+   git push
+3) Play Console: منتجين مرة واحدة بنفس الاسم: help_voice_1 (100 جنيه) و help_voice_2 (200 جنيه) + ضيفهم في RevenueCat.
+4) استنى الاكشن يطلع اخضر (help-request جديدة + submit-answer + revenuecat-webhook اتحدّثوا) ثم Android Release.

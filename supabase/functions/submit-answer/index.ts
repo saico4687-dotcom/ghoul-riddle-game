@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
     const readStart = () =>
       admin
         .from("riddle_starts")
-        .select("started_at, answered_at, result, fifty_removed")
+        .select("started_at, answered_at, result, fifty_removed, unranked, pending_restart")
         .eq("user_id", userId)
         .eq("riddle_index", riddleIndex)
         .maybeSingle();
@@ -79,6 +79,18 @@ Deno.serve(async (req) => {
       if (riddleIndex !== expectedIndex) {
         return json({ error: "Out of order", expected_index: expectedIndex }, 409);
       }
+      // مساعد رجع من مساعدة لاعب تاني: لغزه بيبدأ من الأول بساعة جديدة (مرة واحدة)،
+      // واللغز ده متعلّم unranked فمش بيدخل ترتيب أسرع إجابة.
+      const { data: restart } = await admin
+        .from("riddle_starts")
+        .update({ started_at: new Date().toISOString(), pending_restart: false })
+        .eq("user_id", userId)
+        .eq("riddle_index", riddleIndex)
+        .eq("pending_restart", true)
+        .is("answered_at", null)
+        .select("user_id");
+      if (restart && restart.length > 0) return json({ ok: true }, 200);
+
       // أول بداية هي اللي بتتحسب. لو اتنادت تاني الساعة مبتتصفّرش.
       const { error: sErr } = await admin
         .from("riddle_starts")
@@ -149,6 +161,9 @@ Deno.serve(async (req) => {
       if (!startRow) return json({ error: "Start failed" }, 500);
     }
 
+    // مساعد رجع من مساعدة وأجاب من غير ما "start" الجديد يوصل: بنعتبرها بداية متأخرة.
+    if (startRow.pending_restart && !startRow.answered_at) lateStart = true;
+
     // اتجاوب قبل كده؟ نرجّع نفس النتيجة (آمن لو الرد الأول ضاع في الطريق).
     if (startRow.answered_at) {
       if (startRow.result) return json(startRow.result, 200);
@@ -196,7 +211,8 @@ Deno.serve(async (req) => {
     const { error: tErr } = await admin.from("answer_times").insert({
       user_id: userId,
       riddle_index: riddleIndex + 1,
-      elapsed_ms: rankedElapsed(elapsedMs),
+      // لغز المساعد اللي اتقطع (unranked) بيتسجّل بأقصى زمن عشان ميدخلش ترتيب السرعة.
+      elapsed_ms: startRow.unranked ? QUESTION_TIMER_MS : rankedElapsed(elapsedMs),
       game_mode: "fun",
       is_correct: isCorrect,
     });

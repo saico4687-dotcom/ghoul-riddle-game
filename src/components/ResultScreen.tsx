@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import HorrorButton from "./HorrorButton";
-import { Brain, Trophy, Sparkles, Star, Calendar, Hourglass, LogOut, Home, MessageCircle, Lock } from "lucide-react";
+import { Brain, Trophy, Sparkles, Star, Calendar, Hourglass, LogOut, Home } from "lucide-react";
 
 interface ResultScreenProps {
   score: number;
@@ -149,6 +149,12 @@ const ResultScreen = ({
                 الفائزون يتم اختيارهم بناءً على أسرع إجابة صحيحة، ويتم إعلان
                 الفائزين والتواصل معهم أسبوعياً.
               </p>
+              <p className="font-typewriter text-sm text-foreground/90 leading-relaxed text-center mt-3">
+                🌟 وحين يكتمل عدد الألف الأوائل ممن أنهوا جميع الألغاز، فلن
+                يكونوا الأذكى فحسب، بل النخبة المختارة. ولهؤلاء، بإذن الله،
+                تُفتح الدردشة مجانًا؛ حوارًا بالعقول والأفكار، ويصلك إشعار فور
+                فتحها.
+              </p>
             </>
           ) : (
             <p className="font-typewriter text-sm text-foreground leading-relaxed">
@@ -158,22 +164,6 @@ const ResultScreen = ({
         </motion.div>
 
         <div className="flex flex-col gap-3">
-          {completed ? (
-            <div className="w-full p-5 rounded-xl border-2 border-primary/40 bg-primary/5 text-center flex flex-col items-center gap-2">
-              <MessageCircle className="w-8 h-8 text-primary" />
-              <p className="font-horror text-lg text-primary">الدردشة قريبًا</p>
-              <p className="font-typewriter text-sm text-foreground/80 leading-relaxed">
-                ستُفتح الدردشة تلقائيًا فور اكتمال العدد المطلوب من المشاركين،
-                وسيصلكم إشعار بذلك فور فتحها. تابعونا قريبًا 👻
-              </p>
-            </div>
-          ) : (
-            <div className="w-full py-3 rounded-xl border-2 border-dashed border-muted-foreground/40 text-muted-foreground text-center font-typewriter text-sm flex items-center justify-center gap-2">
-              <Lock className="w-4 h-4" />
-              أكمل 400 لغز لفتح الدردشة
-            </div>
-          )}
-
           <HorrorButton onClick={onRestart}>
             <Home className="w-5 h-5 ml-2 inline" />
             العودة للقائمة الرئيسية

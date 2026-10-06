@@ -49,6 +49,8 @@ const STATIC_PRICE_EGP: Record<string, number> = {
   no_ads: 50,
   answers_100: 50,
   answers_200: 100,
+  help_voice_1: 100,
+  help_voice_2: 200,
 };
 
 const RIDDLE_ANSWER_PRODUCTS: Record<string, number> = {
@@ -98,7 +100,7 @@ Deno.serve(async (req) => {
       return new Response("Anonymous user, ignored", { status: 200 });
     }
 
-    const knownProducts = ["reward_unlock", "no_interstitial", "no_ads", "answers_100", "answers_200"];
+    const knownProducts = ["reward_unlock", "no_interstitial", "no_ads", "answers_100", "answers_200", "help_voice_1", "help_voice_2"];
     if (!knownProducts.includes(productId)) {
       console.error("revenuecat-webhook: unknown product_id", productId);
       return new Response("Unknown product", { status: 200 });
@@ -222,6 +224,27 @@ Deno.serve(async (req) => {
       gateway_reference: eventId,
       updated_at: new Date().toISOString(),
     });
+
+    // باقة "خط النجدة": مدة الصوت مع المساعد (دقيقة / دقيقتين) بدون إعلان، صالحة سنة من الشراء.
+    if (productId === "help_voice_1" || productId === "help_voice_2") {
+      const tier = productId === "help_voice_2" ? 2 : 1;
+      const { data: cur } = await admin
+        .from("profiles").select("help_pass_tier, help_pass_until").eq("user_id", appUserId).maybeSingle();
+      if (isGrant) {
+        const now = Date.now();
+        const curUntil = cur?.help_pass_until ? Date.parse(cur.help_pass_until as string) : 0;
+        const stillActive = curUntil > now;
+        const newUntil = Math.max(stillActive ? curUntil : 0, now) + 365 * 86_400_000;
+        const newTier = Math.max(tier, stillActive ? Number(cur?.help_pass_tier ?? 0) : 0);
+        await admin.from("profiles")
+          .update({ help_pass_tier: newTier, help_pass_until: new Date(newUntil).toISOString() })
+          .eq("user_id", appUserId);
+      } else if (Number(cur?.help_pass_tier ?? 0) === tier) {
+        await admin.from("profiles")
+          .update({ help_pass_tier: 0, help_pass_until: null }).eq("user_id", appUserId);
+      }
+      return new Response("OK", { status: 200 });
+    }
 
     let patch: Record<string, boolean>;
     if (isGrant) {

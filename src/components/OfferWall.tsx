@@ -102,7 +102,7 @@ const OfferWall = ({
 }: OfferWallProps) => {
   const [busyProduct, setBusyProduct] = useState<null | PurchaseProduct>(null);
   const { user } = useAuth();
-  const { purchasedRewardUnlock, purchasedNoInterstitial, purchasedNoAds, refresh } =
+  const { purchasedRewardUnlock, purchasedNoInterstitial, purchasedNoAds, helpPassTier, refresh } =
     usePurchases();
 
   useEffect(() => {
@@ -206,6 +206,35 @@ const OfferWall = ({
               busy={busyProduct === "no_ads"}
               disabled={busyProduct !== null}
               onBuy={() => handleBuy("no_ads")}
+            />
+
+            <OfferSection
+              borderColor="border-violet-400"
+              bgColor="bg-violet-50"
+              titleColor="text-violet-700"
+              title="📞 خط النجدة (دقيقة) — 100 جنيه سنويًا"
+              description="استعن بصديق وتكلم معه صوتيًا لمدة 60 ثانية في كل طلب، بدون مشاهدة إعلان المكافأة لتفعيل المساعدة. دفعة واحدة وصالحة لمدة سنة من تاريخ الشراء."
+              buttonIdleColor="bg-violet-500 hover:bg-violet-600"
+              buttonLabel="شراء خط النجدة (دقيقة)"
+              purchased={helpPassTier >= 1}
+              busy={busyProduct === "help_voice_1"}
+              disabled={busyProduct !== null}
+              onBuy={() => handleBuy("help_voice_1")}
+            />
+
+            <OfferSection
+              borderColor="border-fuchsia-400"
+              bgColor="bg-fuchsia-50"
+              titleColor="text-fuchsia-700"
+              title="📞📞 خط النجدة (دقيقتان) — 200 جنيه سنويًا"
+              description="استعن بصديق وتكلم معه صوتيًا لمدة 120 ثانية في كل طلب، بدون مشاهدة إعلان المكافأة. دفعة واحدة وصالحة لمدة سنة من تاريخ الشراء."
+              buttonIdleColor="bg-fuchsia-600 hover:bg-fuchsia-700"
+              buttonLabel="شراء خط النجدة (دقيقتان)"
+              badge="الأكثر وقتًا للحديث"
+              purchased={helpPassTier === 2}
+              busy={busyProduct === "help_voice_2"}
+              disabled={busyProduct !== null}
+              onBuy={() => handleBuy("help_voice_2")}
             />
 
             <p className="text-xs text-center text-emerald-700 font-semibold leading-relaxed">

@@ -6,6 +6,7 @@ import TypewriterText from "./TypewriterText";
 import RiddleOption from "./RiddleOption";
 import HorrorButton from "./HorrorButton";
 import HorrorClock from "./HorrorClock";
+import HelpFriend from "@/components/help/HelpFriend";
 
 import { Brain, Mic, MicOff, Scissors, Clock, Volume2, VolumeX } from "lucide-react";
 
@@ -40,6 +41,8 @@ interface RiddleCardProps {
   // true للمستخدم المسجّل: السيرفر هو اللي يصحّح ويحسب الزمن ويسجّل النقاط
   // ويحذف الإجابتين (التطبيق نفسه مبيعرفش الإجابة الصحيحة).
   serverTracking?: boolean;
+  // معرّف المستخدم (لزر "استعن بصديق" وأزرار الإبلاغ والحظر).
+  userId?: string;
   // بتتنادى لما رد السيرفر يوصل (النقاط والمجموع الرسمي).
   onServerResult?: (result: ServerAnswerResult) => void;
   // true أثناء عرض إعلان فاصل أو شاشة العرض التسويقي — يوقف الساعة
@@ -61,6 +64,7 @@ const RiddleCard = ({
   onExitToHome,
   gameMode,
   serverTracking = false,
+  userId,
   onServerResult,
   paused = false,
   bannerSuppressed = false,
@@ -83,6 +87,10 @@ const RiddleCard = ({
   const [serverExplanation, setServerExplanation] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // استعن بصديق: التلميح (نص الخيار اللي اختاره المساعد) + حالة "المساعدة شغالة".
+  const [hintText, setHintText] = useState<string | null>(null);
+  const [helpBusy, setHelpBusy] = useState(false);
+  const helpStartRef = useRef<number | null>(null);
 
   // وعد تسجيل بداية اللغز على السيرفر — بنستناه قبل إرسال الإجابة عشان الترتيب يبقى سليم.
   const startPromiseRef = useRef<Promise<boolean> | null>(null);
@@ -90,7 +98,7 @@ const RiddleCard = ({
   const { playSound, setMuted } = useHorrorSounds();
   const { setVolume: setMusicVolume, startMusic, stopMusic, pauseMusic, resumeMusic } = useHorrorBackgroundMusic();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { purchasedRewardUnlock, purchasedNoAds } = usePurchases();
+  const { purchasedRewardUnlock, purchasedNoAds, helpPassTier } = usePurchases();
 
   const handleMuteToggle = () => {
     const newMutedState = !isMuted;
@@ -144,6 +152,9 @@ const RiddleCard = ({
     setServerExplanation(null);
     setSubmitting(false);
     setSubmitError(null);
+    setHintText(null);
+    setHelpBusy(false);
+    helpStartRef.current = null;
     startPromiseRef.current = null;
     nextCalledRef.current = false;
     if (autoNextTimerRef.current) {
@@ -296,6 +307,22 @@ const RiddleCard = ({
     setLifelineUsed("time");
   };
 
+  // وقف الساعة (على الشاشة) طول ما المساعدة شغالة، وبعدها نرجّع الوقت اللي ضاع.
+  const handleHelpBusy = (busy: boolean) => {
+    setHelpBusy(busy);
+    if (busy) {
+      helpStartRef.current = Date.now();
+    } else if (helpStartRef.current !== null) {
+      const lost = Date.now() - helpStartRef.current;
+      helpStartRef.current = null;
+      setStartTime((t) => (t === null ? t : t + lost));
+    }
+  };
+
+  const normalizeText = (t: string) => t.normalize("NFC").trim();
+  const hintIndex =
+    hintText === null ? -1 : riddle.options.findIndex((o) => normalizeText(o) === normalizeText(hintText));
+
   const handleTimeUp = () => {
     if (!showResult && selectedOption === null) {
       setShowResult(true);
@@ -385,14 +412,14 @@ const RiddleCard = ({
           key={riddleNumber}
           duration={60}
           isActive={isTypingComplete && !showResult}
-          paused={adPaused || paused}
+          paused={adPaused || helpBusy || paused}
           onTimeUp={handleTimeUp}
           isMuted={isMuted}
           extraTime={extraTime}
         />
 
         {gameMode === "fun" && (
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
               onClick={handleUseFifty}
@@ -414,6 +441,19 @@ const RiddleCard = ({
               <span>{purchasedRewardUnlock ? "إضافة دقيقة" : "شاهد الإعلان لإضافة دقيقة"}</span>
             </button>
           </div>
+        )}
+        {gameMode === "fun" && serverTracking && userId && (
+          <HelpFriend
+            userId={userId}
+            riddleIndex={riddleNumber - 1}
+            disabled={showResult || !isTypingComplete || paused || submitting}
+            skipAd={purchasedRewardUnlock || helpPassTier > 0}
+            extendSkipAd={purchasedRewardUnlock}
+            onHint={setHintText}
+            onBusyChange={handleHelpBusy}
+            onAdStart={() => setAdPaused(true)}
+            onAdEnd={() => setAdPaused(false)}
+          />
         )}
         {lifelineUsed && (
           <p className="text-xs text-muted-foreground font-typewriter">
@@ -513,8 +553,13 @@ const RiddleCard = ({
                 );
               }
               return (
+                <div key={index} className="relative">
+                  {hintIndex === index && !showResult && (
+                    <span className="absolute -top-2 left-3 z-10 rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-typewriter text-black shadow">
+                      💡 صديقك بيرشّح دي
+                    </span>
+                  )}
                 <RiddleOption
-                  key={index}
                   option={option}
                   index={index}
                   selected={selectedOption === index}
@@ -524,6 +569,7 @@ const RiddleCard = ({
                   disabled={showResult}
                   hideCorrectInCompetition={false}
                 />
+                </div>
               );
             })}
           </motion.div>

@@ -30,6 +30,7 @@
     <!-- قفل التطبيق بالبصمة/الوجه -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"

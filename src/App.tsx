@@ -16,6 +16,8 @@ import BuyAnswers from "./pages/BuyAnswers";
 import SupportChat from "./pages/SupportChat";
 import OAuthCallback from "./pages/OAuthCallback";
 import NotFound from "./pages/NotFound";
+import HelperSession from "./pages/HelperSession";
+import HelpInbox from "./components/help/HelpInbox";
 
 import ChatLayout from "./pages/chat/ChatLayout";
 import ChatHome from "./pages/chat/ChatHome";
@@ -43,6 +45,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <HelpInbox />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/settings" element={<Settings />} />
@@ -52,6 +55,7 @@ const App = () => (
           <Route path="/admin" element={<Admin />} />
           <Route path="/buy-answers" element={<BuyAnswers />} />
           <Route path="/support" element={<SupportChat />} />
+          <Route path="/help/:id" element={<HelperSession />} />
           <Route path="/auth/callback" element={<OAuthCallback />} />
 
           {/* إعداد اسم المستخدم — لازم يفضل برا حراسة RequireCompletion
