@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { riddles } from "@/data/riddles";
@@ -9,7 +9,8 @@ import AddFriendButton from "@/components/help/AddFriendButton";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { useHelpVoice } from "@/hooks/useHelpVoice";
 import { useAuth } from "@/hooks/useAuth";
-import { helpApi, helpErrorMessage, RESUME_PLAY_KEY, type HelpPerson } from "@/lib/helpApi";
+import { helpApi, helpErrorMessage, RESUME_PLAY_KEY, type HelpKind, type HelpPerson } from "@/lib/helpApi";
+import { playWarningSound } from "@/lib/helpSfx";
 import moneyBg from "@/assets/money-bg.jpg";
 import riddleCompetitionVideo from "@/assets/riddle-competition.mp4";
 
@@ -29,6 +30,12 @@ export default function HelperSession() {
   const [live, setLive] = useState(true);
   const [talkEndsAt, setTalkEndsAt] = useState(0);
   const [now, setNow] = useState(Date.now());
+  const [kind, setKind] = useState<HelpKind>("voice");
+  const [voiceStarted, setVoiceStarted] = useState(false);
+  // المساعد اللي جاوب اللغز غلط (السيرفر هو اللي بيحدد): تحذير + ❌ على اختياره القديم.
+  const [wasWrong, setWasWrong] = useState(false);
+  const [wrongOption, setWrongOption] = useState<string | null>(null);
+  const warnedRef = useRef(false);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -70,7 +77,13 @@ export default function HelperSession() {
       setRiddleIndex(d.riddleIndex);
       setSessionKey(d.sessionKey);
       setAsker(d.other);
-      if (d.status === "accepted") setTalkEndsAt(Date.now() + (d.talkLeft ?? 0) * 1000);
+      setKind(d.kind ?? "voice");
+      setWasWrong(!!d.wasWrong);
+      setWrongOption(d.wrongOption ?? null);
+      if (d.status === "accepted") {
+        setVoiceStarted(!!d.voiceStarted);
+        setTalkEndsAt(d.voiceStarted ? Date.now() + (d.talkLeft ?? 0) * 1000 : 0);
+      }
       if (d.status === "answered") {
         setLive(false);
         setDone((prev) => prev ?? { correct: (d.helperPoints ?? 0) > 0, points: d.helperPoints ?? 0 });
@@ -95,8 +108,24 @@ export default function HelperSession() {
     requestId: id ?? null,
     sessionKey,
     role: "helper",
-    enabled: live && !done && !!sessionKey && talkEndsAt > now,
+    enabled: kind === "voice" && live && !done && !!sessionKey && (!voiceStarted || talkEndsAt > now),
   });
+
+  // الصوت اتوصل عندي: نبلّغ السيرفر (العدّاد بيبدأ بعد ما الاتنين يبلّغوا).
+  useEffect(() => {
+    if (kind !== "voice" || !id || !live || done || voiceStarted || voice.state !== "connected") return;
+    void helpApi.voiceReady(id).then((r) => {
+      if (r.ok && r.data.started) setVoiceStarted(true);
+    });
+  }, [kind, id, live, done, voiceStarted, voice.state]);
+
+  // صوت تحذير مرة واحدة لما نعرف إن المساعد جاوب غلط.
+  useEffect(() => {
+    if (wasWrong && !warnedRef.current) {
+      warnedRef.current = true;
+      playWarningSound();
+    }
+  }, [wasWrong]);
 
   // بعد الشكر نرجع تلقائي.
   useEffect(() => {
@@ -107,6 +136,8 @@ export default function HelperSession() {
   }, [done]);
 
   const riddle = riddleIndex !== null ? riddles[riddleIndex] : null;
+  const norm = (t: string) => t.normalize("NFC").trim();
+  const wrongIdx = riddle && wrongOption ? riddle.options.findIndex((o) => norm(o) === norm(wrongOption)) : -1;
 
   const send = async () => {
     if (!id || !riddle || selected === null || sending) return;
@@ -138,26 +169,43 @@ export default function HelperSession() {
       }}
     >
       <div className="max-w-4xl mx-auto">
-        <HelpVoiceBar
-          me={user.id}
-          requestId={id}
-          other={asker}
-          state={voice.state}
-          muted={voice.muted}
-          needsTap={voice.needsTap}
-          onToggleMute={voice.toggleMute}
-          onTapToPlay={voice.tapToPlay}
-          onBlocked={goBack}
-        />
+        {kind === "voice" && (
+          <HelpVoiceBar
+            me={user.id}
+            requestId={id}
+            other={asker}
+            state={voice.state}
+            muted={voice.muted}
+            needsTap={voice.needsTap}
+            onToggleMute={voice.toggleMute}
+            onTapToPlay={voice.tapToPlay}
+            onBlocked={goBack}
+          />
+        )}
 
         <p className="text-center font-typewriter text-sm text-muted-foreground mb-2">
-          {talkEndsAt > now ? `⏱ وقت الصوت: ${Math.ceil((talkEndsAt - now) / 1000)} ث` : "انتهى وقت الصوت — اختار الإجابة وابعتها"}
+          {kind !== "voice"
+            ? "تلميح بدون صوت — اختار الإجابة اللي شايفها صح وابعتها"
+            : !voiceStarted
+              ? "🎙 جاري توصيل الصوت... العدّاد هيبدأ أول ما الاتنين يسمعوا بعض"
+              : talkEndsAt > now
+                ? `⏱ وقت الصوت: ${Math.ceil((talkEndsAt - now) / 1000)} ث`
+                : "انتهى وقت الصوت — اختار الإجابة وابعتها"}
         </p>
         <p className="text-center text-primary font-horror text-xl mb-4">بتكون سَنَد لـ {asker?.username ?? "صديق"} في اللغز {riddleIndex! + 1}</p>
 
         <div className="image-horror mb-6">
           <video src={riddleCompetitionVideo} className="w-full max-h-64 object-cover" autoPlay loop muted playsInline />
         </div>
+
+        {wasWrong && !done && (
+          <div className="mb-4 rounded-xl border-2 border-red-600 bg-red-950/60 p-3 text-center">
+            <p className="font-horror text-2xl text-red-400">⚠️ قد أخطأت</p>
+            <p className="font-typewriter text-sm text-red-200 mt-1">
+              جاوبت اللغز ده غلط قبل كده. حذّر صاحبك من اختيارك (اتعلّم ❌)، وجرّب تخمّن الإجابة الصح.
+            </p>
+          </div>
+        )}
 
         <div className="card-horror p-6 mb-6">
           <p className="text-xl md:text-2xl leading-relaxed text-right font-typewriter">{riddle.question}</p>
@@ -177,16 +225,22 @@ export default function HelperSession() {
           <>
             <div className="space-y-4 mb-6">
               {riddle.options.map((o, i) => (
-                <RiddleOption
-                  key={i}
-                  option={o}
-                  index={i}
-                  selected={selected === i}
-                  showResult={false}
-                  isCorrect={false}
-                  onClick={() => !sending && setSelected(i)}
-                  disabled={sending}
-                />
+                <div key={i} className="relative">
+                  {wrongIdx === i && (
+                    <span className="absolute -top-2 right-3 z-10 rounded-full bg-red-600 px-2 py-0.5 text-xs font-typewriter text-white shadow">
+                      ❌ اختيارك الغلط
+                    </span>
+                  )}
+                  <RiddleOption
+                    option={o}
+                    index={i}
+                    selected={selected === i}
+                    showResult={false}
+                    isCorrect={false}
+                    onClick={() => !sending && wrongIdx !== i && setSelected(i)}
+                    disabled={sending || wrongIdx === i}
+                  />
+                </div>
               ))}
             </div>
             <div className="flex justify-center">

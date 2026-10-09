@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
     const nowIso = new Date().toISOString();
     const { data: claimed, error: cErr } = await admin
       .from("riddle_starts")
-      .update({ answered_at: nowIso })
+      .update({ answered_at: nowIso, selected_option: selected })
       .eq("user_id", userId)
       .eq("riddle_index", riddleIndex)
       .is("answered_at", null)

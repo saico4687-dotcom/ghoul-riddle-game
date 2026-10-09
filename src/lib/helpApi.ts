@@ -7,6 +7,9 @@ export type HelpPerson = { id?: string; username: string; avatarUrl: string | nu
 
 export type HelpStatus = "open" | "accepted" | "answered" | "expired" | "cancelled";
 
+// نوع الطلب: voice = صوت بإعلان (5 يوميًا)، hint = تلميح بدون صوت (باقي الـ 20).
+export type HelpKind = "voice" | "hint";
+
 export type HelpApiError = { status: number | null; code: string };
 // ملاحظة: النوع مش union عشان tsconfig غير صارم (strictNullChecks مقفول) والتضييق مبيشتغلش.
 export type HelpResult<T> = { ok: boolean; data: T; error: HelpApiError };
@@ -40,25 +43,47 @@ export const helpApi = {
 
   inbox: () =>
     call<{
-      pending: { id: string; riddleIndex: number; secondsLeft: number; asker: HelpPerson }[];
-      active: { id: string; riddleIndex: number } | null;
+      pending: { id: string; riddleIndex: number; kind: HelpKind; secondsLeft: number; asker: HelpPerson }[];
+      active: { id: string; riddleIndex: number; kind: HelpKind } | null;
       friendRequests: { id: string; from: HelpPerson }[];
     }>({ action: "inbox" }),
 
   availability: (riddleIndex: number) =>
-    call<{ count: number; freeRetry: boolean; limitReached: boolean }>({
+    call<{
+      count: number;
+      voiceCount: number;
+      hintCount: number;
+      voiceLeft: number;
+      hintLeft: number;
+      hintAdNeeded: boolean;
+      freeRetry: boolean;
+      freeRetryVoice: boolean;
+      freeRetryHint: boolean;
+      limitReached: boolean;
+    }>({
       action: "availability",
       riddle_index: riddleIndex,
     }),
 
-  create: (riddleIndex: number) =>
-    call<{ id: string; sessionKey: string; status: HelpStatus; expiresAt: string; resumed?: boolean }>({
+  create: (riddleIndex: number, kind: HelpKind) =>
+    call<{ id: string; sessionKey: string; status: HelpStatus; expiresAt: string; resumed?: boolean; kind: HelpKind }>({
       action: "create",
       riddle_index: riddleIndex,
+      kind,
     }),
 
   accept: (id: string) =>
-    call<{ id: string; riddleIndex: number; sessionKey: string; expiresAt: string; talkSeconds: number; asker: HelpPerson }>({
+    call<{
+      id: string;
+      riddleIndex: number;
+      sessionKey: string;
+      expiresAt: string;
+      talkSeconds: number;
+      kind: HelpKind;
+      wasWrong: boolean;
+      wrongOption: string | null;
+      asker: HelpPerson;
+    }>({
       action: "accept",
       id,
     }),
@@ -68,6 +93,11 @@ export const helpApi = {
 
   status: (id: string) =>
     call<{
+      kind: HelpKind;
+      voiceStarted: boolean;
+      wasWrong?: boolean;
+      wrongOption?: string | null;
+      hintWrongOption: string | null;
       role: "asker" | "helper";
       status: HelpStatus;
       riddleIndex: number;
@@ -79,7 +109,11 @@ export const helpApi = {
       talkSeconds: number;
       talkLeft: number;
       canExtend: boolean;
-    }>({ action: "status", id }),
+    }>({ action: "status", id, v: 2 }),
+
+  // الصوت اتوصل عندي: السيرفر بيبدأ عدّاد الصوت لما الاتنين يبلّغوا.
+  voiceReady: (id: string) =>
+    call<{ started: boolean; startedAt?: string | null }>({ action: "voice_ready", id }),
 
   extend: (id: string) => call<{ ok: true; talkSeconds: number }>({ action: "extend", id }),
 
@@ -99,6 +133,12 @@ export function helpErrorMessage(code: string): string {
       return "مفيش مساعد متاح دلوقتي، جرّب بعد شوية 🙏";
     case "daily_limit":
       return "وصلت للحد الأقصى من طلبات المساعدة النهارده.";
+    case "voice_limit":
+      return "خلّصت طلبات الصوت النهارده (5). جرّب التلميح من غير صوت 💡";
+    case "hint_limit":
+      return "خلّصت التلميحات النهارده.";
+    case "same_as_wrong":
+      return "ده اختيارك الغلط، اختار إجابة تانية.";
     case "already_helped":
       return "اتساعدت في اللغز ده قبل كده.";
     case "out_of_order":

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { getRtcConfig, mediaConstraintsFor, stopStream } from "@/lib/chat/webrtc";
+import { mediaConstraintsFor, stopStream } from "@/lib/chat/webrtc";
+import { loadRtcConfig } from "@/lib/chat/iceConfig";
 
 // صوت "استعين بصديق": WebRTC بين اللاعبين، والإشارة (offer/answer/ICE) بتعدي على قناة
 // Realtime Broadcast اسمها فيها مفتاح سري ما بيعرفوش غير الاتنين.
@@ -87,7 +88,14 @@ export function useHelpVoice({ requestId, sessionKey, role, enabled }: Opts) {
       }
       streamRef.current = stream;
       stream.getAudioTracks().forEach((t) => (t.enabled = !mutedRef.current));
-      const pc = new RTCPeerConnection(getRtcConfig());
+      const rtcCfg = await loadRtcConfig();
+      if (disposed) {
+        stopStream(stream);
+        streamRef.current = null;
+        return null;
+      }
+      if (pcRef.current) return pcRef.current; // نداء متزامن تاني سبقنا
+      const pc = new RTCPeerConnection(rtcCfg);
       pcRef.current = pc;
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
       pc.ontrack = (ev) => {

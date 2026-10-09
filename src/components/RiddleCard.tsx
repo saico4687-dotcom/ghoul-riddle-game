@@ -89,6 +89,8 @@ const RiddleCard = ({
   const [submitError, setSubmitError] = useState<string | null>(null);
   // استعن بصديق: التلميح (نص الخيار اللي اختاره المساعد) + حالة "المساعدة شغالة".
   const [hintText, setHintText] = useState<string | null>(null);
+  // الخيار الغلط اللي المساعد كان اختاره (لو جاوب غلط): بيتعلّم بـ ❌ حمراء.
+  const [hintWrongText, setHintWrongText] = useState<string | null>(null);
   const [helpBusy, setHelpBusy] = useState(false);
   const helpStartRef = useRef<number | null>(null);
 
@@ -153,6 +155,7 @@ const RiddleCard = ({
     setSubmitting(false);
     setSubmitError(null);
     setHintText(null);
+    setHintWrongText(null);
     setHelpBusy(false);
     helpStartRef.current = null;
     startPromiseRef.current = null;
@@ -322,6 +325,8 @@ const RiddleCard = ({
   const normalizeText = (t: string) => t.normalize("NFC").trim();
   const hintIndex =
     hintText === null ? -1 : riddle.options.findIndex((o) => normalizeText(o) === normalizeText(hintText));
+  const hintWrongIndex =
+    hintWrongText === null ? -1 : riddle.options.findIndex((o) => normalizeText(o) === normalizeText(hintWrongText));
 
   const handleTimeUp = () => {
     if (!showResult && selectedOption === null) {
@@ -449,7 +454,10 @@ const RiddleCard = ({
             disabled={showResult || !isTypingComplete || paused || submitting}
             skipAd={purchasedRewardUnlock || helpPassTier > 0}
             extendSkipAd={purchasedRewardUnlock}
-            onHint={setHintText}
+            onHint={(t, wrong) => {
+              setHintText(t);
+              setHintWrongText(wrong ?? null);
+            }}
             onBusyChange={handleHelpBusy}
             onAdStart={() => setAdPaused(true)}
             onAdEnd={() => setAdPaused(false)}
@@ -557,6 +565,11 @@ const RiddleCard = ({
                   {hintIndex === index && !showResult && (
                     <span className="absolute -top-2 left-3 z-10 rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-typewriter text-black shadow">
                       💡 صديقك بيرشّح دي
+                    </span>
+                  )}
+                  {hintWrongIndex === index && !showResult && (
+                    <span className="absolute -top-2 right-3 z-10 rounded-full bg-red-600 px-2 py-0.5 text-xs font-typewriter text-white shadow">
+                      ❌ صديقك اختارها قبل كده وطلعت غلط
                     </span>
                   )}
                 <RiddleOption

@@ -9,7 +9,15 @@ import {
   DAILY_HELP_CAP,
   displayName,
   FREE_RETRY_WINDOW_MS,
+  createBlockedReason,
   helperReward,
+  helperWrongInfo,
+  isSameOption,
+  normalizeKind,
+  pointsForHelper,
+  quotaFrom,
+  sessionEndAfterVoiceStart,
+  talkTimeline,
   MAX_FRIENDS_NOTIFIED,
   MAX_NOTIFIED,
   REQUEST_TTL_MS,
@@ -27,7 +35,9 @@ import {
 //  accept       : أول مساعد يوافق ياخد الطلب.
 //  pick         : المساعد بيبعت اختياره؛ السيرفر بيصحّحه ويدّيه النقاط.
 //  status       : متابعة الطلب (للاعب والمساعد).
+//  voice_ready  : الطرف بيبلّغ إن الصوت اتوصل (العدّاد بيبدأ لما الاتنين يبلّغوا).
 //  cancel       : إلغاء.
+// نوع الطلب: voice (صوت بإعلان، 5 يوميًا) أو hint (تلميح بدون صوت، باقي الـ 20).
 // الإجابات الصحيحة مبتتبعتش لأي حد؛ المساعد بيعرف إنه صح بس لأنه كان حلّ اللغز قبل كده.
 
 const TOTAL_RIDDLES = ANSWERS.length;
@@ -93,7 +103,7 @@ Deno.serve(async (req) => {
 
       const { data: pending } = await admin
         .from("help_requests")
-        .select("id, asker_id, riddle_index, expires_at")
+        .select("id, asker_id, riddle_index, expires_at, kind")
         .eq("status", "open")
         .gt("expires_at", nowIso)
         .contains("notified_ids", [userId])
@@ -102,7 +112,7 @@ Deno.serve(async (req) => {
 
       const { data: activeRows } = await admin
         .from("help_requests")
-        .select("id, asker_id, riddle_index, expires_at")
+        .select("id, asker_id, riddle_index, expires_at, kind")
         .eq("helper_id", userId).eq("status", "accepted")
         .limit(1);
 
@@ -126,11 +136,12 @@ Deno.serve(async (req) => {
         pending: (pending ?? []).map((r: Row) => ({
           id: r.id,
           riddleIndex: r.riddle_index,
+          kind: normalizeKind(r.kind),
           secondsLeft: Math.max(0, Math.ceil((Date.parse(r.expires_at) - now) / 1000)),
           asker: people.get(r.asker_id) ?? { username: displayName(null, r.asker_id), avatarUrl: null },
         })),
         active: activeRows?.length
-          ? { id: activeRows[0].id, riddleIndex: activeRows[0].riddle_index }
+          ? { id: activeRows[0].id, riddleIndex: activeRows[0].riddle_index, kind: normalizeKind(activeRows[0].kind) }
           : null,
         friendRequests: (frs ?? []).map((f: { id: string; from_user: string }) => ({
           id: f.id,
@@ -139,32 +150,44 @@ Deno.serve(async (req) => {
       }, 200);
     }
 
-    // ---------- فيه مساعدين؟ ----------
+    // ---------- فيه مساعدين؟ (+ الحصص اليومية) ----------
     if (action === "availability") {
       const idx = riddleIdx();
       if (idx === null) return json({ error: "Invalid riddle_index" }, 400);
       await expireStale(admin);
 
-      const { data: helpers, error } = await admin.rpc("help_eligible_helpers", {
-        p_asker: userId, p_riddle: idx, p_limit: 50,
-      });
-      if (error) return json({ error: "Lookup failed" }, 500);
+      const [voiceH, hintH] = await Promise.all([
+        admin.rpc("help_eligible_helpers", { p_asker: userId, p_riddle: idx, p_limit: 50, p_kind: "voice" }),
+        admin.rpc("help_eligible_helpers", { p_asker: userId, p_riddle: idx, p_limit: 50, p_kind: "hint" }),
+      ]);
+      if (voiceH.error || hintH.error) return json({ error: "Lookup failed" }, 500);
 
       const sinceIso = new Date(Date.now() - FREE_RETRY_WINDOW_MS).toISOString();
       const { data: retry } = await admin
-        .from("help_requests").select("id")
+        .from("help_requests").select("kind")
         .eq("asker_id", userId).eq("riddle_index", idx)
         .eq("status", "expired").eq("retry_used", false)
-        .gte("created_at", sinceIso).limit(1);
+        .gte("created_at", sinceIso).limit(10);
+      const retryKinds = new Set((retry ?? []).map((r: { kind: string }) => normalizeKind(r.kind)));
 
-      const { count: asks } = await admin
-        .from("help_requests").select("id", { count: "exact", head: true })
+      const { data: todayRows } = await admin
+        .from("help_requests").select("kind, status, helper_id")
         .eq("asker_id", userId).gte("created_at", cairoDayStartIso());
+      const q = quotaFrom(todayRows ?? []);
 
+      const voiceCount = (voiceH.data ?? []).length;
+      const hintCount = (hintH.data ?? []).length;
       return json({
-        count: (helpers ?? []).length,
-        freeRetry: (retry ?? []).length > 0,
-        limitReached: (asks ?? 0) >= DAILY_ASK_CAP,
+        voiceCount,
+        hintCount,
+        count: Math.max(voiceCount, hintCount),
+        voiceLeft: q.voiceLeft,
+        hintLeft: q.hintLeft,
+        hintAdNeeded: q.hintAdNeeded,
+        freeRetryVoice: retryKinds.has("voice"),
+        freeRetryHint: retryKinds.has("hint"),
+        freeRetry: retryKinds.size > 0,
+        limitReached: q.total >= DAILY_ASK_CAP || (q.voiceLeft <= 0 && q.hintLeft <= 0),
       }, 200);
     }
 
@@ -172,6 +195,7 @@ Deno.serve(async (req) => {
     if (action === "create") {
       const idx = riddleIdx();
       if (idx === null) return json({ error: "Invalid riddle_index" }, 400);
+      const kind = normalizeKind(b.kind);
 
       // لازم يكون اللغز الحالي للاعب وبدأ فعلًا ولسه ما اتجاوبش.
       const { data: prof } = await admin
@@ -186,13 +210,14 @@ Deno.serve(async (req) => {
       await expireStale(admin);
 
       const { data: active } = await admin
-        .from("help_requests").select("id, riddle_index, status, session_key, expires_at")
+        .from("help_requests").select("id, riddle_index, status, session_key, expires_at, kind")
         .eq("asker_id", userId).in("status", ["open", "accepted"]).limit(1);
       if (active && active.length > 0) {
         const a = active[0];
         if (a.riddle_index === idx) {
           return json({
             id: a.id, sessionKey: a.session_key, status: a.status, expiresAt: a.expires_at, resumed: true,
+            kind: normalizeKind(a.kind),
           }, 200);
         }
         await admin.from("help_requests").update({ status: "cancelled" }).eq("id", a.id);
@@ -203,22 +228,23 @@ Deno.serve(async (req) => {
         .eq("asker_id", userId).eq("riddle_index", idx).eq("status", "answered").limit(1);
       if (done && done.length > 0) return json({ error: "already_helped" }, 409);
 
-      const { count: asks } = await admin
-        .from("help_requests").select("id", { count: "exact", head: true })
+      const { data: todayRows } = await admin
+        .from("help_requests").select("kind, status, helper_id")
         .eq("asker_id", userId).gte("created_at", cairoDayStartIso());
-      if ((asks ?? 0) >= DAILY_ASK_CAP) return json({ error: "daily_limit" }, 429);
+      const blocked = createBlockedReason(kind, quotaFrom(todayRows ?? []));
+      if (blocked) return json({ error: blocked }, 429);
 
       // الأصدقاء الأونلاين اللي حلّوا اللغز يوصلهم الطلب كلهم الأول،
       // ولو أقل من 5 بنكمّل من غير الأصدقاء لحد 5.
       const { data: friends, error: fErr } = await admin.rpc("help_eligible_helpers", {
-        p_asker: userId, p_riddle: idx, p_limit: MAX_FRIENDS_NOTIFIED, p_mode: "friends",
+        p_asker: userId, p_riddle: idx, p_limit: MAX_FRIENDS_NOTIFIED, p_mode: "friends", p_kind: kind,
       });
       if (fErr) return json({ error: "Lookup failed" }, 500);
       const friendIds = (friends ?? []).map((h: { user_id: string }) => h.user_id);
       let otherIds: string[] = [];
       if (friendIds.length < MAX_NOTIFIED) {
         const { data: others, error: oErr } = await admin.rpc("help_eligible_helpers", {
-          p_asker: userId, p_riddle: idx, p_limit: MAX_NOTIFIED - friendIds.length, p_mode: "others",
+          p_asker: userId, p_riddle: idx, p_limit: MAX_NOTIFIED - friendIds.length, p_mode: "others", p_kind: kind,
         });
         if (oErr) return json({ error: "Lookup failed" }, 500);
         otherIds = (others ?? []).map((h: { user_id: string }) => h.user_id);
@@ -230,6 +256,7 @@ Deno.serve(async (req) => {
       const sinceIso = new Date(Date.now() - FREE_RETRY_WINDOW_MS).toISOString();
       await admin.from("help_requests").update({ retry_used: true })
         .eq("asker_id", userId).eq("riddle_index", idx)
+        .eq("kind", kind)
         .eq("status", "expired").eq("retry_used", false).gte("created_at", sinceIso);
 
       const expiresAt = new Date(Date.now() + REQUEST_TTL_MS).toISOString();
@@ -237,14 +264,15 @@ Deno.serve(async (req) => {
         .from("help_requests")
         .insert({
           asker_id: userId, riddle_index: idx, notified_ids: ids, expires_at: expiresAt,
-          talk_seconds: talkSecondsFor(prof.help_pass_tier, prof.help_pass_until),
+          kind,
+          talk_seconds: kind === "voice" ? talkSecondsFor(prof.help_pass_tier, prof.help_pass_until) : 0,
         })
         .select("id, session_key, expires_at").single();
       if (iErr || !row) return json({ error: "Create failed" }, 500);
 
       return json({
         id: row.id, sessionKey: row.session_key, status: "open",
-        expiresAt: row.expires_at, notified: ids.length,
+        expiresAt: row.expires_at, notified: ids.length, kind,
       }, 200);
     }
 
@@ -275,7 +303,7 @@ Deno.serve(async (req) => {
         if (blk && blk.length > 0) return json({ error: "taken_or_expired" }, 409);
       }
       const { data: pre } = await admin
-        .from("help_requests").select("talk_seconds").eq("id", id).maybeSingle();
+        .from("help_requests").select("talk_seconds, kind").eq("id", id).maybeSingle();
       const talk = Math.min(TALK_MAX_S, Math.max(0, Number(pre?.talk_seconds ?? 60)));
       const sessionEnds = new Date(Date.now() + Math.max(SESSION_TTL_MS, (talk + PICK_GRACE_S) * 1000)).toISOString();
       const { data: rows, error } = await admin
@@ -287,6 +315,20 @@ Deno.serve(async (req) => {
       if (error) return json({ error: "Accept failed" }, 500);
       if (!rows || rows.length === 0) return json({ error: "taken_or_expired" }, 409);
       const r = rows[0];
+      const kind = normalizeKind(pre?.kind);
+
+      // لو المساعد كان جاوب اللغز غلط: السيرفر يعرف (من نتيجته المحفوظة) ويحفظ اختياره الغلط.
+      const { data: hs } = await admin
+        .from("riddle_starts").select("result, selected_option")
+        .eq("user_id", userId).eq("riddle_index", r.riddle_index).maybeSingle();
+      const wrong = kind === "voice"
+        ? helperWrongInfo(hs?.result, hs?.selected_option)
+        : { wasWrong: false, wrongOption: null as string | null };
+      if (wrong.wasWrong) {
+        await admin.from("help_requests")
+          .update({ helper_was_wrong: true, helper_wrong_option: wrong.wrongOption })
+          .eq("id", r.id);
+      }
 
       // لغز اللاعب اللي بيطلب المساعدة يتعلّم "بمساعدة" (بيدخل المنافسة عادي، والمالك يشوف العلامة).
       await admin.from("riddle_starts")
@@ -307,6 +349,9 @@ Deno.serve(async (req) => {
         sessionKey: r.session_key,
         expiresAt: r.expires_at,
         talkSeconds: talk,
+        kind,
+        wasWrong: wrong.wasWrong,
+        wrongOption: wrong.wrongOption,
         asker: { id: r.asker_id, ...(people.get(r.asker_id) ?? { username: displayName(null, r.asker_id), avatarUrl: null }) },
       }, 200);
     }
@@ -319,7 +364,7 @@ Deno.serve(async (req) => {
 
       const { data: reqRow } = await admin
         .from("help_requests")
-        .select("id, asker_id, helper_id, riddle_index, status, accepted_at, expires_at")
+        .select("id, asker_id, helper_id, riddle_index, status, accepted_at, expires_at, helper_was_wrong, helper_wrong_option")
         .eq("id", id).maybeSingle();
       if (!reqRow || reqRow.helper_id !== userId) return json({ error: "Not found" }, 404);
       if (reqRow.status !== "accepted") return json({ error: reqRow.status }, 409);
@@ -332,7 +377,12 @@ Deno.serve(async (req) => {
       const reward = helperReward(b.option, ANSWERS[reqRow.riddle_index], elapsedMs);
       if (!reward.selected) return json({ error: "Invalid option" }, 400);
 
-      let points = reward.points;
+      // المساعد اللي عرف إنه جاوب غلط مينفعش يرشّح نفس الإجابة الغلط تاني.
+      if (reqRow.helper_was_wrong && isSameOption(reward.selected, reqRow.helper_wrong_option)) {
+        return json({ error: "same_as_wrong" }, 400);
+      }
+
+      let points = pointsForHelper(!!reqRow.helper_was_wrong, reward.points);
       if (points > 0) {
         const dayStart = cairoDayStartIso();
         const { count: todayHelps } = await admin
@@ -368,7 +418,10 @@ Deno.serve(async (req) => {
         const { error: pErr } = await admin.rpc("help_add_points", { p_user: userId, p_points: points });
         if (pErr) console.error("help_add_points failed", pErr);
       }
-      return json({ correct: reward.correct, points, capped: reward.points > 0 && points === 0 }, 200);
+      return json({
+        correct: reward.correct, points,
+        capped: !reqRow.helper_was_wrong && reward.points > 0 && points === 0,
+      }, 200);
     }
 
     // ---------- متابعة الطلب ----------
@@ -379,7 +432,7 @@ Deno.serve(async (req) => {
 
       const { data: r } = await admin
         .from("help_requests")
-        .select("id, asker_id, helper_id, riddle_index, status, session_key, expires_at, hint_text, helper_points, helper_correct, accepted_at, talk_seconds, talk_extended")
+        .select("id, asker_id, helper_id, riddle_index, status, session_key, expires_at, hint_text, helper_points, helper_correct, accepted_at, talk_seconds, talk_extended, kind, voice_started_at, helper_was_wrong, helper_wrong_option")
         .eq("id", id).maybeSingle();
       if (!r) return json({ error: "Not found" }, 404);
 
@@ -393,7 +446,20 @@ Deno.serve(async (req) => {
         ? { id: otherId, ...(people.get(otherId) ?? { username: displayName(null, otherId), avatarUrl: null }) }
         : null;
 
+      const kind = normalizeKind(r.kind);
+      // النسخة الجديدة من التطبيق (v=2) بتحسب الوقت من لحظة بداية الصوت؛ القديمة من وقت القبول.
+      const tl = talkTimeline(r.voice_started_at, r.talk_seconds);
+      const talkLeftNow = b.v === 2
+        ? (r.status === "accepted" ? tl.talkLeft : 0)
+        : (r.status === "accepted" && r.accepted_at
+          ? Math.max(0, Math.ceil((Date.parse(r.accepted_at) + r.talk_seconds * 1000 - Date.now()) / 1000))
+          : 0);
       return json({
+        kind,
+        voiceStarted: tl.started,
+        wasWrong: isHelper ? !!r.helper_was_wrong : undefined,
+        wrongOption: isHelper && r.helper_was_wrong ? r.helper_wrong_option : undefined,
+        hintWrongOption: isAsker && r.status === "answered" && r.helper_was_wrong ? r.helper_wrong_option : null,
         role: isAsker ? "asker" : "helper",
         status: r.status,
         riddleIndex: r.riddle_index,
@@ -401,10 +467,9 @@ Deno.serve(async (req) => {
         sessionKey: r.session_key,
         other,
         talkSeconds: r.talk_seconds,
-        talkLeft: r.status === "accepted" && r.accepted_at
-          ? Math.max(0, Math.ceil((Date.parse(r.accepted_at) + r.talk_seconds * 1000 - Date.now()) / 1000))
-          : 0,
-        canExtend: isAsker && r.status === "accepted" && !r.talk_extended && r.talk_seconds < TALK_MAX_S,
+        talkLeft: talkLeftNow,
+        canExtend: isAsker && kind === "voice" && r.status === "accepted" && tl.started
+          && !r.talk_extended && r.talk_seconds < TALK_MAX_S,
         hintText: isAsker && r.status === "answered" ? r.hint_text : null,
         helperPoints: isHelper ? r.helper_points : undefined,
       }, 200);
@@ -483,10 +548,11 @@ Deno.serve(async (req) => {
       if (!id) return json({ error: "Invalid id" }, 400);
       const { data: r } = await admin
         .from("help_requests")
-        .select("id, asker_id, status, talk_seconds, talk_extended, expires_at, accepted_at")
+        .select("id, asker_id, status, talk_seconds, talk_extended, expires_at, accepted_at, kind, voice_started_at")
         .eq("id", id).maybeSingle();
       if (!r || r.asker_id !== userId) return json({ error: "Not found" }, 404);
-      if (r.status !== "accepted" || r.talk_extended || r.talk_seconds >= TALK_MAX_S) {
+      if (normalizeKind(r.kind) !== "voice" || !r.voice_started_at
+        || r.status !== "accepted" || r.talk_extended || r.talk_seconds >= TALK_MAX_S) {
         return json({ error: "cannot_extend" }, 409);
       }
       const newTalk = Math.min(TALK_MAX_S, r.talk_seconds + 60);
@@ -498,6 +564,43 @@ Deno.serve(async (req) => {
         .select("id");
       if (!upd || upd.length === 0) return json({ error: "cannot_extend" }, 409);
       return json({ ok: true, talkSeconds: newTalk }, 200);
+    }
+
+    // ---------- الصوت اتوصل عند الطرف ده (العدّاد بيبدأ لما الاتنين يبلّغوا) ----------
+    if (action === "voice_ready") {
+      const id = asUuid(b.id);
+      if (!id) return json({ error: "Invalid id" }, 400);
+      const { data: r } = await admin
+        .from("help_requests")
+        .select("id, asker_id, helper_id, status, kind, talk_seconds, expires_at, voice_started_at, asker_voice_ready, helper_voice_ready")
+        .eq("id", id).maybeSingle();
+      if (!r || (r.asker_id !== userId && r.helper_id !== userId)) return json({ error: "Not found" }, 404);
+      if (r.status !== "accepted" || normalizeKind(r.kind) !== "voice") return json({ error: "not_in_session" }, 409);
+      if (r.voice_started_at) return json({ started: true, startedAt: r.voice_started_at }, 200);
+
+      const isAsker = r.asker_id === userId;
+      const askerReady = isAsker ? true : !!r.asker_voice_ready;
+      const helperReady = isAsker ? !!r.helper_voice_ready : true;
+      await admin.from("help_requests")
+        .update(isAsker ? { asker_voice_ready: true } : { helper_voice_ready: true })
+        .eq("id", id).eq("status", "accepted");
+
+      if (!(askerReady && helperReady)) return json({ started: false }, 200);
+
+      // الاتنين جاهزين: نسجّل بداية الصوت مرة واحدة (أول واحد ينجح بس) ونمدّد مهلة الجلسة.
+      const startedMs = Date.now();
+      const { data: upd } = await admin
+        .from("help_requests")
+        .update({
+          voice_started_at: new Date(startedMs).toISOString(),
+          expires_at: sessionEndAfterVoiceStart(r.expires_at, startedMs, r.talk_seconds),
+        })
+        .eq("id", id).eq("status", "accepted").is("voice_started_at", null)
+        .select("voice_started_at");
+      if (upd && upd.length > 0) return json({ started: true, startedAt: upd[0].voice_started_at }, 200);
+      const { data: again } = await admin
+        .from("help_requests").select("voice_started_at").eq("id", id).maybeSingle();
+      return json({ started: !!again?.voice_started_at, startedAt: again?.voice_started_at ?? null }, 200);
     }
 
     // ---------- إلغاء ----------
@@ -535,7 +638,7 @@ async function makeFriends(admin: any, requestId: string, a: string, b: string) 
   );
 }
 
-type Row = { id: string; asker_id: string; riddle_index: number; expires_at: string };
+type Row = { id: string; asker_id: string; riddle_index: number; expires_at: string; kind?: string | null };
 
 // الطلبات اللي مهلتها خلصت تتقفل (بتتنفذ مع أي نداء — مفيش مهمة مجدولة).
 // deno-lint-ignore no-explicit-any
