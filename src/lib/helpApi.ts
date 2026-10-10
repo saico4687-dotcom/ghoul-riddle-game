@@ -170,3 +170,6 @@ export const helpRuntime = { askerActive: false };
 export const HELP_AVAILABILITY_EVENT = "help-availability-changed";
 // علامة بتخلّي الصفحة الرئيسية تفتح اللغز على طول بعد ما المساعد يخلّص.
 export const RESUME_PLAY_KEY = "rabh_resume_play_v1";
+
+// علامة: التحدي بدأ من صفحة لغز (بعد النهاية نرجع للغز).
+export const FROM_RIDDLE_KEY = "arena_from_riddle_v1";

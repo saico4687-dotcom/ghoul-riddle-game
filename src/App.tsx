@@ -18,6 +18,9 @@ import OAuthCallback from "./pages/OAuthCallback";
 import NotFound from "./pages/NotFound";
 import HelperSession from "./pages/HelperSession";
 import HelpInbox from "./components/help/HelpInbox";
+import ChallengeInbox from "./components/arena/ChallengeInbox";
+import Arena from "./pages/Arena";
+import ArenaDuel from "./pages/ArenaDuel";
 import { useButtonSounds } from "@/hooks/useButtonSounds";
 
 import ChatLayout from "./pages/chat/ChatLayout";
@@ -52,6 +55,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <HelpInbox />
+        <ChallengeInbox />
         <ButtonSounds />
         <Routes>
           <Route path="/" element={<Index />} />
@@ -63,6 +67,8 @@ const App = () => (
           <Route path="/buy-answers" element={<BuyAnswers />} />
           <Route path="/support" element={<SupportChat />} />
           <Route path="/help/:id" element={<HelperSession />} />
+          <Route path="/arena" element={<Arena />} />
+          <Route path="/arena/:id" element={<ArenaDuel />} />
           <Route path="/auth/callback" element={<OAuthCallback />} />
 
           {/* إعداد اسم المستخدم — لازم يفضل برا حراسة RequireCompletion

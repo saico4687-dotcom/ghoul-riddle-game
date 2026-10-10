@@ -7,6 +7,7 @@ import RiddleOption from "./RiddleOption";
 import HorrorButton from "./HorrorButton";
 import HorrorClock from "./HorrorClock";
 import HelpFriend from "@/components/help/HelpFriend";
+import ChallengeButtons from "@/components/arena/ChallengeButtons";
 import { playSfx } from "@/lib/sfx";
 import { correctId, wrongId } from "@/lib/soundCatalog";
 
@@ -471,6 +472,9 @@ const RiddleCard = ({
             onAdStart={() => setAdPaused(true)}
             onAdEnd={() => setAdPaused(false)}
           />
+        )}
+        {gameMode === "fun" && serverTracking && userId && !showResult && (
+          <ChallengeButtons riddleIndex={riddleNumber - 1} disabled={!isTypingComplete || paused || submitting} />
         )}
         {lifelineUsed && (
           <p className="text-xs text-muted-foreground font-typewriter">

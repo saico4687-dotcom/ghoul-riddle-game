@@ -12,6 +12,12 @@ export const SOUND_IDS = {
   helpSiren: "help_siren", // وصول إشعار النجدة: سيارة نجدة + جرس افتتاح مباراة
   helpWarning: "help_warning", // المساعد اللي أخطأ: صوت تحذير "قد أخطأت"
   friendRequest: "friend_request", // استلام طلب صداقة
+  challengeBell: "challenge_bell", // جرس بداية التحدي
+  challengeInvite: "challenge_invite", // وصول تحدي (جرس الحلبة + المذيع)
+  challengeDecline: "challenge_decline", // "لا أقبل" (سخرية كوميدية)
+  challengeAccept: "challenge_accept", // "هيا بنا" (جرس + المذيع)
+  challengeWin: "challenge_win", // الفوز بالتحدي
+  challengeLose: "challenge_lose", // الخسارة في التحدي
 } as const;
 
 export interface CatalogItem {
@@ -23,6 +29,12 @@ export const SOUND_CATALOG: CatalogItem[] = [
   { id: SOUND_IDS.helpSiren, desc: "وصول إشعار النجدة (سيارة نجدة + جرس افتتاح مباراة)" },
   { id: SOUND_IDS.helpWarning, desc: "تحذير للمساعد اللي أخطأ في اللغز (قد أخطأت)" },
   { id: SOUND_IDS.friendRequest, desc: "استلام طلب صداقة" },
+  { id: SOUND_IDS.challengeBell, desc: "جرس بداية التحدي (لما تبعت التحدي)" },
+  { id: SOUND_IDS.challengeInvite, desc: "وصول تحدي (جرس الحلبة + صوت المذيع)" },
+  { id: SOUND_IDS.challengeDecline, desc: "زر \"لا أقبل\" في التحدي (صوت كوميدي ساخر)" },
+  { id: SOUND_IDS.challengeAccept, desc: "زر \"هيا بنا\" في التحدي (جرس + المذيع)" },
+  { id: SOUND_IDS.challengeWin, desc: "الفوز بالتحدي" },
+  { id: SOUND_IDS.challengeLose, desc: "الخسارة في التحدي" },
   ...Array.from({ length: ENTRANCE_COUNT }, (_, i) => ({
     id: `entrance_${i + 1}`,
     desc: `دخلة مصارع رقم ${i + 1} (تظهر للطرف التاني لما يتقبل طلب الصداقة)`,

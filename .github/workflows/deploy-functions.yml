@@ -98,3 +98,9 @@ jobs:
         run: supabase functions deploy turn-credentials
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      # التحدي (الحلبة)
+      - name: Deploy challenge
+        run: supabase functions deploy challenge
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

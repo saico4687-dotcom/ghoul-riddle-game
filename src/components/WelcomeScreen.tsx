@@ -150,6 +150,17 @@ const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
             </motion.div>
           </div>
 
+          {user && (
+            <div className="flex justify-center mb-4">
+              <Link
+                to="/arena"
+                className="px-8 py-3 rounded-xl border-2 border-red-500/70 bg-red-950/50 text-red-300 font-horror text-xl hover:bg-red-900/50 transition-colors"
+              >
+                🥊 حلبة التحدي
+              </Link>
+            </div>
+          )}
+
           <div className="flex justify-center mb-8">
             <button
               onClick={() => (window.location.href = "/buy-answers")}
