@@ -18,6 +18,7 @@ import OAuthCallback from "./pages/OAuthCallback";
 import NotFound from "./pages/NotFound";
 import HelperSession from "./pages/HelperSession";
 import HelpInbox from "./components/help/HelpInbox";
+import { useButtonSounds } from "@/hooks/useButtonSounds";
 
 import ChatLayout from "./pages/chat/ChatLayout";
 import ChatHome from "./pages/chat/ChatHome";
@@ -39,6 +40,11 @@ import StoryViewer from "./components/chat/StoryViewer";
 
 const queryClient = new QueryClient();
 
+function ButtonSounds() {
+  useButtonSounds();
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -46,6 +52,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <HelpInbox />
+        <ButtonSounds />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/settings" element={<Settings />} />

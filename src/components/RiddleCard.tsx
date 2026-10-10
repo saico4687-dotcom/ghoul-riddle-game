@@ -7,6 +7,8 @@ import RiddleOption from "./RiddleOption";
 import HorrorButton from "./HorrorButton";
 import HorrorClock from "./HorrorClock";
 import HelpFriend from "@/components/help/HelpFriend";
+import { playSfx } from "@/lib/sfx";
+import { correctId, wrongId } from "@/lib/soundCatalog";
 
 import { Brain, Mic, MicOff, Scissors, Clock, Volume2, VolumeX } from "lucide-react";
 
@@ -377,7 +379,14 @@ const RiddleCard = ({
       setServerCorrect(res.isCorrect);
       setServerExplanation(res.explanation);
       setShowResult(true);
-      playSound(res.isCorrect ? "correct" : "wrong");
+      // صوت الرد: السيرفر بيحدد رقمه (5 صح + 5 غلط بالترتيب). لو الملف ناقص بنرجع للصوت القديم.
+      if (res.reactionNo) {
+        playSfx(res.isCorrect ? correctId(res.reactionNo) : wrongId(res.reactionNo), {
+          fallback: () => playSound(res.isCorrect ? "correct" : "wrong"),
+        });
+      } else {
+        playSound(res.isCorrect ? "correct" : "wrong");
+      }
 
       onAnswer(res.isCorrect, chosenIndex, undefined, elapsedMs);
       onServerResult?.(res);

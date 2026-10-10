@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { useAuth } from "@/hooks/useAuth";
 import { helpApi, helpErrorMessage, helpRuntime, HELP_AVAILABILITY_EVENT, type HelpKind, type HelpPerson } from "@/lib/helpApi";
+import { playSfx } from "@/lib/sfx";
+import { entranceId, SOUND_IDS } from "@/lib/soundCatalog";
 
 // صندوق وارد عام: لو اللاعب "متاح للمساعدة" والتطبيق مفتوح، بنسأل السيرفر كل 15 ثانية (وباقي اللاعبين كل 60 ثانية).
 // (مفيش إشعارات خلفية على أندرويد — الطلب بيوصل بس للي فاتح التطبيق.)
@@ -23,6 +25,10 @@ export default function HelpInbox() {
   const [friendReq, setFriendReq] = useState<FriendReq | null>(null);
   const dismissedFriends = useRef<Set<string>>(new Set());
   const dismissed = useRef<Set<string>>(new Set());
+  // علشان الصوت يشتغل مرة واحدة لكل طلب/إشعار (مش مع كل فحص).
+  const soundedHelp = useRef<Set<string>>(new Set());
+  const soundedFriend = useRef<Set<string>>(new Set());
+  const shownAccepted = useRef<Set<string>>(new Set());
   const onSession = location.pathname.startsWith("/help/");
 
   // نقرأ إعداد "متاح" مرة، ونتابع تغييره من الإعدادات.
@@ -59,8 +65,25 @@ export default function HelpInbox() {
     // طلبات الصداقة اللي اتبعتت من جوه المساعدة (بتظهر لأي لاعب مسجّل).
     const fr = (r.data.friendRequests ?? []).find((f) => !dismissedFriends.current.has(f.id)) ?? null;
     setFriendReq(fr);
+    if (fr && !soundedFriend.current.has(fr.id)) {
+      soundedFriend.current.add(fr.id);
+      playSfx(SOUND_IDS.friendRequest);
+    }
     const next = r.data.pending.find((p) => !dismissed.current.has(p.id)) ?? null;
     setPending(next);
+    if (next && !soundedHelp.current.has(next.id)) {
+      soundedHelp.current.add(next.id);
+      playSfx(SOUND_IDS.helpSiren);
+    }
+
+    // اتقبل طلب صداقة بعتّه: دخلة المصارع بتاعة اللي قبل (السيرفر هو اللي اختار رقمها).
+    const accepted = (r.data.friendAccepted ?? []).filter((a) => !shownAccepted.current.has(a.id));
+    if (accepted.length > 0) {
+      for (const a of accepted) shownAccepted.current.add(a.id);
+      playSfx(entranceId(accepted[0].entranceNo));
+      toast.success(`🥊 ${accepted[0].friend.username} دخل الحلبة وبقى صديقك!`);
+      void helpApi.ackFriendAccept(accepted.map((a) => a.id));
+    }
   }, [navigate, onSession]);
 
   // المتاح للمساعدة بيسأل كل 15 ثانية (لازم أقل من مهلة النبضة 45 ث)، وباقي اللاعبين كل 60 ثانية (لطلبات الصداقة بس).

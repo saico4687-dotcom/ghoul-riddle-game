@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 // نتيجة تصحيح السيرفر. مفيهاش الإجابة الصحيحة أبدًا — الشرح بيجي بس لو الإجابة صح.
 export interface ServerAnswerResult {
   isCorrect: boolean;
+  reactionNo?: number; // رقم صوت الرد (1..5) اللي السيرفر اختاره
   explanation: string | null;
   elapsedMs: number;
   pointsEarned: number;

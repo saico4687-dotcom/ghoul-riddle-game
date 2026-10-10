@@ -36,6 +36,7 @@ import {
 //  pick         : المساعد بيبعت اختياره؛ السيرفر بيصحّحه ويدّيه النقاط.
 //  status       : متابعة الطلب (للاعب والمساعد).
 //  voice_ready  : الطرف بيبلّغ إن الصوت اتوصل (العدّاد بيبدأ لما الاتنين يبلّغوا).
+//  ack_friend_accept : تأكيد عرض إشعار قبول الصداقة (دخلة المصارع).
 //  cancel       : إلغاء.
 // نوع الطلب: voice (صوت بإعلان، 5 يوميًا) أو hint (تلميح بدون صوت، باقي الـ 20).
 // الإجابات الصحيحة مبتتبعتش لأي حد؛ المساعد بيعرف إنه صح بس لأنه كان حلّ اللغز قبل كده.
@@ -124,10 +125,26 @@ Deno.serve(async (req) => {
         .order("created_at", { ascending: true })
         .limit(3);
 
+      // طلبات صداقة أنا بعتّها واتقبلت: بنبلّغ بدخلة المصارع بتاعة اللي قبل (مرة واحدة).
+      const { data: accs } = await admin
+        .from("friend_requests")
+        .select("id, to_user")
+        .eq("from_user", userId).eq("status", "accepted").eq("accept_notified", false)
+        .order("responded_at", { ascending: true })
+        .limit(3);
+      const entranceByUser = new Map<string, number>();
+      if (accs && accs.length > 0) {
+        const { data: ents } = await admin
+          .from("profiles").select("user_id, entrance_no")
+          .in("user_id", accs.map((a: { to_user: string }) => a.to_user));
+        for (const e of ents ?? []) entranceByUser.set(e.user_id, Number(e.entrance_no) || 1);
+      }
+
       const ids = [
         ...(pending ?? []).map((r: { asker_id: string }) => r.asker_id),
         ...(activeRows ?? []).map((r: { asker_id: string }) => r.asker_id),
         ...(frs ?? []).map((r: { from_user: string }) => r.from_user),
+        ...(accs ?? []).map((a: { to_user: string }) => a.to_user),
       ];
       const people = await profilesFor(admin, ids);
       const now = Date.now();
@@ -146,6 +163,11 @@ Deno.serve(async (req) => {
         friendRequests: (frs ?? []).map((f: { id: string; from_user: string }) => ({
           id: f.id,
           from: people.get(f.from_user) ?? { username: displayName(null, f.from_user), avatarUrl: null },
+        })),
+        friendAccepted: (accs ?? []).map((a: { id: string; to_user: string }) => ({
+          id: a.id,
+          friend: people.get(a.to_user) ?? { username: displayName(null, a.to_user), avatarUrl: null },
+          entranceNo: entranceByUser.get(a.to_user) ?? 1,
         })),
       }, 200);
     }
@@ -526,6 +548,17 @@ Deno.serve(async (req) => {
         if (insErr) return json({ error: "Create failed" }, 500);
       }
       return json({ status: "sent" }, 200);
+    }
+
+    // ---------- تأكيد إن إشعار "اتقبل طلب صداقتك" اتعرض ----------
+    if (action === "ack_friend_accept") {
+      const raw = Array.isArray(b.ids) ? b.ids : [];
+      const ids = raw.map((x) => asUuid(x)).filter((x): x is string => !!x).slice(0, 10);
+      if (ids.length === 0) return json({ ok: true }, 200);
+      await admin.from("friend_requests")
+        .update({ accept_notified: true })
+        .eq("from_user", userId).in("id", ids);
+      return json({ ok: true }, 200);
     }
 
     // ---------- الرد على طلب صداقة ----------

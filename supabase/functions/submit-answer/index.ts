@@ -230,7 +230,13 @@ Deno.serve(async (req) => {
       else if (newScore === 200 && !mProfile?.milestone_200_resolved) milestoneReached = 200;
     }
 
+    // رقم صوت الرد (1..5) بالترتيب: الصح حسب عدد الصح، والغلط حسب عدد الغلط (السيرفر هو اللي بيحدد).
+    const REACTION_COUNT = 5;
+    const seqN = isCorrect ? newScore : Math.max(1, nextIndex - newScore);
+    const reactionNo = ((Math.max(1, seqN) - 1) % REACTION_COUNT) + 1;
+
     const payload = {
+      reactionNo,
       isCorrect,
       explanation: isCorrect ? EXPLANATIONS[riddleIndex] : null,
       elapsedMs,

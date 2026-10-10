@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { helpApi, HELP_AVAILABILITY_EVENT } from "@/lib/helpApi";
+import { isSfxEnabled, setSfxEnabled } from "@/lib/sfx";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +28,7 @@ const Settings = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [helpAvailable, setHelpAvailable] = useState(false);
   const [helpBusy, setHelpBusy] = useState(false);
+  const [sfxOn, setSfxOn] = useState(isSfxEnabled());
 
   useEffect(() => {
     if (!user) return;
@@ -113,6 +115,24 @@ const Settings = () => {
             </Link>
           </section>
         )}
+        <section className="card-horror p-5">
+          <h2 className="font-horror text-lg text-primary mb-4">الأصوات</h2>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-typewriter text-foreground">المؤثرات الصوتية</p>
+              <p className="font-typewriter text-xs text-muted-foreground leading-relaxed mt-1">
+                أصوات الأزرار والنجدة وطلبات الصداقة ودخلات الأصدقاء وردود الإجابات.
+              </p>
+            </div>
+            <Switch
+              checked={sfxOn}
+              onCheckedChange={(v) => {
+                setSfxOn(v);
+                setSfxEnabled(v);
+              }}
+            />
+          </div>
+        </section>
         {user && (
           <section className="card-horror p-5">
             <h2 className="font-horror text-lg text-primary mb-4">المساعدة</h2>

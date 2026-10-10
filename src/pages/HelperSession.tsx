@@ -11,6 +11,8 @@ import { useHelpVoice } from "@/hooks/useHelpVoice";
 import { useAuth } from "@/hooks/useAuth";
 import { helpApi, helpErrorMessage, RESUME_PLAY_KEY, type HelpKind, type HelpPerson } from "@/lib/helpApi";
 import { playWarningSound } from "@/lib/helpSfx";
+import { playSfx } from "@/lib/sfx";
+import { SOUND_IDS } from "@/lib/soundCatalog";
 import moneyBg from "@/assets/money-bg.jpg";
 import riddleCompetitionVideo from "@/assets/riddle-competition.mp4";
 
@@ -123,7 +125,7 @@ export default function HelperSession() {
   useEffect(() => {
     if (wasWrong && !warnedRef.current) {
       warnedRef.current = true;
-      playWarningSound();
+      playSfx(SOUND_IDS.helpWarning, { fallback: playWarningSound });
     }
   }, [wasWrong]);
 

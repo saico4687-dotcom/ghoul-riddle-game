@@ -46,7 +46,11 @@ export const helpApi = {
       pending: { id: string; riddleIndex: number; kind: HelpKind; secondsLeft: number; asker: HelpPerson }[];
       active: { id: string; riddleIndex: number; kind: HelpKind } | null;
       friendRequests: { id: string; from: HelpPerson }[];
+      friendAccepted?: { id: string; friend: HelpPerson; entranceNo: number }[];
     }>({ action: "inbox" }),
+
+  // تأكيد إن إشعار قبول الصداقة (دخلة المصارع) اتعرض.
+  ackFriendAccept: (ids: string[]) => call<{ ok: true }>({ action: "ack_friend_accept", ids }),
 
   availability: (riddleIndex: number) =>
     call<{
