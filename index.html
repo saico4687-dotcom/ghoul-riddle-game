@@ -84,7 +84,15 @@
         to   { opacity: 1; transform: translateY(0); }
       }
     </style>
-  </head>
+  <script>
+(function(){
+function show(m){var d=document.getElementById("boot-err");if(!d){d=document.createElement("pre");d.id="boot-err";d.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;max-height:45vh;overflow:auto;z-index:2147483647;background:#300;color:#fff;font:11px monospace;padding:8px;white-space:pre-wrap;direction:ltr;text-align:left";document.body.appendChild(d);}d.textContent+=m+" | ";}
+window.addEventListener("error",function(e){var t=e.target&&e.target.src?"LOAD FAIL: "+e.target.src:"";show("ERR: "+(t||e.message)+(e.filename?" @"+e.filename+":"+e.lineno:""));},true);
+window.addEventListener("unhandledrejection",function(e){show("PROMISE: "+(e.reason&&(e.reason.stack||e.reason.message)||e.reason));});
+setTimeout(function(){if(document.getElementById("boot-splash"))show("WATCHDOG: app not started after 8s");},8000);
+})();
+</script>
+</head>
 
   <body>
     <div id="root">
