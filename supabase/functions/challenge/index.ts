@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { sendChallengePush } from "./fcm.ts";
 import { ANSWERS } from "../submit-answer/answers.ts";
 import { isAnswerCorrect } from "../submit-answer/logic.ts";
 import {
@@ -14,6 +15,8 @@ import {
   gameEndsAtMs,
   GRACE_MS,
   OPEN_TTL_MS,
+  REMATCH_WINDOW_MS,
+  seriesScore,
   playBaseMs,
   type GameKey,
 } from "./logic.ts";
@@ -161,6 +164,8 @@ Deno.serve(async (req) => {
         .select("id")
         .single();
       if (iErr || !row) return json({ error: "create_failed" }, 500);
+      // إشعار حقيقي للخصم (لو التطبيق مقفول). best-effort.
+      await sendChallengePush(admin, oppId, "🥊 فيه حد بيتحداك!", `${p.ring_name} بيتحداك — ادخل التطبيق خلال دقيقة`, row.id);
       return json({ id: row.id }, 200);
     }
 
@@ -197,6 +202,53 @@ Deno.serve(async (req) => {
         };
       }
       return json({ pending, active: playing && playing.length > 0 ? { id: playing[0].id } : null }, 200);
+    }
+
+    // ---------- history: "تحدياتك" (النتيجة مع كل خصم) ----------
+    if (action === "history") {
+      const { data: rows } = await admin
+        .from("challenges")
+        .select("challenger_id, opponent_id, winner, finished_at")
+        .or(`challenger_id.eq.${userId},opponent_id.eq.${userId}`)
+        .eq("status", "finished")
+        .order("finished_at", { ascending: false })
+        .limit(500);
+      const byOpp = new Map<string, { rows: { challenger_id: string; opponent_id: string; winner: string | null }[]; last: string; lastWinner: string | null; lastRow: { challenger_id: string; opponent_id: string; winner: string | null } }>();
+      for (const r of rows ?? []) {
+        const other = r.challenger_id === userId ? r.opponent_id : r.challenger_id;
+        const e = byOpp.get(other);
+        if (e) e.rows.push(r);
+        else byOpp.set(other, { rows: [r], last: r.finished_at, lastWinner: r.winner, lastRow: r });
+      }
+      const ids = [...byOpp.keys()];
+      const people = await profilesFor(admin, ids);
+      const { data: rings } = ids.length
+        ? await admin.from("profiles").select("user_id, ring_name").in("user_id", ids)
+        : { data: [] };
+      const ringOf = (uid: string) => (rings ?? []).find((x: { user_id: string }) => x.user_id === uid)?.ring_name ?? null;
+      const { data: me } = await admin.from("profiles").select("ring_name").eq("user_id", userId).maybeSingle();
+      const list = ids.map((oid) => {
+        const e = byOpp.get(oid)!;
+        const sc = seriesScore(e.rows, userId);
+        const p = people.get(oid);
+        const name = ringOf(oid) ?? p?.username ?? "لاعب";
+        let leader: "me" | "other" | "draw" = "draw";
+        if (sc.meWins > sc.otherWins) leader = "me";
+        else if (sc.otherWins > sc.meWins) leader = "other";
+        return {
+          opponentId: oid,
+          name,
+          avatarUrl: p?.avatarUrl ?? null,
+          meWins: sc.meWins,
+          otherWins: sc.otherWins,
+          draws: sc.draws,
+          rounds: sc.rounds,
+          leader,
+          leaderName: leader === "me" ? (me?.ring_name ?? "أنت") : leader === "other" ? name : null,
+          lastAt: e.last,
+        };
+      }).sort((a, b) => (a.lastAt < b.lastAt ? 1 : -1));
+      return json({ list }, 200);
     }
 
     // باقي الأفعال بتخص تحدي معيّن.
@@ -251,6 +303,58 @@ Deno.serve(async (req) => {
       await markSeen(admin, c0.challenger_id, c0.riddle_index);
       await markSeen(admin, c0.opponent_id, c0.riddle_index);
       return json({ id }, 200);
+    }
+
+    // ---------- rematch: تصويت "هل تريد استمرار التحدي؟" ----------
+    if (action === "rematch") {
+      const c = await settle(admin, c0);
+      if (c.status !== "finished") return json({ error: "not_finished" }, 409);
+      if (c.finished_at && Date.now() - Date.parse(c.finished_at) > REMATCH_WINDOW_MS) return json({ error: "gone" }, 410);
+      const yes = b.yes === true;
+      const col = role === "challenger" ? "rematch_challenger" : "rematch_opponent";
+      await admin.from("challenges").update({ [col]: yes }).eq("id", id).is(col, null);
+      const { data: fresh } = await admin.from("challenges").select("*").eq("id", id).single();
+      let cur = fresh;
+      if (cur.rematch_challenger === true && cur.rematch_opponent === true && !cur.rematch_id) {
+        // الاتنين وافقوا: أول واحد ياخد "المطالبة" بينشئ الجولة الجديدة.
+        if ((await countToday("challenger_id")) >= DAILY_CHALLENGE_CAP || (cur.voice && (await countToday("challenger_id", true)) >= DAILY_VOICE_CAP)) {
+          await admin.from("challenges").update({ rematch_challenger: false }).eq("id", id).is("rematch_id", null);
+          return json({ error: "daily_cap" }, 429);
+        }
+        const g = GAMES[cur.game as GameKey];
+        const newId = crypto.randomUUID();
+        const { data: claim } = await admin.from("challenges").update({ rematch_id: newId }).eq("id", id).is("rematch_id", null).select("id");
+        if (claim && claim.length > 0) {
+          const riddleIndex = await pickRiddle(admin, cur.challenger_id, cur.opponent_id, cur.riddle_index);
+          const now = Date.now();
+          const startsAt = now + COUNTDOWN_MS;
+          const { error: iErr } = await admin.from("challenges").insert({
+            id: newId,
+            challenger_id: cur.challenger_id,
+            opponent_id: cur.opponent_id,
+            riddle_index: riddleIndex,
+            game: cur.game,
+            voice: cur.voice,
+            from_riddle: false,
+            challenger_entrance: cur.challenger_entrance,
+            opponent_entrance: cur.opponent_entrance,
+            status: "playing",
+            accepted_at: new Date(now).toISOString(),
+            starts_at: new Date(startsAt).toISOString(),
+            ends_at: new Date(gameEndsAtMs(g, startsAt)).toISOString(),
+            prev_id: id,
+          });
+          if (iErr) {
+            await admin.from("challenges").update({ rematch_id: null, rematch_challenger: null }).eq("id", id);
+            return json({ error: "create_failed" }, 500);
+          }
+          await markSeen(admin, cur.challenger_id, riddleIndex);
+          await markSeen(admin, cur.opponent_id, riddleIndex);
+        }
+        const { data: again } = await admin.from("challenges").select("*").eq("id", id).single();
+        cur = again;
+      }
+      return json(await view(admin, cur, role), 200);
     }
 
     // ---------- cancel ----------
@@ -343,13 +447,21 @@ async function activeFor(admin: any, userId: string, exceptId?: string) {
 
 // لغز عشوائي محدش من الاتنين جاوبه قبل كده (ولو مفيش، أي لغز).
 // deno-lint-ignore no-explicit-any
-async function pickRiddle(admin: any, a: string, bId: string): Promise<number> {
+async function pickRiddle(admin: any, a: string, bId: string, alsoExclude?: number): Promise<number> {
   const [{ data: profs }, { data: rows }] = await Promise.all([
     admin.from("profiles").select("user_id, last_puzzle_index").in("user_id", [a, bId]),
     admin.from("riddle_starts").select("riddle_index").in("user_id", [a, bId]).not("answered_at", "is", null),
   ]);
   const progress = Math.max(0, ...(profs ?? []).map((p: { last_puzzle_index: number | null }) => p.last_puzzle_index ?? 0));
   const answered = new Set<number>((rows ?? []).map((r: { riddle_index: number }) => r.riddle_index));
+  if (alsoExclude !== undefined) answered.add(alsoExclude);
+  // ومن غير ألغاز اتلعبت قبل كده بين الاتنين.
+  const { data: used } = await admin
+    .from("challenges")
+    .select("riddle_index")
+    .or(`and(challenger_id.eq.${a},opponent_id.eq.${bId}),and(challenger_id.eq.${bId},opponent_id.eq.${a})`)
+    .limit(500);
+  for (const u of used ?? []) answered.add((u as { riddle_index: number }).riddle_index);
   const fresh: number[] = [];
   for (let i = progress; i < TOTAL_RIDDLES; i++) if (!answered.has(i)) fresh.push(i);
   const pool = fresh.length > 0 ? fresh : Array.from({ length: TOTAL_RIDDLES }, (_, i) => i);
@@ -480,6 +592,21 @@ async function view(admin: any, c: any, role: "challenger" | "opponent") {
   if (g.sequential && role === "opponent" && c.challenger_done) out.challengerPick = c.challenger_option ?? null;
   if (c.status === "finished") {
     const me = role === "challenger";
+    // نتيجة السلسلة كلها بين اللاعبين (1:0 مثلًا) + حالة التصويت على الاستمرار.
+    const { data: all } = await admin
+      .from("challenges")
+      .select("challenger_id, opponent_id, winner")
+      .eq("status", "finished")
+      .or(`and(challenger_id.eq.${c.challenger_id},opponent_id.eq.${c.opponent_id}),and(challenger_id.eq.${c.opponent_id},opponent_id.eq.${c.challenger_id})`)
+      .limit(500);
+    out.series = seriesScore(all ?? [], userOf(c, role));
+    out.winnerName = c.winner === "draw" ? null : ringOf(c.winner === "challenger" ? c.challenger_id : c.opponent_id);
+    out.rematch = {
+      me: me ? c.rematch_challenger : c.rematch_opponent,
+      other: me ? c.rematch_opponent : c.rematch_challenger,
+      nextId: c.rematch_id ?? null,
+      expiresAt: c.finished_at ? Date.parse(c.finished_at) + REMATCH_WINDOW_MS : null,
+    };
     out.result = {
       winner: c.winner === "draw" ? "draw" : (c.winner === role ? "me" : "other"),
       meCorrect: me ? c.challenger_correct : c.opponent_correct,

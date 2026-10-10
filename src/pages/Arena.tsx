@@ -29,7 +29,7 @@ export default function Arena() {
   const [left, setLeft] = useState(0);
   const [busy, setBusy] = useState(false);
   const [waitId, setWaitId] = useState<string | null>(null);
-  const [secs, setSecs] = useState(45);
+  const [secs, setSecs] = useState(60);
   const startedAt = useRef(0);
 
   useEffect(() => {
@@ -86,7 +86,7 @@ export default function Arena() {
       /* تجاهل */
     }
     startedAt.current = Date.now();
-    setSecs(45);
+    setSecs(60);
     setWaitId(r.data.id);
     setPhase("waiting");
   };
@@ -111,7 +111,7 @@ export default function Arena() {
       }
     };
     const t = setInterval(() => void tick(), 2000);
-    const c = setInterval(() => setSecs(Math.max(0, 45 - Math.floor((Date.now() - startedAt.current) / 1000))), 500);
+    const c = setInterval(() => setSecs(Math.max(0, 60 - Math.floor((Date.now() - startedAt.current) / 1000))), 500);
     return () => {
       stop = true;
       clearInterval(t);

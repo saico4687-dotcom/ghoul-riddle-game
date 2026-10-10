@@ -11,7 +11,8 @@ export interface GameDef {
 
 export const COUNTDOWN_MS = 6000; // عدّ تنازلي قبل بداية اللعب
 export const GRACE_MS = 3000; // سماحية الشبكة
-export const OPEN_TTL_MS = 45_000; // مهلة رد الخصم
+export const OPEN_TTL_MS = 60_000; // مهلة رد الخصم
+export const REMATCH_WINDOW_MS = 120_000; // مهلة التصويت على إعادة اللعب
 export const DAILY_CHALLENGE_CAP = 20; // تحديات يبدأها اللاعب في اليوم (الكل)
 export const DAILY_VOICE_CAP = 5; // منهم بالصوت (والباقي بدون صوت)
 export const DAILY_ACCEPT_CAP = 10; // تحديات يقبلها اللاعب في اليوم
@@ -68,4 +69,22 @@ export function decide(game: GameKey, a: Side, b: Side): Winner {
   if (a.ms < b.ms) return "challenger";
   if (b.ms < a.ms) return "opponent";
   return "draw";
+}
+
+// حساب نتيجة السلسلة بين لاعبين من جولاتهم المنتهية (من وجهة نظر "me").
+export interface RoundRow {
+  challenger_id: string;
+  opponent_id: string;
+  winner: string | null; // challenger | opponent | draw
+}
+
+export function seriesScore(rows: RoundRow[], me: string) {
+  let meWins = 0, otherWins = 0, draws = 0;
+  for (const r of rows) {
+    if (!r.winner) continue;
+    if (r.winner === "draw") { draws++; continue; }
+    const winnerId = r.winner === "challenger" ? r.challenger_id : r.opponent_id;
+    if (winnerId === me) meWins++; else otherWins++;
+  }
+  return { meWins, otherWins, draws, rounds: meWins + otherWins + draws };
 }

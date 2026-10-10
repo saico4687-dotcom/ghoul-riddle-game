@@ -9,11 +9,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useHelpVoice } from "@/hooks/useHelpVoice";
 import { FROM_RIDDLE_KEY, RESUME_PLAY_KEY } from "@/lib/helpApi";
 import { challengeApi, challengeError, gameName, type ChallengeState } from "@/lib/challengeApi";
+import { showRewarded } from "@/lib/adsMediation";
 import { playSfx } from "@/lib/sfx";
 import { entranceId, SOUND_IDS } from "@/lib/soundCatalog";
 
 // شاشة اللعب: مواجهة (العدّ التنازلي + الدخلات) ← اللغز ← النتيجة. الزمن كله بساعة السيرفر.
-export default function ArenaDuel() {
+function ArenaDuelInner() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -102,6 +103,36 @@ export default function ArenaDuel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [riddle, st?.game, st?.startsAt, Math.floor((sNow - (st?.startsAt ?? 0)) / 2000)]);
 
+  // الاتنين وافقوا على الاستمرار: ندخل الجولة الجديدة.
+  useEffect(() => {
+    const next = st?.rematch?.nextId;
+    if (next) navigate(`/arena/${next}`, { replace: true });
+  }, [st?.rematch?.nextId, navigate]);
+
+  const [voting, setVoting] = useState(false);
+  const vote = async (yes: boolean) => {
+    if (!id || voting) return;
+    if (!yes) {
+      void challengeApi.rematch(id, false);
+      back();
+      return;
+    }
+    setVoting(true);
+    const earned = await showRewarded();
+    if (!earned) {
+      setVoting(false);
+      toast.error("لازم تكمل الإعلان علشان تكمل التحدي.");
+      return;
+    }
+    const r = await challengeApi.rematch(id, true);
+    setVoting(false);
+    if (!r.ok) {
+      toast.error(challengeError(r.error.code));
+      return;
+    }
+    setSt(r.data);
+  };
+
   const send = async (option: string) => {
     if (!id || sending || !st?.canAnswer) return;
     setSending(true);
@@ -186,17 +217,63 @@ export default function ArenaDuel() {
 
   if (st.status === "finished" && st.result) {
     const r = st.result;
-    const title = r.winner === "me" ? "🏆 كسبت التحدي!" : r.winner === "other" ? "💀 خسرت التحدي" : "🤝 تعادل";
+    const sc = st.series ?? { meWins: 0, otherWins: 0, draws: 0, rounds: 1 };
+    const title = r.winner === "me" ? "🏆 كسبت الجولة!" : r.winner === "other" ? "💀 خسرت الجولة" : "🤝 تعادل";
+    const otherName = st.ringOther ?? st.other?.username ?? "خصمك";
+    const rm = st.rematch;
+    const otherRefused = rm?.other === false;
+    const waitingOther = rm?.me === true && rm?.other === null;
+    const expired = rm?.expiresAt ? sNow > rm.expiresAt : false;
     return shell(
       <>
         {versus}
         <div className="card-horror p-6 text-center space-y-3">
           <h2 className="font-horror text-3xl text-primary">{title}</h2>
+          <p className="font-horror text-6xl text-foreground tracking-widest" dir="ltr">
+            {sc.meWins} : {sc.otherWins}
+          </p>
+          <p className="font-typewriter text-xs text-muted-foreground">
+            {st.ringSelf ?? "أنا"} : {otherName}
+            {sc.draws > 0 ? ` — تعادل ${sc.draws}` : ""}
+          </p>
+          <p className="font-typewriter text-lg text-primary">
+            {r.winner === "draw" ? "الجولة انتهت بالتعادل" : `الفائز: ${r.winner === "me" ? (st.ringSelf ?? "أنت") : otherName}`}
+          </p>
           <p className="font-typewriter text-sm text-muted-foreground">
             إجابتك: {r.meCorrect ? "صح ✅" : "غلط ❌"} — إجابة خصمك: {r.otherCorrect ? "صح ✅" : "غلط ❌"}
           </p>
           <p className="font-typewriter text-xs text-muted-foreground">التحدي بدون نقاط وخارج ترتيب الأسبوع.</p>
-          <HorrorButton onClick={back}>رجوع للرئيسية</HorrorButton>
+
+          {otherRefused ? (
+            <p className="font-typewriter text-sm text-foreground">{otherName} اختار ينهي التحدي.</p>
+          ) : expired ? (
+            <p className="font-typewriter text-sm text-foreground">انتهت مهلة الاستمرار.</p>
+          ) : waitingOther ? (
+            <p className="font-typewriter text-sm text-foreground">بنستنى رد {otherName}...</p>
+          ) : (
+            <div className="space-y-2">
+              <p className="font-horror text-xl text-foreground">هل تريد استمرار التحدي؟</p>
+              {rm?.other === true && <p className="font-typewriter text-xs text-primary">{otherName} موافق ✅</p>}
+              <div className="flex gap-3 justify-center">
+                <HorrorButton onClick={() => void vote(true)} disabled={voting}>
+                  {voting ? "..." : "نعم"}
+                </HorrorButton>
+                <HorrorButton onClick={() => void vote(false)} disabled={voting}>
+                  لا
+                </HorrorButton>
+              </div>
+              <p className="font-typewriter text-xs text-muted-foreground">"نعم" بتعرض إعلان قبل الجولة الجديدة.</p>
+            </div>
+          )}
+
+          <div className="flex gap-3 justify-center pt-2">
+            <button type="button" className="font-typewriter text-sm text-muted-foreground underline" onClick={() => navigate("/my-challenges")}>
+              تحدياتك
+            </button>
+            <button type="button" className="font-typewriter text-sm text-muted-foreground underline" onClick={back}>
+              رجوع للرئيسية
+            </button>
+          </div>
         </div>
       </>,
     );
@@ -268,4 +345,10 @@ export default function ArenaDuel() {
       )}
     </>,
   );
+}
+
+export default function ArenaDuel() {
+  const { id } = useParams<{ id: string }>();
+  // مفتاح بالـ id: كل جولة جديدة بتبدأ بحالة نضيفة (الدخلات والنتيجة).
+  return <ArenaDuelInner key={id} />;
 }

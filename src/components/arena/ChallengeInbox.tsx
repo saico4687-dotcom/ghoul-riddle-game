@@ -8,8 +8,9 @@ import EntrancePicker from "@/components/arena/EntrancePicker";
 import SignForm from "@/components/arena/SignForm";
 import { useAuth } from "@/hooks/useAuth";
 import { showRewarded } from "@/lib/adsMediation";
-import { challengeApi, challengeError, gameName } from "@/lib/challengeApi";
+import { challengeApi, challengeError, gameName, CHALLENGE_PENDING_EVENT } from "@/lib/challengeApi";
 import { helpApi, HELP_AVAILABILITY_EVENT } from "@/lib/helpApi";
+import { registerNativePush, PUSH_OPENED_EVENT } from "@/lib/fcm";
 import { playSfx } from "@/lib/sfx";
 import { SOUND_IDS } from "@/lib/soundCatalog";
 
@@ -50,6 +51,11 @@ export default function ChallengeInbox() {
     };
   }, [user]);
 
+  // تسجيل إشعارات الموبايل لما يكون فيه مستخدم داخل.
+  useEffect(() => {
+    if (user) void registerNativePush(user.id);
+  }, [user]);
+
   const poll = useCallback(async () => {
     if (document.visibilityState !== "visible" || onArena || busy) return;
     const r = await challengeApi.inbox();
@@ -59,6 +65,7 @@ export default function ChallengeInbox() {
       return;
     }
     const p = r.data.pending && !dismissed.current.has(r.data.pending.id) ? r.data.pending : null;
+    window.dispatchEvent(new CustomEvent(CHALLENGE_PENDING_EVENT, { detail: p ? 1 : 0 }));
     setPending((prev) => (prev && p && prev.id === p.id ? prev : p));
     if (p && !sounded.current.has(p.id)) {
       sounded.current.add(p.id);
@@ -77,7 +84,17 @@ export default function ChallengeInbox() {
     }
     void poll();
     const t = setInterval(() => void poll(), 15000);
-    return () => clearInterval(t);
+    // أول ما اللاعب يرجع للتطبيق نسأل فورًا (من غير ما ينتظر الدورة).
+    const onVis = () => {
+      if (document.visibilityState === "visible") void poll();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener(PUSH_OPENED_EVENT, onVis);
+    return () => {
+      window.removeEventListener(PUSH_OPENED_EVENT, onVis);
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, [user, available, poll]);
 
   const decline = async () => {

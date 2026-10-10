@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "971518376697",
+    "project_id": "rebh-app",
+    "storage_bucket": "rebh-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:971518376697:android:43923d0c8c238bab0d4028",
+        "android_client_info": {
+          "package_name": "com.rebh.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDu2Sf97WemWLqtb5TsZfnhoxPG5fJPTaM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

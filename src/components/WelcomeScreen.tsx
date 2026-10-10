@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Brain, Lightbulb, Sparkles, Trophy, Settings as SettingsIcon, LogOut } from "lucide-react";
+import { Brain, Lightbulb, Sparkles, Trophy } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { lovable } from "@/integrations/lovable/index";
 import { clearStaleAuth } from "@/lib/clearStaleAuth";
 import { isNativePlatform } from "@/lib/isNative";
 import { startNativeGoogleSignIn } from "@/lib/nativeGoogleAuth";
 import { toast } from "@/hooks/use-toast";
+import MainMenu from "@/components/MainMenu";
 import heroImage from "@/assets/hero-horror.jpg";
 
 export type GameMode = "fun";
@@ -72,13 +73,7 @@ const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
         style={{ backgroundImage: `url(${heroImage})` }}
       />
 
-      <Link
-        to="/settings"
-        aria-label="الإعدادات"
-        className="absolute top-4 left-4 z-20 p-2 rounded-full bg-card/70 border border-primary/40 text-primary hover:bg-card hover:scale-110 transition-all backdrop-blur-sm"
-      >
-        <SettingsIcon className="w-5 h-5" />
-      </Link>
+      <MainMenu onLogin={handleGoogleSignIn} onLogout={handleLogout} loginBusy={googleLoading} />
 
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 text-center">
         <motion.div
@@ -200,18 +195,6 @@ const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
             </motion.div>
           )}
 
-          {user && (
-            <div className="flex justify-center mb-8">
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="flex items-center justify-center gap-2 px-8 py-3 rounded-lg border border-border bg-card/80 text-foreground hover:bg-muted transition font-typewriter"
-              >
-                <LogOut className="w-5 h-5" />
-                <span>تسجيل الخروج</span>
-              </button>
-            </div>
-          )}
 
           <motion.div
             initial={{ opacity: 0 }}

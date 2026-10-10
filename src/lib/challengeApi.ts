@@ -2,6 +2,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 // واجهة التطبيق لدالة السيرفر challenge ("التحدي"). كل القرارات على السيرفر.
 
+// حدث داخلي: عدد التحديات الواصلة (للشارة الحمراء في القايمة).
+export const CHALLENGE_PENDING_EVENT = "challenge-pending-changed";
+
 export type GameKey = "speed" | "one_shot" | "memory" | "pressure" | "moving" | "turns";
 
 export type GameInfo = { key: GameKey | string; icon: string; name: string; desc: string; ready: boolean };
@@ -50,6 +53,9 @@ export type ChallengeState = {
   sequential: boolean;
   expiresAt: number;
   challengerPick?: string | null;
+  series?: { meWins: number; otherWins: number; draws: number; rounds: number };
+  winnerName?: string | null;
+  rematch?: { me: boolean | null; other: boolean | null; nextId: string | null; expiresAt: number | null };
   result?: {
     winner: "me" | "other" | "draw";
     meCorrect: boolean | null;
@@ -111,6 +117,22 @@ export const challengeApi = {
       ring_name: opts?.ringName,
       agree: opts?.ringName ? true : undefined,
     }),
+  rematch: (id: string, yes: boolean) => call<ChallengeState>({ action: "rematch", id, yes }),
+  history: () =>
+    call<{
+      list: {
+        opponentId: string;
+        name: string;
+        avatarUrl: string | null;
+        meWins: number;
+        otherWins: number;
+        draws: number;
+        rounds: number;
+        leader: "me" | "other" | "draw";
+        leaderName: string | null;
+        lastAt: string;
+      }[];
+    }>({ action: "history" }),
   cancel: (id: string) => call<{ ok: true }>({ action: "cancel", id }),
   status: (id: string) => call<ChallengeState>({ action: "status", id }),
   answer: (id: string, option: string) => call<ChallengeState>({ action: "answer", id, option }),

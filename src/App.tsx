@@ -21,6 +21,7 @@ import HelpInbox from "./components/help/HelpInbox";
 import ChallengeInbox from "./components/arena/ChallengeInbox";
 import Arena from "./pages/Arena";
 import ArenaDuel from "./pages/ArenaDuel";
+import MyChallenges from "./pages/MyChallenges";
 import { useButtonSounds } from "@/hooks/useButtonSounds";
 
 import ChatLayout from "./pages/chat/ChatLayout";
@@ -69,6 +70,7 @@ const App = () => (
           <Route path="/help/:id" element={<HelperSession />} />
           <Route path="/arena" element={<Arena />} />
           <Route path="/arena/:id" element={<ArenaDuel />} />
+          <Route path="/my-challenges" element={<MyChallenges />} />
           <Route path="/auth/callback" element={<OAuthCallback />} />
 
           {/* إعداد اسم المستخدم — لازم يفضل برا حراسة RequireCompletion
